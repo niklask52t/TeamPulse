@@ -1,6 +1,123 @@
 const API = '';
 
-// Navigation
+// ===== AUTH =====
+
+async function checkAuth() {
+    try {
+        const res = await fetch(`${API}/api/auth/me`);
+        if (!res.ok) {
+            showLogin();
+            return;
+        }
+        const data = await res.json();
+        if (data.mustChangePassword) {
+            showChangePassword(data.username);
+        } else {
+            showApp(data.username);
+        }
+    } catch {
+        showLogin();
+    }
+}
+
+function showLogin() {
+    document.getElementById('login-screen').classList.remove('hidden');
+    document.getElementById('change-pw-screen').classList.add('hidden');
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('login-error').classList.add('hidden');
+}
+
+function showChangePassword(username) {
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('change-pw-screen').classList.remove('hidden');
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('change-username').placeholder = `Aktuell: ${username} (leer lassen um beizubehalten)`;
+}
+
+function showApp(username) {
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('change-pw-screen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    document.getElementById('current-user').textContent = username;
+    loadEvents();
+    loadContacts();
+    loadPolls();
+}
+
+async function doLogin(e) {
+    e.preventDefault();
+    const username = document.getElementById('login-username').value;
+    const password = document.getElementById('login-password').value;
+    const errorEl = document.getElementById('login-error');
+
+    const res = await fetch(`${API}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+    });
+
+    if (!res.ok) {
+        const data = await res.json();
+        errorEl.textContent = data.error || 'Login fehlgeschlagen';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    const data = await res.json();
+    if (data.mustChangePassword) {
+        showChangePassword(data.username);
+    } else {
+        showApp(data.username);
+    }
+}
+
+async function doChangePassword(e) {
+    e.preventDefault();
+    const newPassword = document.getElementById('change-password').value;
+    const confirm = document.getElementById('change-password-confirm').value;
+    const newUsername = document.getElementById('change-username').value;
+    const errorEl = document.getElementById('change-error');
+
+    if (newPassword !== confirm) {
+        errorEl.textContent = 'Passwoerter stimmen nicht ueberein';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    const res = await fetch(`${API}/api/auth/change-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword, newUsername: newUsername || undefined }),
+    });
+
+    if (!res.ok) {
+        const data = await res.json();
+        errorEl.textContent = data.error || 'Fehler beim Aendern';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    const data = await res.json();
+    showApp(data.username);
+}
+
+async function doLogout() {
+    await fetch(`${API}/api/auth/logout`, { method: 'POST' });
+    showLogin();
+}
+
+// Helper: handle 401 on any API call
+async function apiFetch(url, options) {
+    const res = await fetch(url, options);
+    if (res.status === 401) {
+        showLogin();
+        throw new Error('Nicht angemeldet');
+    }
+    return res;
+}
+
+// ===== NAVIGATION =====
+
 document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -13,7 +130,7 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
 // ===== EVENTS =====
 
 async function loadEvents() {
-    const res = await fetch(`${API}/api/events`);
+    const res = await apiFetch(`${API}/api/events`);
     const events = await res.json();
     const list = document.getElementById('events-list');
 
@@ -62,7 +179,7 @@ function toggleRecurring() {
 }
 
 async function editEvent(id) {
-    const res = await fetch(`${API}/api/events/${id}`);
+    const res = await apiFetch(`${API}/api/events/${id}`);
     const e = await res.json();
     document.getElementById('event-form').classList.remove('hidden');
     document.getElementById('event-form-title').textContent = 'Event bearbeiten';
@@ -93,9 +210,9 @@ async function saveEvent(e) {
     };
 
     if (id) {
-        await fetch(`${API}/api/events/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        await apiFetch(`${API}/api/events/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
     } else {
-        await fetch(`${API}/api/events`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        await apiFetch(`${API}/api/events`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
     }
 
     hideEventForm();
@@ -104,14 +221,14 @@ async function saveEvent(e) {
 
 async function deleteEvent(id) {
     if (!confirm('Event wirklich loeschen?')) return;
-    await fetch(`${API}/api/events/${id}`, { method: 'DELETE' });
+    await apiFetch(`${API}/api/events/${id}`, { method: 'DELETE' });
     loadEvents();
 }
 
 // ===== CONTACTS =====
 
 async function loadContacts() {
-    const res = await fetch(`${API}/api/contacts`);
+    const res = await apiFetch(`${API}/api/contacts`);
     const contacts = await res.json();
     const list = document.getElementById('contacts-list');
 
@@ -158,9 +275,9 @@ async function saveContact(e) {
     };
 
     if (id) {
-        await fetch(`${API}/api/contacts/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        await apiFetch(`${API}/api/contacts/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
     } else {
-        await fetch(`${API}/api/contacts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        await apiFetch(`${API}/api/contacts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
     }
 
     hideContactForm();
@@ -169,14 +286,14 @@ async function saveContact(e) {
 
 async function deleteContact(id) {
     if (!confirm('Kontakt wirklich loeschen?')) return;
-    await fetch(`${API}/api/contacts/${id}`, { method: 'DELETE' });
+    await apiFetch(`${API}/api/contacts/${id}`, { method: 'DELETE' });
     loadContacts();
 }
 
 // ===== POLLS =====
 
 async function loadPolls() {
-    const res = await fetch(`${API}/api/polls`);
+    const res = await apiFetch(`${API}/api/polls`);
     const polls = await res.json();
     const list = document.getElementById('polls-list');
 
@@ -203,7 +320,7 @@ async function togglePollDetail(id, cardEl) {
         return;
     }
 
-    const res = await fetch(`${API}/api/polls/${id}`);
+    const res = await apiFetch(`${API}/api/polls/${id}`);
     const poll = await res.json();
 
     const yes = poll.responses.filter(r => r.response === 'yes');
@@ -235,7 +352,7 @@ async function togglePollDetail(id, cardEl) {
 }
 
 async function sendPoll(id) {
-    await fetch(`${API}/api/polls/${id}/send`, { method: 'POST' });
+    await apiFetch(`${API}/api/polls/${id}/send`, { method: 'POST' });
     loadPolls();
 }
 
@@ -247,7 +364,5 @@ function esc(str) {
     return div.innerHTML;
 }
 
-// Initial load
-loadEvents();
-loadContacts();
-loadPolls();
+// Initial auth check
+checkAuth();

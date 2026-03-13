@@ -261,6 +261,80 @@ main {
     background: #21262d;
 }
 
+/* Login */
+.login-screen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 1rem;
+}
+
+.login-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 2.5rem;
+    width: 100%;
+    max-width: 400px;
+}
+
+.login-card h1 {
+    color: #58a6ff;
+    text-align: center;
+    margin-bottom: 0.25rem;
+}
+
+.login-subtitle {
+    text-align: center;
+    color: #8b949e;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+}
+
+.btn-full {
+    width: 100%;
+    padding: 0.65rem;
+    font-size: 1rem;
+    margin-top: 0.5rem;
+}
+
+.error-msg {
+    background: #da363322;
+    color: #f85149;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+}
+
+.header-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.user-label {
+    color: #8b949e;
+    font-size: 0.85rem;
+}
+
+.form-group input[type="password"] {
+    width: 100%;
+    padding: 0.5rem;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    color: #e1e4e8;
+    font-size: 0.9rem;
+}
+
+.form-group input[type="password"]:focus {
+    outline: none;
+    border-color: #58a6ff;
+}
+
 @media (max-width: 600px) {
     header {
         flex-direction: column;
