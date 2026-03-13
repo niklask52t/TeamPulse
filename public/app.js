@@ -79,7 +79,7 @@ async function doChangePassword(e) {
     const errorEl = document.getElementById('change-error');
 
     if (newPassword !== confirm) {
-        errorEl.textContent = 'Passwoerter stimmen nicht ueberein';
+        errorEl.textContent = 'Passwörter stimmen nicht überein';
         errorEl.classList.remove('hidden');
         return;
     }
@@ -92,7 +92,7 @@ async function doChangePassword(e) {
 
     if (!res.ok) {
         const data = await res.json();
-        errorEl.textContent = data.error || 'Fehler beim Aendern';
+        errorEl.textContent = data.error || 'Fehler beim Ändern';
         errorEl.classList.remove('hidden');
         return;
     }
@@ -148,7 +148,7 @@ async function loadEvents() {
             </div>
             <div class="card-actions">
                 <button class="btn btn-secondary btn-sm" onclick="editEvent(${e.id})">Bearbeiten</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteEvent(${e.id})">Loeschen</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteEvent(${e.id})">Löschen</button>
             </div>
         </div>`;
     }).join('') || '<p style="color:#8b949e">Noch keine Events erstellt.</p>';
@@ -220,7 +220,7 @@ async function saveEvent(e) {
 }
 
 async function deleteEvent(id) {
-    if (!confirm('Event wirklich loeschen?')) return;
+    if (!confirm('Event wirklich löschen?')) return;
     await apiFetch(`${API}/api/events/${id}`, { method: 'DELETE' });
     loadEvents();
 }
@@ -240,7 +240,7 @@ async function loadContacts() {
             </div>
             <div class="card-actions">
                 <button class="btn btn-secondary btn-sm" onclick="editContact(${c.id}, '${esc(c.name)}', '${esc(c.phone)}')">Bearbeiten</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteContact(${c.id})">Loeschen</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteContact(${c.id})">Löschen</button>
             </div>
         </div>
     `).join('') || '<p style="color:#8b949e">Noch keine Kontakte angelegt.</p>';
@@ -285,7 +285,7 @@ async function saveContact(e) {
 }
 
 async function deleteContact(id) {
-    if (!confirm('Kontakt wirklich loeschen?')) return;
+    if (!confirm('Kontakt wirklich löschen?')) return;
     await apiFetch(`${API}/api/contacts/${id}`, { method: 'DELETE' });
     loadContacts();
 }

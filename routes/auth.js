@@ -12,12 +12,12 @@ router.post('/login', async (req, res) => {
 
     const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
     if (!user) {
-        return res.status(401).json({ error: 'Ungueltige Anmeldedaten' });
+        return res.status(401).json({ error: 'Ungültige Anmeldedaten' });
     }
 
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
-        return res.status(401).json({ error: 'Ungueltige Anmeldedaten' });
+        return res.status(401).json({ error: 'Ungültige Anmeldedaten' });
     }
 
     req.session.userId = user.id;

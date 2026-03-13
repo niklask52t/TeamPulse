@@ -219,7 +219,7 @@ sudo chmod +x /usr/local/bin/teampulse-update
 # Normales Update (Code + Dependencies)
 sudo teampulse-update
 
-# Komplett-Reset (loescht DB + alle Daten, mit doppelter Bestaetigung)
+# Komplett-Reset (löscht DB + alle Daten, mit doppelter Bestätigung)
 sudo teampulse-update --reset
 ```
 

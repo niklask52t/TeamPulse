@@ -11,7 +11,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 if [ "$(id -u)" -ne 0 ]; then
-    echo -e "${RED}Dieses Skript muss als root ausgefuehrt werden (sudo).${NC}"
+    echo -e "${RED}Dieses Skript muss als root ausgeführt werden (sudo).${NC}"
     exit 1
 fi
 
@@ -43,9 +43,9 @@ do_update() {
 do_reset() {
     echo -e "${RED}=== TeamPulse KOMPLETT-RESET ===${NC}"
     echo ""
-    echo -e "${RED}WARNUNG: Dies loescht ALLE Daten:${NC}"
+    echo -e "${RED}WARNUNG: Dies löscht ALLE Daten:${NC}"
     echo "  - Datenbank (alle Events, Kontakte, Umfragen, Antworten)"
-    echo "  - Login-Daten (wird auf admin/admin zurueckgesetzt)"
+    echo "  - Login-Daten (wird auf admin/admin zurückgesetzt)"
     echo "  - .env Konfiguration bleibt erhalten"
     echo ""
 
@@ -56,7 +56,7 @@ do_reset() {
     fi
 
     echo ""
-    read -p "LETZTE WARNUNG - wirklich ALLES loeschen und zuruecksetzen? (JA in Grossbuchstaben): " CONFIRM2
+    read -p "LETZTE WARNUNG - wirklich ALLES löschen und zurücksetzen? (JA in Großbuchstaben): " CONFIRM2
     if [ "$CONFIRM2" != "JA" ]; then
         echo "Abgebrochen."
         exit 0
@@ -73,7 +73,7 @@ do_reset() {
         echo -e "${YELLOW}Letztes DB-Backup erstellt:${NC} $BACKUP"
     fi
 
-    echo "Datenbank loeschen..."
+    echo "Datenbank löschen..."
     rm -f "$APP_DIR/teampulse.db" "$APP_DIR/teampulse.db-wal" "$APP_DIR/teampulse.db-shm"
 
     echo "Code aktualisieren..."
@@ -87,7 +87,7 @@ do_reset() {
 
     echo ""
     echo -e "${GREEN}Reset abgeschlossen.${NC}"
-    echo -e "${YELLOW}Standard-Login: admin / admin (Passwortaenderung beim ersten Login erforderlich)${NC}"
+    echo -e "${YELLOW}Standard-Login: admin / admin (Passwortänderung beim ersten Login erforderlich)${NC}"
     systemctl status "$SERVICE" --no-pager -l
 }
 
@@ -102,7 +102,7 @@ case "${1:-}" in
         echo "Verwendung: $0 [--update|--reset]"
         echo ""
         echo "  --update   Normales Update (Standard)"
-        echo "  --reset    Komplett-Reset: loescht alle Daten und setzt alles zurueck"
+        echo "  --reset    Komplett-Reset: löscht alle Daten und setzt alles zurück"
         exit 1
         ;;
 esac
