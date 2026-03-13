@@ -69,19 +69,34 @@ node -v  # sollte v24.x zeigen
 sudo useradd -r -m -s /bin/bash teampulse
 ```
 
-### 4. TeamPulse klonen und installieren
+### 4. Git-Credentials speichern
+
+Damit beim `git pull` nicht jedes Mal Benutzername und Passwort (bzw. Token) abgefragt werden:
+
+```bash
+# Credentials dauerhaft auf dem Server speichern
+sudo -u teampulse git config --global credential.helper store
+```
+
+> Beim ersten `git clone` oder `git pull` werden die Zugangsdaten abgefragt und danach in `~/.git-credentials` gespeichert. Für private Repos einen **Personal Access Token** (PAT) statt Passwort verwenden:
+>
+> GitHub -> Settings -> Developer settings -> Personal access tokens -> Tokens (classic) -> Generate new token (Scope: `repo`)
+>
+> Beim Login dann den Token als Passwort eingeben.
+
+### 5. TeamPulse klonen und installieren
 
 ```bash
 sudo -u teampulse bash -c '
   cd /home/teampulse
   git clone https://github.com/niklask52t/TeamPulse.git app
   cd app
-  npm install --production
+  npm install --omit=dev
   cp .env.example .env
 '
 ```
 
-### 5. Konfiguration anpassen
+### 6. Konfiguration anpassen
 
 ```bash
 sudo -u teampulse nano /home/teampulse/app/.env
@@ -102,7 +117,7 @@ GROUP_CHAT_ID=120363xxx@g.us
 >
 > **Tipp:** WAHA_API_URL muss auf die WAHA-Docker-Instanz zeigen, z.B. `http://localhost:3000` wenn WAHA auf dem gleichen Server läuft. Der TeamPulse-Port muss anders sein (z.B. 8080).
 
-### 6. Kurzer Test
+### 7. Kurzer Test
 
 ```bash
 sudo -u teampulse bash -c 'cd /home/teampulse/app && node server.js'
@@ -110,7 +125,7 @@ sudo -u teampulse bash -c 'cd /home/teampulse/app && node server.js'
 # Mit Ctrl+C beenden
 ```
 
-### 7. Systemd-Service erstellen
+### 8. Systemd-Service erstellen
 
 ```bash
 sudo tee /etc/systemd/system/teampulse.service > /dev/null << 'EOF'
@@ -133,7 +148,7 @@ WantedBy=multi-user.target
 EOF
 ```
 
-### 8. Service aktivieren und starten
+### 9. Service aktivieren und starten
 
 ```bash
 sudo systemctl daemon-reload
@@ -141,7 +156,7 @@ sudo systemctl enable teampulse
 sudo systemctl start teampulse
 ```
 
-### 9. Status prüfen
+### 10. Status prüfen
 
 ```bash
 sudo systemctl status teampulse
@@ -149,7 +164,7 @@ sudo systemctl status teampulse
 sudo journalctl -u teampulse -f
 ```
 
-### 10. WAHA einrichten (Docker)
+### 11. WAHA einrichten (Docker)
 
 Falls WAHA noch nicht läuft:
 
@@ -169,7 +184,7 @@ sudo docker run -d \
 
 Nach dem Start WAHA im Browser öffnen (`http://DEIN_SERVER:3001`) und eine WhatsApp-Session per QR-Code verbinden.
 
-### 11. WAHA Webhook konfigurieren
+### 12. WAHA Webhook konfigurieren
 
 In WAHA muss ein Webhook eingerichtet werden, damit eingehende Nachrichten an TeamPulse weitergeleitet werden:
 
@@ -182,7 +197,7 @@ curl -X POST http://localhost:3001/api/sessions/default/webhooks \
   }'
 ```
 
-### 12. Firewall (optional)
+### 13. Firewall (optional)
 
 ```bash
 sudo apt install -y ufw
@@ -192,11 +207,21 @@ sudo ufw allow 3001/tcp   # WAHA (nur wenn remote nötig)
 sudo ufw enable
 ```
 
+### 14. Update-Skript installieren
+
+```bash
+sudo cp /home/teampulse/app/update.sh /usr/local/bin/teampulse-update
+sudo chmod +x /usr/local/bin/teampulse-update
+```
+
 ### Updates einspielen
 
 ```bash
-sudo -u teampulse bash -c 'cd /home/teampulse/app && git pull && npm install --production'
-sudo systemctl restart teampulse
+# Normales Update (Code + Dependencies)
+sudo teampulse-update
+
+# Komplett-Reset (loescht DB + alle Daten, mit doppelter Bestaetigung)
+sudo teampulse-update --reset
 ```
 
 ### Logs & Troubleshooting
