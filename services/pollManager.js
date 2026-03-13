@@ -1,5 +1,6 @@
 const db = require('../db/database');
 const waha = require('./waha');
+const { parseBerlinDateTime } = require('./timeUtils');
 
 const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
 
@@ -7,7 +8,7 @@ function createPollForEvent(eventId, eventDate, deadlineMinutes) {
     const event = db.prepare('SELECT * FROM events WHERE id = ?').get(eventId);
     if (!event) throw new Error(`Event ${eventId} not found`);
 
-    const eventDateTime = new Date(`${eventDate}T${event.event_time}`);
+    const eventDateTime = parseBerlinDateTime(eventDate, event.event_time);
     const deadline = new Date(eventDateTime.getTime() - deadlineMinutes * 60 * 1000);
 
     const result = db.prepare(`
