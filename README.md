@@ -113,9 +113,22 @@ WAHA_SESSION=default
 GROUP_CHAT_ID=120363xxx@g.us
 ```
 
-> **Tipp:** Session-Secret generieren: `openssl rand -hex 32`
->
 > **Tipp:** WAHA_API_URL muss auf die WAHA-Docker-Instanz zeigen, z.B. `http://localhost:3000` wenn WAHA auf dem gleichen Server läuft. Der TeamPulse-Port muss anders sein (z.B. 8080).
+
+#### SESSION_SECRET generieren
+
+Einfach einen der folgenden Befehle ausführen und den Output in die `.env` kopieren:
+
+```bash
+# Option 1 – openssl (empfohlen)
+openssl rand -hex 32
+
+# Option 2 – Node.js
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+# Direkt in die .env schreiben (ersetzt den Platzhalter):
+sed -i "s/HIER_EINEN_LANGEN_ZUFAELLIGEN_STRING_EINSETZEN/$(openssl rand -hex 32)/" /home/teampulse/app/.env
+```
 
 ### 7. Kurzer Test
 
