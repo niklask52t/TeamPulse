@@ -63,8 +63,6 @@
                 <button class="nav-btn active" data-tab="events">Events</button>
                 <button class="nav-btn" data-tab="contacts">Kontakte</button>
                 <button class="nav-btn" data-tab="polls">Umfragen</button>
-                <button class="nav-btn" data-tab="wiki">Wiki</button>
-                <button class="nav-btn" data-tab="changelog">Changelog</button>
             </nav>
             <div class="header-right">
                 <span id="header-clock" class="header-clock"></span>
@@ -182,101 +180,76 @@
                 <div id="polls-list" class="card-list"></div>
             </section>
 
-            <!-- Wiki Tab -->
-            <section id="wiki" class="tab">
-                <div class="section-header">
-                    <h2>Wiki – Hilfe & Dokumentation</h2>
-                </div>
-                <div class="wiki-content">
-
-                    <div class="wiki-section">
-                        <h3>Übersicht</h3>
-                        <p>TeamPulse ist ein WhatsApp-basiertes Anwesenheits-Management-System. Du erstellst Events (Trainings, Turniere etc.), legst Kontakte an und TeamPulse sendet automatisch native WhatsApp-Umfragen (Tap-to-Vote). Die Antworten werden gesammelt und als Ergebnis in eine WhatsApp-Gruppe gepostet.</p>
-                    </div>
-
-                    <div class="wiki-section">
-                        <h3>Events</h3>
-                        <p><strong>Einmaliges Event:</strong> Hat ein festes Datum (nur Zukunft erlaubt). Eine Umfrage wird sofort beim Erstellen angelegt.</p>
-                        <p><strong>Wiederkehrendes Event:</strong> Läuft automatisch jede Woche am gewählten Wochentag. Der Scheduler erstellt jede Woche automatisch eine neue Umfrage.</p>
-                        <p><strong>Abstimmungsfrist:</strong> X Minuten vor Event-Beginn schließt die Abstimmung automatisch. Standard: 120 Minuten (2 Stunden).</p>
-                        <p><strong>Ergebnis-Post:</strong> X Minuten vor Event-Beginn werden die gesammelten Antworten in die WhatsApp-Gruppe gepostet — aber erst NACHDEM die Umfrage geschlossen ist.</p>
-                    </div>
-
-                    <div class="wiki-section">
-                        <h3>Kontakte</h3>
-                        <p>Hier pflegst du alle Teammitglieder mit Name und WhatsApp-Nummer (Format: <code>+49171234567</code>). Alle Kontakte erhalten beim nächsten Umfrage-Versand eine Nachricht.</p>
-                        <p><strong>Achtung:</strong> Kontakte die nach dem Erstellen einer Umfrage hinzugefügt werden, sind in dieser Umfrage nicht enthalten.</p>
-                    </div>
-
-                    <div class="wiki-section">
-                        <h3>Umfragen</h3>
-                        <p>Eine Umfrage hat folgende Status:</p>
-                        <ul>
-                            <li><span class="badge badge-pending">Ausstehend</span> – Erstellt, aber noch nicht per WhatsApp versendet.</li>
-                            <li><span class="badge badge-active">Aktiv</span> – Versendet, Antworten werden gesammelt.</li>
-                            <li><span class="badge badge-closed">Geschlossen</span> – Abstimmungsfrist abgelaufen, Ergebnis kann gepostet werden.</li>
-                        </ul>
-                        <p>Klick auf eine Umfrage zeigt Details und manuelle Aktionsbuttons.</p>
-                    </div>
-
-                    <div class="wiki-section">
-                        <h3>Manuelle Aktionen</h3>
-                        <p>Im aufgeklappten Umfrage-Detail:</p>
-                        <ul>
-                            <li><strong>Jetzt Umfrage senden</strong> – Einmalig: Sendet die WhatsApp-Umfrage an alle Kontakte. Danach nicht mehr möglich.</li>
-                            <li><strong>Jetzt Erinnerung senden</strong> – Mehrfach möglich: Erinnert alle ohne Antwort.</li>
-                            <li><strong>Jetzt Ergebnis in Gruppe posten</strong> – Mehrfach möglich: Postet aktuelle Auswertung in die Gruppe.</li>
-                            <li><strong>Jetzt Event-Erinnerung senden</strong> – Mehrfach möglich: Erinnert alle Zusager an das Event.</li>
-                            <li><strong>Löschen</strong> – Entfernt die Umfrage komplett.</li>
-                        </ul>
-                        <p>Einmal manuell ausgeführte Aktionen werden nicht mehr automatisch wiederholt.</p>
-                    </div>
-
-                    <div class="wiki-section">
-                        <h3>Automatischer Ablauf</h3>
-                        <p>Der integrierte Scheduler läuft jede Minute:</p>
-                        <ol>
-                            <li>Ausstehende Umfragen automatisch versenden</li>
-                            <li>60 Minuten vor Fristablauf: Erinnerung an alle ohne Antwort</li>
-                            <li>Frist abgelaufen: Umfrage automatisch schließen</li>
-                            <li>Wenn geschlossen und Post-Zeit erreicht: Ergebnis in Gruppe posten</li>
-                            <li>1 Stunde vor Event: Erinnerung an alle Zusager</li>
-                            <li>1 Stunde nach Event: Umfrage ins Archiv verschieben</li>
-                            <li>Wiederkehrende Events: Nächste Woche automatisch neue Umfrage erstellen</li>
-                        </ol>
-                    </div>
-
-                    <div class="wiki-section">
-                        <h3>WhatsApp-Antworten</h3>
-                        <p>TeamPulse nutzt native WhatsApp-Umfragen (Tap-to-Vote). Alternativ werden auch Textnachrichten erkannt:</p>
-                        <ul>
-                            <li><strong>Ja:</strong> ja, yes, j, klar, bin dabei, dabei, 1</li>
-                            <li><strong>Nein:</strong> nein, no, n, ne, kann nicht, 2</li>
-                            <li><strong>Vielleicht:</strong> vielleicht, maybe, vllt, mal sehen, evtl, 3</li>
-                        </ul>
-                    </div>
-
-                    <div class="wiki-section">
-                        <h3>Technisches</h3>
-                        <ul>
-                            <li><strong>Zeitzonen:</strong> Alle Zeiten in <code>Europe/Berlin</code> (MEZ/MESZ).</li>
-                            <li><strong>WAHA:</strong> Separate WhatsApp HTTP API (Docker Container).</li>
-                            <li><strong>Datenbank:</strong> SQLite-Datei <code>teampulse.db</code>.</li>
-                            <li><strong>Session:</strong> Login-Sessions laufen nach 24 Stunden ab.</li>
-                        </ul>
-                    </div>
-
-                </div>
-            </section>
-
-            <!-- Changelog Tab -->
-            <section id="changelog" class="tab">
-                <div class="section-header">
-                    <h2>Changelog</h2>
-                </div>
-                <div id="changelog-list" class="card-list"></div>
-            </section>
         </main>
+
+        <!-- Footer with Wiki & Changelog -->
+        <footer class="app-footer">
+            <div class="footer-inner">
+                <div class="footer-section">
+                    <div class="footer-toggle" onclick="toggleFooterSection('wiki')">
+                        <h3>Wiki – Hilfe & Dokumentation</h3>
+                        <span id="wiki-chevron" class="footer-chevron">&#x25BC;</span>
+                    </div>
+                    <div id="footer-wiki" class="footer-content hidden">
+                        <div class="wiki-content">
+                            <div class="wiki-section">
+                                <h3>Übersicht</h3>
+                                <p>TeamPulse ist ein WhatsApp-basiertes Anwesenheits-Management-System. Du erstellst Events (Trainings, Turniere etc.), legst Kontakte an und TeamPulse sendet automatisch native WhatsApp-Umfragen (Tap-to-Vote). Die Antworten werden gesammelt und als Ergebnis in eine WhatsApp-Gruppe gepostet.</p>
+                            </div>
+                            <div class="wiki-section">
+                                <h3>Events</h3>
+                                <p><strong>Einmaliges Event:</strong> Hat ein festes Datum (nur Zukunft erlaubt). Eine Umfrage wird sofort beim Erstellen angelegt.</p>
+                                <p><strong>Wiederkehrendes Event:</strong> Läuft automatisch jede Woche am gewählten Wochentag. Der Scheduler erstellt jede Woche automatisch eine neue Umfrage.</p>
+                                <p><strong>Abstimmungsfrist:</strong> X Minuten vor Event-Beginn schließt die Abstimmung automatisch. Standard: 120 Min.</p>
+                                <p><strong>Ergebnis-Post:</strong> X Minuten vor Event-Beginn werden die Antworten in die WhatsApp-Gruppe gepostet — erst NACHDEM die Umfrage geschlossen ist.</p>
+                            </div>
+                            <div class="wiki-section">
+                                <h3>Kontakte</h3>
+                                <p>Hier pflegst du alle Teammitglieder mit Name und WhatsApp-Nummer (Format: <code>+49171234567</code>). Alle Kontakte erhalten beim nächsten Umfrage-Versand eine Nachricht.</p>
+                                <p><strong>Achtung:</strong> Kontakte die nach dem Erstellen einer Umfrage hinzugefügt werden, sind in dieser Umfrage nicht enthalten.</p>
+                            </div>
+                            <div class="wiki-section">
+                                <h3>Umfragen</h3>
+                                <p>Status: <span class="badge badge-pending">Ausstehend</span> <span class="badge badge-active">Aktiv</span> <span class="badge badge-closed">Geschlossen</span></p>
+                                <p>Klick auf eine Umfrage zeigt Details und manuelle Aktionsbuttons.</p>
+                            </div>
+                            <div class="wiki-section">
+                                <h3>Automatischer Ablauf</h3>
+                                <ol>
+                                    <li>Ausstehende Umfragen automatisch versenden</li>
+                                    <li>60 Min vor Fristablauf: Erinnerung an alle ohne Antwort</li>
+                                    <li>Frist abgelaufen: Umfrage automatisch schließen</li>
+                                    <li>Geschlossen + Post-Zeit erreicht: Ergebnis in Gruppe posten</li>
+                                    <li>1h vor Event: Erinnerung an alle Zusager</li>
+                                    <li>1h nach Event: Umfrage ins Archiv verschieben</li>
+                                    <li>Wiederkehrende Events: Nächste Woche neue Umfrage erstellen</li>
+                                </ol>
+                            </div>
+                            <div class="wiki-section">
+                                <h3>WhatsApp-Antworten</h3>
+                                <p>Native Umfragen (Tap-to-Vote) + Texterkennung: <strong>Ja</strong> (ja, yes, klar, dabei) | <strong>Nein</strong> (nein, no, ne, kann nicht) | <strong>Vielleicht</strong> (vielleicht, vllt, evtl, mal sehen)</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="footer-section">
+                    <div class="footer-toggle" onclick="toggleFooterSection('changelog')">
+                        <h3>Changelog</h3>
+                        <span id="changelog-chevron" class="footer-chevron">&#x25BC;</span>
+                    </div>
+                    <div id="footer-changelog" class="footer-content hidden">
+                        <div id="changelog-list" class="card-list"></div>
+                    </div>
+                </div>
+
+                <div class="footer-bottom">
+                    <span>TeamPulse</span>
+                    <span class="footer-dot"></span>
+                    <span>WhatsApp Attendance Management</span>
+                </div>
+            </div>
+        </footer>
     </div>
 
     <script src="app.js"></script>
