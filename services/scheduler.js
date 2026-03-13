@@ -28,6 +28,7 @@ function startScheduler() {
             await checkGroupPosts();
             await checkEventReminders();
             await generateRecurringPolls();
+            await archiveOldPolls();
         } catch (err) {
             console.error('Scheduler error:', err);
         }
@@ -70,8 +71,9 @@ async function checkGroupPosts() {
     const polls = db.prepare(`
         SELECT p.id, p.event_date, e.event_time, e.group_post_minutes_before
         FROM polls p JOIN events e ON p.event_id = e.id
-        WHERE p.status = 'active' AND p.group_posted = 0
+        WHERE p.status = 'active' AND p.group_posted = 0 AND p.archived = 0
         AND datetime(p.deadline) <= datetime('now')
+        AND datetime(p.sent_at) <= datetime('now', '-2 minutes')
     `).all();
 
     const now = new Date();
@@ -125,6 +127,24 @@ async function generateRecurringPolls() {
         if (!existing) {
             const pollId = pollManager.createPollForEvent(event.id, dateStr, event.poll_deadline_minutes);
             console.log(`Created recurring poll ${pollId} for ${event.title} on ${dateStr}`);
+        }
+    }
+}
+
+async function archiveOldPolls() {
+    const now = new Date();
+    const polls = db.prepare(`
+        SELECT p.id, p.event_date, e.event_time
+        FROM polls p JOIN events e ON p.event_id = e.id
+        WHERE p.archived = 0
+    `).all();
+
+    for (const poll of polls) {
+        const eventUtc = parseBerlinDateTime(poll.event_date, poll.event_time);
+        const archiveTime = new Date(eventUtc.getTime() + 60 * 60 * 1000); // 1h after event
+        if (now >= archiveTime) {
+            db.prepare('UPDATE polls SET archived = 1 WHERE id = ?').run(poll.id);
+            console.log(`Poll ${poll.id} archived`);
         }
     }
 }

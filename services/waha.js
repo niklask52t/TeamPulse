@@ -26,14 +26,25 @@ async function sendMessage(chatId, text) {
 }
 
 async function sendPollMessage(chatId, eventTitle, eventDate, eventTime) {
-    const text =
-        `📋 *Umfrage: ${eventTitle}*\n` +
-        `📅 ${eventDate} um ${eventTime}\n\n` +
-        `Kommst du? Antworte mit:\n` +
-        `👍 *Ja*\n` +
-        `👎 *Nein*\n` +
-        `🤷 *Vielleicht*`;
-    return sendMessage(chatId, text);
+    const url = `${WAHA_API_URL}/api/sendPoll`;
+    const res = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+            session: WAHA_SESSION,
+            chatId,
+            poll: {
+                name: `${eventTitle} – ${eventDate} um ${eventTime} Uhr`,
+                options: ['Ja ✅', 'Nein ❌', 'Vielleicht 🤷'],
+                multipleAnswers: false,
+            },
+        }),
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`WAHA sendPoll failed (${res.status}): ${body}`);
+    }
+    return res.json();
 }
 
 async function sendReminder(chatId, eventTitle, eventDate, eventTime, minutesLeft) {
