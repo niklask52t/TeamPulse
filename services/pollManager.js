@@ -76,11 +76,20 @@ function processResponse(phone, text) {
 
     const lower = text.toLowerCase().trim();
     let response = null;
-    if (['ja', 'yes', '👍', '1', 'j', 'klar', 'bin dabei', 'dabei'].some(k => lower.includes(k))) {
+
+    // Native poll options (exact match with emoji stripped)
+    const stripped = lower.replace(/[✅❌🤷\uFE0F\u200D]/g, '').trim();
+    if (stripped === 'ja' || stripped === 'nein' || stripped === 'vielleicht') {
+        if (stripped === 'ja') response = 'yes';
+        else if (stripped === 'nein') response = 'no';
+        else response = 'maybe';
+    }
+    // Text keywords (use exact word match for short keywords)
+    else if (['ja', 'yes', 'klar', 'bin dabei', 'dabei'].some(k => lower.includes(k)) || lower === 'j' || lower === '1' || lower === '👍') {
         response = 'yes';
-    } else if (['nein', 'no', '👎', '2', 'n', 'kann nicht', 'ne'].some(k => lower.includes(k))) {
+    } else if (['nein', 'no', 'kann nicht'].some(k => lower.includes(k)) || lower === 'n' || lower === 'ne' || lower === '2' || lower === '👎') {
         response = 'no';
-    } else if (['vielleicht', 'maybe', '🤷', '3', 'vllt', 'mal sehen', 'evtl'].some(k => lower.includes(k))) {
+    } else if (['vielleicht', 'maybe', 'vllt', 'mal sehen', 'evtl'].some(k => lower.includes(k)) || lower === '3' || lower === '🤷') {
         response = 'maybe';
     }
 

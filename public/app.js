@@ -5,6 +5,16 @@ const TZ = 'Europe/Berlin';
 
 const CHANGELOG = [
     {
+        version: '1.3.0',
+        date: '2026-03-13',
+        changes: [
+            { type: 'feature', text: 'Logo und neues Design (blau-grün Farbschema passend zum Logo)' },
+            { type: 'feature', text: 'Sticky Header mit Logo' },
+            { type: 'fix', text: 'WAHA Webhook-Route wurde nie erreicht (kritischer Routing-Bug)' },
+            { type: 'fix', text: 'Antwort-Erkennung: Einzelbuchstaben "n"/"j" matchten fälschlicherweise in längeren Wörtern' },
+        ]
+    },
+    {
         version: '1.2.0',
         date: '2026-03-13',
         changes: [
