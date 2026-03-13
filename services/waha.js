@@ -1,5 +1,3 @@
-const fetch = require('node-fetch');
-
 const WAHA_API_URL = process.env.WAHA_API_URL || 'http://localhost:3000';
 const WAHA_API_KEY = process.env.WAHA_API_KEY || '';
 const WAHA_SESSION = process.env.WAHA_SESSION || 'default';

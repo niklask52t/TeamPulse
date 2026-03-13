@@ -55,12 +55,12 @@ sudo apt update && sudo apt upgrade -y
 sudo apt install -y curl git build-essential python3
 ```
 
-### 2. Node.js 22 LTS installieren
+### 2. Node.js 24 LTS installieren
 
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
 sudo apt install -y nodejs
-node -v  # sollte v22.x zeigen
+node -v  # sollte v24.x zeigen
 ```
 
 ### 3. Systembenutzer anlegen
