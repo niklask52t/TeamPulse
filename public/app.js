@@ -10,6 +10,8 @@ const CHANGELOG = [
         changes: [
             { type: 'feature', text: 'Logo und neues Design (blau-grün Farbschema passend zum Logo)' },
             { type: 'feature', text: 'Sticky Header mit Logo' },
+            { type: 'feature', text: 'Kalender-Datumskarten bei Events und Umfragen' },
+            { type: 'feature', text: 'Wiki und Changelog im Footer statt als Tabs' },
             { type: 'fix', text: 'WAHA Webhook-Route wurde nie erreicht (kritischer Routing-Bug)' },
             { type: 'fix', text: 'Antwort-Erkennung: Einzelbuchstaben "n"/"j" matchten fälschlicherweise in längeren Wörtern' },
         ]
@@ -226,6 +228,8 @@ async function apiFetch(url, options) {
 // ===== NAVIGATION =====
 
 function activateTab(tabId) {
+    // Wiki/changelog are now in footer, not tabs — ignore if someone saved them
+    if (tabId === 'wiki' || tabId === 'changelog') tabId = 'events';
     // Close any open forms when switching tabs
     if (!checkDirtyAndClose()) return;
     hideAllForms();
@@ -260,19 +264,20 @@ async function loadEvents() {
 
     list.innerHTML = events.map(e => {
         const recurring = e.recurring ? `<span class="badge badge-recurring">Jeden ${dayNames[e.recurrence_day]}</span>` : '';
-        const date = e.event_date ? e.event_date : '';
+        const dateDisplay = e.event_date ? fmtDateFancy(e.event_date) : '';
         return `
         <div class="card" id="event-card-${e.id}">
+            ${dateDisplay}
             <div class="card-info">
                 <h3>${esc(e.title)} <span class="badge badge-${e.type}">${typeLabels[e.type]}</span> ${recurring}</h3>
-                <p>${date} ${e.event_time} Uhr | Abstimmungsfrist: ${e.poll_deadline_minutes} min vor Event</p>
+                <p>${e.event_time} Uhr | Frist: ${e.poll_deadline_minutes} min vor Event</p>
             </div>
             <div class="card-actions">
                 <button class="btn btn-secondary btn-sm" onclick="editEvent(${e.id})">Bearbeiten</button>
                 <button class="btn btn-danger btn-sm" onclick="deleteEvent(${e.id})">Löschen</button>
             </div>
         </div>`;
-    }).join('') || '<p style="color:#8b949e">Noch keine Events erstellt.</p>';
+    }).join('') || '<p style="color:var(--text-secondary)">Noch keine Events erstellt.</p>';
 }
 
 function showEventForm() {
@@ -485,9 +490,10 @@ async function loadPolls() {
 
     const renderPollCard = (p) => `
         <div class="card" style="cursor:pointer" id="poll-card-${p.id}" onclick="togglePollDetail(${p.id})">
+            ${fmtDateFancy(p.event_date)}
             <div class="card-info">
                 <h3>${esc(p.title)} <span class="badge badge-${p.status}">${statusLabels[p.status]}</span></h3>
-                <p>${p.event_date} ${p.event_time} Uhr | Frist: ${fmtDeadline(p.deadline)}</p>
+                <p>${p.event_time} Uhr | Frist: ${fmtDeadline(p.deadline)}</p>
             </div>
             <div class="card-actions">
                 <span class="poll-chevron" id="poll-chevron-${p.id}">Details &#x25BC;</span>
@@ -647,6 +653,27 @@ function renderChangelog() {
             </ul>
         </div>
     `).join('');
+}
+
+// ===== FOOTER =====
+
+function toggleFooterSection(section) {
+    const content = document.getElementById(`footer-${section}`);
+    const chevron = document.getElementById(`${section}-chevron`);
+    if (!content) return;
+    const hidden = content.classList.toggle('hidden');
+    if (chevron) chevron.innerHTML = hidden ? '&#x25BC;' : '&#x25B2;';
+}
+
+// ===== DATE FORMATTING =====
+
+function fmtDateFancy(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T12:00:00Z');
+    const day = d.getUTCDate();
+    const month = d.toLocaleString('de-DE', { month: 'short', timeZone: 'UTC' });
+    const weekday = d.toLocaleString('de-DE', { weekday: 'short', timeZone: 'UTC' });
+    return `<span class="date-card"><span class="date-card-day">${day}</span><span class="date-card-month">${weekday}, ${month}</span></span>`;
 }
 
 // ===== UTILS =====

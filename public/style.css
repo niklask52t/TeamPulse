@@ -563,6 +563,124 @@ main {
     letter-spacing: 0.02em;
 }
 
+/* ===== DATE CARDS ===== */
+.date-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 52px;
+    height: 52px;
+    background: var(--gradient);
+    border-radius: 10px;
+    flex-shrink: 0;
+    padding: 0.2rem 0.5rem;
+}
+
+.date-card-day {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.2;
+}
+
+.date-card-month {
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.85);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+}
+
+/* ===== FOOTER ===== */
+.app-footer {
+    margin-top: 3rem;
+    border-top: 1px solid var(--border);
+    background: var(--bg-secondary);
+}
+
+.footer-inner {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 1.5rem 1.25rem;
+}
+
+.footer-section {
+    margin-bottom: 0.5rem;
+}
+
+.footer-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 0;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid var(--border);
+}
+
+.footer-toggle h3 {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    transition: color 0.2s;
+}
+
+.footer-toggle:hover h3 {
+    color: var(--text-primary);
+}
+
+.footer-chevron {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    transition: color 0.2s;
+}
+
+.footer-toggle:hover .footer-chevron {
+    color: var(--text-primary);
+}
+
+.footer-content {
+    padding: 1rem 0;
+}
+
+.footer-content .wiki-section {
+    background: var(--bg-primary);
+}
+
+.footer-content .changelog-release {
+    background: var(--bg-primary);
+}
+
+.footer-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding-top: 1rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.footer-dot {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--text-muted);
+}
+
+/* Fancy date input */
+.form-group input[type="date"] {
+    cursor: pointer;
+}
+
+.form-group input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.7);
+    cursor: pointer;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 700px) {
     header {
