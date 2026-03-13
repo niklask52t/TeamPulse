@@ -8,7 +8,7 @@ function berlinDateStr() {
     return new Date().toLocaleString('sv-SE', { timeZone: TZ }).split(' ')[0];
 }
 
-// Returns current day-of-week (0=Sun…6=Sat) in Europe/Berlin timezone
+// Returns current day-of-week (0=Sun...6=Sat) in Europe/Berlin timezone
 function berlinDayOfWeek() {
     return new Date(new Date().toLocaleString('sv-SE', { timeZone: TZ })).getDay();
 }
@@ -25,12 +25,13 @@ function startScheduler() {
         try {
             await checkAndSendPolls();
             await checkDeadlineReminders();
+            await checkAndClosePolls();
             await checkGroupPosts();
             await checkEventReminders();
             await generateRecurringPolls();
             await archiveOldPolls();
         } catch (err) {
-            console.error('Scheduler error:', err);
+            console.error('[ERROR] Scheduler:', err);
         }
     });
 
@@ -46,8 +47,12 @@ async function checkAndSendPolls() {
     `).all(nowISO);
 
     for (const poll of pending) {
-        await pollManager.sendPoll(poll.id);
-        console.log(`Poll ${poll.id} sent`);
+        try {
+            await pollManager.sendPoll(poll.id);
+            console.log(`Poll ${poll.id} sent`);
+        } catch (err) {
+            console.error(`[ERROR] sendPoll ${poll.id}:`, err.message);
+        }
     }
 }
 
@@ -62,28 +67,47 @@ async function checkDeadlineReminders() {
     `).all(in60min.toISOString(), now.toISOString());
 
     for (const poll of polls) {
-        await pollManager.sendDeadlineReminder(poll.id);
-        console.log(`Deadline reminder sent for poll ${poll.id}`);
+        try {
+            await pollManager.sendDeadlineReminder(poll.id);
+            console.log(`Deadline reminder sent for poll ${poll.id}`);
+        } catch (err) {
+            console.error(`[ERROR] sendDeadlineReminder ${poll.id}:`, err.message);
+        }
     }
 }
 
+// Close active polls whose deadline has passed
+async function checkAndClosePolls() {
+    const result = db.prepare(`
+        UPDATE polls SET status = 'closed'
+        WHERE status = 'active' AND datetime(deadline) <= datetime('now')
+    `).run();
+    if (result.changes > 0) {
+        console.log(`${result.changes} poll(s) closed (deadline passed)`);
+    }
+}
+
+// Post group results ONLY for CLOSED polls (not active!)
 async function checkGroupPosts() {
     const polls = db.prepare(`
         SELECT p.id, p.event_date, e.event_time, e.group_post_minutes_before
         FROM polls p JOIN events e ON p.event_id = e.id
-        WHERE p.status = 'active' AND p.group_posted = 0 AND p.archived = 0
-        AND datetime(p.deadline) <= datetime('now')
-        AND datetime(p.sent_at) <= datetime('now', '-2 minutes')
+        WHERE p.status = 'closed' AND p.group_posted = 0 AND p.archived = 0
     `).all();
 
     const now = new Date();
     for (const poll of polls) {
         const eventUtc = parseBerlinDateTime(poll.event_date, poll.event_time);
+        if (isNaN(eventUtc.getTime())) continue;
         const postTime = new Date(eventUtc.getTime() - (poll.group_post_minutes_before || 60) * 60 * 1000);
 
         if (now >= postTime) {
-            await pollManager.postGroupResults(poll.id);
-            console.log(`Group results posted for poll ${poll.id}`);
+            try {
+                await pollManager.postGroupResults(poll.id);
+                console.log(`Group results posted for poll ${poll.id}`);
+            } catch (err) {
+                console.error(`[ERROR] postGroupResults ${poll.id}:`, err.message);
+            }
         }
     }
 }
@@ -94,17 +118,22 @@ async function checkEventReminders() {
     const polls = db.prepare(`
         SELECT p.id, p.event_date, e.event_time
         FROM polls p JOIN events e ON p.event_id = e.id
-        WHERE p.event_reminder_sent = 0
+        WHERE p.event_reminder_sent = 0 AND p.archived = 0
         AND p.status IN ('active', 'closed')
     `).all();
 
     for (const poll of polls) {
         const eventUtc = parseBerlinDateTime(poll.event_date, poll.event_time);
+        if (isNaN(eventUtc.getTime())) continue;
         const reminderTime = new Date(eventUtc.getTime() - 60 * 60 * 1000);
 
         if (now >= reminderTime && now < eventUtc) {
-            await pollManager.sendEventReminders(poll.id);
-            console.log(`Event reminder sent for poll ${poll.id}`);
+            try {
+                await pollManager.sendEventReminders(poll.id);
+                console.log(`Event reminder sent for poll ${poll.id}`);
+            } catch (err) {
+                console.error(`[ERROR] sendEventReminders ${poll.id}:`, err.message);
+            }
         }
     }
 }
@@ -125,8 +154,12 @@ async function generateRecurringPolls() {
         `).get(event.id, dateStr);
 
         if (!existing) {
-            const pollId = pollManager.createPollForEvent(event.id, dateStr, event.poll_deadline_minutes);
-            console.log(`Created recurring poll ${pollId} for ${event.title} on ${dateStr}`);
+            try {
+                const pollId = pollManager.createPollForEvent(event.id, dateStr, event.poll_deadline_minutes);
+                console.log(`Created recurring poll ${pollId} for ${event.title} on ${dateStr}`);
+            } catch (err) {
+                console.error(`[ERROR] createPollForEvent recurring ${event.id}:`, err.message);
+            }
         }
     }
 }
@@ -141,6 +174,7 @@ async function archiveOldPolls() {
 
     for (const poll of polls) {
         const eventUtc = parseBerlinDateTime(poll.event_date, poll.event_time);
+        if (isNaN(eventUtc.getTime())) continue;
         const archiveTime = new Date(eventUtc.getTime() + 60 * 60 * 1000); // 1h after event
         if (now >= archiveTime) {
             db.prepare('UPDATE polls SET archived = 1 WHERE id = ?').run(poll.id);

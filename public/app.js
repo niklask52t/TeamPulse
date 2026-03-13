@@ -1,6 +1,57 @@
 const API = '';
 const TZ = 'Europe/Berlin';
 
+// ===== CHANGELOG =====
+
+const CHANGELOG = [
+    {
+        version: '1.2.0',
+        date: '2026-03-13',
+        changes: [
+            { type: 'feature', text: 'Native WhatsApp-Umfragen (Tap-to-Vote statt Textnachricht)' },
+            { type: 'feature', text: 'Umfragen-Archiv (automatisch 1h nach Event-Ende)' },
+            { type: 'feature', text: 'Umfragen manuell löschen' },
+            { type: 'feature', text: 'Manuelle Aktionsbuttons (Umfrage senden, Erinnerung, Gruppen-Post, Event-Erinnerung)' },
+            { type: 'feature', text: 'Live-Uhr (Europe/Berlin) im Header' },
+            { type: 'feature', text: 'Wiki-Tab mit vollständiger Dokumentation' },
+            { type: 'feature', text: 'Changelog-Tab mit Versionierung' },
+            { type: 'feature', text: 'Tab-Zustand bleibt nach Reload erhalten' },
+            { type: 'feature', text: 'Warnung bei ungespeicherten Änderungen' },
+            { type: 'feature', text: 'Pflichtfeld-Validierung (Datum, Telefonnummer, etc.)' },
+            { type: 'feature', text: 'Events in der Vergangenheit nicht mehr anlegbar' },
+            { type: 'fix', text: 'Event löschen crasht nicht mehr den Server' },
+            { type: 'fix', text: 'Umfrage wird nicht mehr sofort als geschlossen angezeigt' },
+            { type: 'fix', text: 'Gruppen-Ergebnis wird erst nach Fristablauf gepostet' },
+            { type: 'fix', text: 'Alle Zeiten korrekt in Europe/Berlin' },
+            { type: 'fix', text: 'Bearbeitungs-Formular zeigt keine Duplikate mehr' },
+            { type: 'fix', text: 'Server-Fehler werden jetzt geloggt (sichtbar in journalctl)' },
+            { type: 'delete', text: 'Alte Text-Umfragen durch native WhatsApp-Polls ersetzt' },
+        ]
+    },
+    {
+        version: '1.1.0',
+        date: '2026-03-13',
+        changes: [
+            { type: 'feature', text: 'Login-System mit Passwort-Änderung beim ersten Login' },
+            { type: 'feature', text: 'Strikte Authentifizierung für alle Seiten' },
+            { type: 'fix', text: 'Umlaute korrekt (ä, ö, ü, ß)' },
+        ]
+    },
+    {
+        version: '1.0.0',
+        date: '2026-03-13',
+        changes: [
+            { type: 'feature', text: 'Events erstellen und verwalten (einmalig & wiederkehrend)' },
+            { type: 'feature', text: 'Kontakte mit WhatsApp-Nummer pflegen' },
+            { type: 'feature', text: 'Automatische WhatsApp-Umfragen via WAHA' },
+            { type: 'feature', text: 'Antwort-Erkennung (Ja/Nein/Vielleicht)' },
+            { type: 'feature', text: 'Automatischer Gruppen-Post mit Ergebnis' },
+            { type: 'feature', text: 'Erinnerungen vor Deadline und Event' },
+            { type: 'feature', text: 'Update-Script (update.sh) mit Reset-Modus' },
+        ]
+    }
+];
+
 // ===== UHRZEIT =====
 
 function startClock() {
@@ -23,6 +74,26 @@ function startClock() {
 
 function fmtDeadline(isoStr) {
     return new Date(isoStr).toLocaleString('de-DE', { timeZone: TZ });
+}
+
+function todayStr() {
+    return new Date().toLocaleString('sv-SE', { timeZone: TZ }).split(' ')[0];
+}
+
+// ===== FORM DIRTY TRACKING =====
+
+let formDirty = false;
+
+function markDirty() { formDirty = true; }
+function clearDirty() { formDirty = false; }
+
+function checkDirtyAndClose() {
+    if (!formDirty) return true;
+    if (confirm('Du hast ungespeicherte Änderungen. Verwerfen?')) {
+        clearDirty();
+        return true;
+    }
+    return false;
 }
 
 // ===== AUTH =====
@@ -65,6 +136,7 @@ function showApp(username) {
     loadEvents();
     loadContacts();
     loadPolls();
+    renderChangelog();
     const savedTab = localStorage.getItem('activeTab') || 'events';
     activateTab(savedTab);
 }
@@ -99,11 +171,11 @@ async function doLogin(e) {
 async function doChangePassword(e) {
     e.preventDefault();
     const newPassword = document.getElementById('change-password').value;
-    const confirm = document.getElementById('change-password-confirm').value;
+    const confirmPw = document.getElementById('change-password-confirm').value;
     const newUsername = document.getElementById('change-username').value;
     const errorEl = document.getElementById('change-error');
 
-    if (newPassword !== confirm) {
+    if (newPassword !== confirmPw) {
         errorEl.textContent = 'Passwörter stimmen nicht überein';
         errorEl.classList.remove('hidden');
         return;
@@ -144,6 +216,10 @@ async function apiFetch(url, options) {
 // ===== NAVIGATION =====
 
 function activateTab(tabId) {
+    // Close any open forms when switching tabs
+    if (!checkDirtyAndClose()) return;
+    hideAllForms();
+
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     const btn = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
@@ -151,6 +227,11 @@ function activateTab(tabId) {
     const tab = document.getElementById(tabId);
     if (tab) tab.classList.add('active');
     localStorage.setItem('activeTab', tabId);
+}
+
+function hideAllForms() {
+    hideEventForm();
+    hideContactForm();
 }
 
 document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -185,6 +266,8 @@ async function loadEvents() {
 }
 
 function showEventForm() {
+    if (!checkDirtyAndClose()) return;
+    clearDirty();
     document.getElementById('event-form').classList.remove('hidden');
     document.getElementById('event-form-title').textContent = 'Neues Event';
     document.getElementById('event-id').value = '';
@@ -192,24 +275,32 @@ function showEventForm() {
     document.getElementById('event-type').value = 'training';
     document.getElementById('event-time').value = '';
     document.getElementById('event-date').value = '';
+    document.getElementById('event-date').min = todayStr();
     document.getElementById('event-recurring').checked = false;
     document.getElementById('event-deadline').value = '120';
     document.getElementById('event-group-post').value = '60';
     toggleRecurring();
+    attachFormListeners('event-form-el');
+    document.getElementById('event-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function hideEventForm() {
     document.getElementById('event-form').classList.add('hidden');
     document.querySelectorAll('[id^="event-card-"]').forEach(el => el.classList.remove('hidden'));
+    clearDirty();
 }
 
 function toggleRecurring() {
     const checked = document.getElementById('event-recurring').checked;
     document.getElementById('recurring-fields').classList.toggle('hidden', !checked);
     document.getElementById('date-field').classList.toggle('hidden', checked);
+    // Date is required only for non-recurring
+    document.getElementById('event-date').required = !checked;
 }
 
 async function editEvent(id) {
+    if (!checkDirtyAndClose()) return;
+    clearDirty();
     const res = await apiFetch(`${API}/api/events/${id}`);
     const e = await res.json();
     document.getElementById('event-form').classList.remove('hidden');
@@ -219,12 +310,14 @@ async function editEvent(id) {
     document.getElementById('event-type').value = e.type;
     document.getElementById('event-time').value = e.event_time;
     document.getElementById('event-date').value = e.event_date || '';
+    // Allow keeping existing past dates when editing, but min for new dates is today
+    document.getElementById('event-date').min = '';
     document.getElementById('event-recurring').checked = !!e.recurring;
     document.getElementById('event-recurrence-day').value = e.recurrence_day ?? 1;
     document.getElementById('event-deadline').value = e.poll_deadline_minutes;
     document.getElementById('event-group-post').value = e.group_post_minutes_before;
     toggleRecurring();
-    // Hide the card being edited to avoid duplicate appearance
+    attachFormListeners('event-form-el');
     document.getElementById(`event-card-${id}`)?.classList.add('hidden');
     document.getElementById('event-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -243,21 +336,39 @@ async function saveEvent(e) {
         group_post_minutes_before: Number(document.getElementById('event-group-post').value),
     };
 
-    if (id) {
-        await apiFetch(`${API}/api/events/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-    } else {
-        await apiFetch(`${API}/api/events`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    try {
+        let res;
+        if (id) {
+            res = await apiFetch(`${API}/api/events/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        } else {
+            res = await apiFetch(`${API}/api/events`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        }
+        if (!res.ok) {
+            const err = await res.json();
+            alert('Fehler: ' + (err.error || 'Unbekannter Fehler'));
+            return;
+        }
+    } catch (err) {
+        if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
+        return;
     }
 
     hideEventForm();
     loadEvents();
+    loadPolls();
 }
 
 async function deleteEvent(id) {
-    if (!confirm('Event wirklich löschen?')) return;
+    if (!confirm('Event wirklich löschen? Alle zugehörigen Umfragen werden ebenfalls gelöscht.')) return;
     try {
-        await apiFetch(`${API}/api/events/${id}`, { method: 'DELETE' });
+        const res = await apiFetch(`${API}/api/events/${id}`, { method: 'DELETE' });
+        if (!res.ok) {
+            const err = await res.json();
+            alert('Fehler: ' + (err.error || 'Unbekannter Fehler'));
+            return;
+        }
         loadEvents();
+        loadPolls();
     } catch (err) {
         if (err.message !== 'Nicht angemeldet') alert('Fehler beim Löschen: ' + err.message);
     }
@@ -285,23 +396,30 @@ async function loadContacts() {
 }
 
 function showContactForm() {
+    if (!checkDirtyAndClose()) return;
+    clearDirty();
     document.getElementById('contact-form').classList.remove('hidden');
     document.getElementById('contact-form-title').textContent = 'Neuer Kontakt';
     document.getElementById('contact-id').value = '';
     document.getElementById('contact-name').value = '';
     document.getElementById('contact-phone').value = '';
+    attachFormListeners('contact-form-el');
 }
 
 function hideContactForm() {
     document.getElementById('contact-form').classList.add('hidden');
+    clearDirty();
 }
 
 function editContact(id, name, phone) {
+    if (!checkDirtyAndClose()) return;
+    clearDirty();
     document.getElementById('contact-form').classList.remove('hidden');
     document.getElementById('contact-form-title').textContent = 'Kontakt bearbeiten';
     document.getElementById('contact-id').value = id;
     document.getElementById('contact-name').value = name;
     document.getElementById('contact-phone').value = phone;
+    attachFormListeners('contact-form-el');
 }
 
 async function saveContact(e) {
@@ -312,10 +430,21 @@ async function saveContact(e) {
         phone: document.getElementById('contact-phone').value,
     };
 
-    if (id) {
-        await apiFetch(`${API}/api/contacts/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-    } else {
-        await apiFetch(`${API}/api/contacts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    try {
+        let res;
+        if (id) {
+            res = await apiFetch(`${API}/api/contacts/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        } else {
+            res = await apiFetch(`${API}/api/contacts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        }
+        if (!res.ok) {
+            const err = await res.json();
+            alert('Fehler: ' + (err.error || 'Unbekannter Fehler'));
+            return;
+        }
+    } catch (err) {
+        if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
+        return;
     }
 
     hideContactForm();
@@ -324,8 +453,12 @@ async function saveContact(e) {
 
 async function deleteContact(id) {
     if (!confirm('Kontakt wirklich löschen?')) return;
-    await apiFetch(`${API}/api/contacts/${id}`, { method: 'DELETE' });
-    loadContacts();
+    try {
+        await apiFetch(`${API}/api/contacts/${id}`, { method: 'DELETE' });
+        loadContacts();
+    } catch (err) {
+        if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
+    }
 }
 
 // ===== POLLS =====
@@ -347,7 +480,7 @@ async function loadPolls() {
                 <p>${p.event_date} ${p.event_time} Uhr | Frist: ${fmtDeadline(p.deadline)}</p>
             </div>
             <div class="card-actions">
-                <span class="poll-chevron" id="poll-chevron-${p.id}">Details ▼</span>
+                <span class="poll-chevron" id="poll-chevron-${p.id}">Details &#x25BC;</span>
             </div>
         </div>
         <div id="poll-detail-${p.id}" class="poll-detail hidden"></div>
@@ -359,7 +492,7 @@ async function loadPolls() {
         html += `
         <div class="archive-header" onclick="toggleArchive()">
             <span>Archiv (${archived.length})</span>
-            <span id="archive-chevron">▼</span>
+            <span id="archive-chevron">&#x25BC;</span>
         </div>
         <div id="polls-archive" class="hidden">
             ${archived.map(renderPollCard).join('')}
@@ -374,11 +507,11 @@ async function togglePollDetail(id) {
     const chevron = document.getElementById(`poll-chevron-${id}`);
     if (!detail.classList.contains('hidden')) {
         detail.classList.add('hidden');
-        if (chevron) chevron.textContent = 'Details ▼';
+        if (chevron) chevron.innerHTML = 'Details &#x25BC;';
         return;
     }
     await renderPollDetail(id);
-    if (chevron) chevron.textContent = 'Details ▲';
+    if (chevron) chevron.innerHTML = 'Details &#x25B2;';
 }
 
 async function renderPollDetail(id) {
@@ -396,19 +529,19 @@ async function renderPollDetail(id) {
     detail.innerHTML = `
         <div class="poll-actions">${actions}</div>
         <div class="stats">
-            <span class="stat response-yes">✅ Ja: ${yes.length}</span>
-            <span class="stat response-no">❌ Nein: ${no.length}</span>
-            <span class="stat response-maybe">🤷 Vielleicht: ${maybe.length}</span>
-            <span class="stat response-pending">⏳ Offen: ${pending.length}</span>
+            <span class="stat response-yes">Ja: ${yes.length}</span>
+            <span class="stat response-no">Nein: ${no.length}</span>
+            <span class="stat response-maybe">Vielleicht: ${maybe.length}</span>
+            <span class="stat response-pending">Offen: ${pending.length}</span>
         </div>
         <div class="poll-responses">
             ${poll.responses.map(r => `
                 <div class="response-row">
                     <span>${esc(r.name)}</span>
                     <span class="response-${r.response || 'pending'}">${
-                        r.response === 'yes' ? '✅ Ja' :
-                        r.response === 'no' ? '❌ Nein' :
-                        r.response === 'maybe' ? '🤷 Vielleicht' : '⏳ Ausstehend'
+                        r.response === 'yes' ? 'Ja' :
+                        r.response === 'no' ? 'Nein' :
+                        r.response === 'maybe' ? 'Vielleicht' : 'Ausstehend'
                     }</span>
                 </div>
             `).join('')}
@@ -416,24 +549,27 @@ async function renderPollDetail(id) {
     `;
     detail.classList.remove('hidden');
     const chevron = document.getElementById(`poll-chevron-${id}`);
-    if (chevron) chevron.textContent = 'Details ▲';
+    if (chevron) chevron.innerHTML = 'Details &#x25B2;';
 }
 
 function buildActionButtons(poll) {
     const btns = [];
 
-    if (poll.status === 'pending') {
-        btns.push(`<button class="btn btn-primary btn-sm" onclick="pollAction(${poll.id}, 'send', 'Umfrage an alle senden?')">📤 Jetzt Umfrage senden</button>`);
+    // Send poll: only once, only when pending
+    if (poll.status === 'pending' && !poll.sent_at) {
+        btns.push(`<button class="btn btn-primary btn-sm" onclick="pollAction(${poll.id}, 'send', 'Umfrage an alle senden?')">Jetzt Umfrage senden</button>`);
     }
+    // Reminder: multiple times, only when active
     if (poll.status === 'active') {
-        btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'send-reminder', 'Erinnerung an alle ohne Antwort senden?')">🔔 Jetzt Erinnerung senden</button>`);
+        btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'send-reminder', 'Erinnerung an alle ohne Antwort senden?')">Jetzt Erinnerung senden</button>`);
     }
+    // Group post & event reminder: multiple times, active or closed
     if (poll.status === 'active' || poll.status === 'closed') {
-        btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'post-group', 'Ergebnis jetzt in Gruppe posten?')">📊 Jetzt Ergebnis in Gruppe posten</button>`);
-        btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'send-event-reminder', 'Event-Erinnerung an alle Zusager senden?')">🏃 Jetzt Event-Erinnerung senden</button>`);
+        btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'post-group', 'Ergebnis jetzt in Gruppe posten?')">Jetzt Ergebnis posten</button>`);
+        btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'send-event-reminder', 'Event-Erinnerung an alle Zusager senden?')">Jetzt Event-Erinnerung</button>`);
     }
-
-    btns.push(`<button class="btn btn-danger btn-sm" onclick="deletePoll(${poll.id})">🗑️ Löschen</button>`);
+    // Delete: always
+    btns.push(`<button class="btn btn-danger btn-sm" onclick="deletePoll(${poll.id})">Löschen</button>`);
 
     return btns.join('');
 }
@@ -453,7 +589,7 @@ function toggleArchive() {
     const chevron = document.getElementById('archive-chevron');
     if (!archive) return;
     const hidden = archive.classList.toggle('hidden');
-    chevron.textContent = hidden ? '▼' : '▲';
+    chevron.innerHTML = hidden ? '&#x25BC;' : '&#x25B2;';
 }
 
 async function pollAction(id, action, confirmMsg) {
@@ -472,12 +608,53 @@ async function pollAction(id, action, confirmMsg) {
     }
 }
 
+// ===== CHANGELOG =====
+
+function renderChangelog() {
+    const list = document.getElementById('changelog-list');
+    if (!list) return;
+
+    const typeColors = {
+        feature: { bg: '#23863633', color: '#3fb950', label: 'Feature' },
+        fix: { bg: '#d2992233', color: '#e3b341', label: 'Fix' },
+        delete: { bg: '#da363333', color: '#f85149', label: 'Entfernt' },
+    };
+
+    list.innerHTML = CHANGELOG.map(release => `
+        <div class="changelog-release">
+            <div class="changelog-header">
+                <span class="changelog-version">v${release.version}</span>
+                <span class="changelog-date">${release.date}</span>
+            </div>
+            <ul class="changelog-list">
+                ${release.changes.map(c => {
+                    const t = typeColors[c.type] || typeColors.feature;
+                    return `<li>
+                        <span class="changelog-tag" style="background:${t.bg};color:${t.color}">${t.label}</span>
+                        ${esc(c.text)}
+                    </li>`;
+                }).join('')}
+            </ul>
+        </div>
+    `).join('');
+}
+
 // ===== UTILS =====
 
 function esc(str) {
+    if (!str) return '';
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+}
+
+function attachFormListeners(formId) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+    form.querySelectorAll('input, select, textarea').forEach(el => {
+        el.removeEventListener('input', markDirty);
+        el.addEventListener('input', markDirty);
+    });
 }
 
 // Initial auth check

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
 const pollManager = require('../services/pollManager');
+const { berlinToday } = require('../services/timeUtils');
 
 // GET all events
 router.get('/', (req, res) => {
@@ -26,6 +27,17 @@ router.post('/', (req, res) => {
         return res.status(400).json({ error: 'Titel, Typ und Uhrzeit sind erforderlich' });
     }
 
+    if (!recurring && !event_date) {
+        return res.status(400).json({ error: 'Datum ist für einmalige Events erforderlich' });
+    }
+
+    if (!recurring && event_date) {
+        const today = berlinToday();
+        if (event_date < today) {
+            return res.status(400).json({ error: 'Datum darf nicht in der Vergangenheit liegen' });
+        }
+    }
+
     const result = db.prepare(`
         INSERT INTO events (title, type, event_date, event_time, recurring, recurrence_day, poll_deadline_minutes, group_post_minutes_before)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -43,8 +55,12 @@ router.post('/', (req, res) => {
 
     // For non-recurring events, create poll immediately
     if (!recurring && event_date) {
-        const pollId = pollManager.createPollForEvent(event.id, event_date, poll_deadline_minutes || 120);
-        event.pollId = pollId;
+        try {
+            const pollId = pollManager.createPollForEvent(event.id, event_date, poll_deadline_minutes || 120);
+            event.pollId = pollId;
+        } catch (err) {
+            console.error('[ERROR] createPollForEvent:', err);
+        }
     }
 
     res.status(201).json(event);
@@ -53,6 +69,14 @@ router.post('/', (req, res) => {
 // PUT update event
 router.put('/:id', (req, res) => {
     const { title, type, event_date, event_time, recurring, recurrence_day, poll_deadline_minutes, group_post_minutes_before, active } = req.body;
+
+    if (!title || !type || !event_time) {
+        return res.status(400).json({ error: 'Titel, Typ und Uhrzeit sind erforderlich' });
+    }
+
+    if (!recurring && !event_date) {
+        return res.status(400).json({ error: 'Datum ist für einmalige Events erforderlich' });
+    }
 
     const result = db.prepare(`
         UPDATE events SET title = ?, type = ?, event_date = ?, event_time = ?,

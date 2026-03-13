@@ -14,6 +14,15 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 
+// Log unhandled errors so they appear in journalctl
+process.on('uncaughtException', (err) => {
+    console.error('[FATAL] Uncaught Exception:', err);
+    process.exit(1);
+});
+process.on('unhandledRejection', (err) => {
+    console.error('[ERROR] Unhandled Rejection:', err);
+});
+
 app.use(express.json());
 
 app.use(session({
@@ -27,7 +36,7 @@ app.use(session({
     },
 }));
 
-// Auth middleware – alle API-Routen außer /api/auth und WAHA-Webhook
+// Auth middleware
 function requireAuth(req, res, next) {
     if (!req.session.userId) {
         return res.status(401).json({ error: 'Nicht angemeldet' });
@@ -52,7 +61,7 @@ app.use('/api/contacts', contactsRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/polls', pollsRouter);
 
-// Statische Dateien (Login-HTML muss erreichbar sein)
+// Statische Dateien
 app.use(express.static(path.join(__dirname, 'public')));
 
 // SPA fallback
@@ -60,7 +69,22 @@ app.get('*splat', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
+// Express error handler — logs to journalctl
+app.use((err, req, res, next) => {
+    console.error(`[ERROR] ${req.method} ${req.url}:`, err.stack || err.message || err);
+    res.status(err.status || 500).json({ error: err.message || 'Interner Serverfehler' });
+});
+
+const server = app.listen(PORT, () => {
     console.log(`TeamPulse running on http://localhost:${PORT}`);
     startScheduler();
+});
+
+server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+        console.error(`[FATAL] Port ${PORT} ist bereits belegt! Läuft WAHA auf dem gleichen Port?`);
+    } else {
+        console.error('[FATAL] Server error:', err);
+    }
+    process.exit(1);
 });
