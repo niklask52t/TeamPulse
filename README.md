@@ -18,7 +18,7 @@ WhatsApp-basiertes Anwesenheits-Management für Teams. Erstelle Trainings, Turni
 
 - **Backend**: Node.js + Express
 - **Frontend**: Vanilla HTML/CSS/JS (leichtgewichtig, kein Build-Step)
-- **Datenbank**: SQLite (via better-sqlite3)
+- **Datenbank**: SQLite (via libsql)
 - **WhatsApp**: WAHA (WhatsApp HTTP API)
 - **Scheduler**: node-cron für zeitgesteuerte Nachrichten
 - **Auth**: bcrypt + express-session

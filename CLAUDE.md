@@ -6,7 +6,7 @@ WhatsApp-based attendance management dashboard. Users create events (recurring t
 ## Tech Stack
 - **Backend**: Node.js + Express (CommonJS)
 - **Frontend**: Vanilla HTML/CSS/JS served as static files from `public/`
-- **Database**: SQLite via better-sqlite3, schema in `db/schema.sql`
+- **Database**: SQLite via libsql (better-sqlite3 compatible API), schema in `db/schema.sql`
 - **Auth**: bcrypt + express-session, default user admin/admin, force password change on first login
 - **Scheduler**: node-cron for timed messages (reminders, group posts)
 - **WhatsApp**: WAHA REST API
