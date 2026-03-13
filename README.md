@@ -113,7 +113,7 @@ WAHA_SESSION=default
 GROUP_CHAT_ID=120363xxx@g.us
 ```
 
-> **Tipp:** WAHA_API_URL muss auf die WAHA-Docker-Instanz zeigen, z.B. `http://localhost:3001` wenn WAHA auf dem gleichen Server läuft. Der TeamPulse-Port muss anders sein (z.B. 3000).
+> **Tipp:** WAHA_API_URL muss auf die WAHA-Docker-Instanz zeigen, z.B. `http://localhost:3000` wenn WAHA auf dem gleichen Server läuft. Der TeamPulse-Port muss anders sein (z.B. 3000).
 
 #### GROUP_CHAT_ID herausfinden
 
@@ -121,10 +121,10 @@ Die Gruppen-ID bekommt man über die WAHA-API, nachdem eine Session verbunden is
 
 ```bash
 # Alle Chats auflisten (WAHA muss laufen und verbunden sein)
-curl http://localhost:3001/api/default/chats
+curl http://localhost:3000/api/default/chats
 
 # Oder gefiltert nach Gruppen:
-curl http://localhost:3001/api/default/chats | node -e "
+curl http://localhost:3000/api/default/chats | node -e "
   const d = require('fs').readFileSync('/dev/stdin','utf8');
   JSON.parse(d)
     .filter(c => c.id.endsWith('@g.us'))
@@ -207,21 +207,21 @@ sudo systemctl enable docker
 sudo docker run -d \
   --name waha \
   --restart always \
-  -p 3001:3000 \
+  -p 3000:3000 \
   -v waha_data:/app/store \
   devlikeapro/waha:latest
 ```
 
-> In diesem Beispiel läuft WAHA auf Port 3001. Passe `WAHA_API_URL=http://localhost:3001` in der `.env` an.
+> In diesem Beispiel läuft WAHA auf Port 3000. Passe `WAHA_API_URL=http://localhost:3000` in der `.env` an.
 
-Nach dem Start WAHA im Browser öffnen (`http://DEIN_SERVER:3001`) und eine WhatsApp-Session per QR-Code verbinden.
+Nach dem Start WAHA im Browser öffnen (`http://DEIN_SERVER:3000`) und eine WhatsApp-Session per QR-Code verbinden.
 
 ### 12. WAHA Webhook konfigurieren
 
 In WAHA muss ein Webhook eingerichtet werden, damit eingehende Nachrichten an TeamPulse weitergeleitet werden:
 
 ```bash
-curl -X POST http://localhost:3001/api/sessions/default/webhooks \
+curl -X POST http://localhost:3000/api/sessions/default/webhooks \
   -H "Content-Type: application/json" \
   -d '{
     "url": "http://localhost:3000/api/webhooks/waha",
@@ -235,7 +235,7 @@ curl -X POST http://localhost:3001/api/sessions/default/webhooks \
 sudo apt install -y ufw
 sudo ufw allow ssh
 sudo ufw allow 3000/tcp   # TeamPulse
-sudo ufw allow 3001/tcp   # WAHA (nur wenn remote nötig)
+sudo ufw allow 3000/tcp   # WAHA (nur wenn remote nötig)
 sudo ufw enable
 ```
 
