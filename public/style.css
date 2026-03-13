@@ -327,6 +327,13 @@ main {
     white-space: nowrap;
 }
 
+.poll-chevron {
+    font-size: 0.8rem;
+    color: #58a6ff;
+    white-space: nowrap;
+    user-select: none;
+}
+
 /* Poll actions */
 .poll-actions {
     display: flex;

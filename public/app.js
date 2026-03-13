@@ -65,6 +65,8 @@ function showApp(username) {
     loadEvents();
     loadContacts();
     loadPolls();
+    const savedTab = localStorage.getItem('activeTab') || 'events';
+    activateTab(savedTab);
 }
 
 async function doLogin(e) {
@@ -141,13 +143,18 @@ async function apiFetch(url, options) {
 
 // ===== NAVIGATION =====
 
+function activateTab(tabId) {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    const btn = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
+    if (btn) btn.classList.add('active');
+    const tab = document.getElementById(tabId);
+    if (tab) tab.classList.add('active');
+    localStorage.setItem('activeTab', tabId);
+}
+
 document.querySelectorAll('.nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById(btn.dataset.tab).classList.add('active');
-    });
+    btn.addEventListener('click', () => activateTab(btn.dataset.tab));
 });
 
 // ===== EVENTS =====
@@ -164,7 +171,7 @@ async function loadEvents() {
         const recurring = e.recurring ? `<span class="badge badge-recurring">Jeden ${dayNames[e.recurrence_day]}</span>` : '';
         const date = e.event_date ? e.event_date : '';
         return `
-        <div class="card">
+        <div class="card" id="event-card-${e.id}">
             <div class="card-info">
                 <h3>${esc(e.title)} <span class="badge badge-${e.type}">${typeLabels[e.type]}</span> ${recurring}</h3>
                 <p>${date} ${e.event_time} Uhr | Abstimmungsfrist: ${e.poll_deadline_minutes} min vor Event</p>
@@ -193,6 +200,7 @@ function showEventForm() {
 
 function hideEventForm() {
     document.getElementById('event-form').classList.add('hidden');
+    document.querySelectorAll('[id^="event-card-"]').forEach(el => el.classList.remove('hidden'));
 }
 
 function toggleRecurring() {
@@ -216,6 +224,9 @@ async function editEvent(id) {
     document.getElementById('event-deadline').value = e.poll_deadline_minutes;
     document.getElementById('event-group-post').value = e.group_post_minutes_before;
     toggleRecurring();
+    // Hide the card being edited to avoid duplicate appearance
+    document.getElementById(`event-card-${id}`)?.classList.add('hidden');
+    document.getElementById('event-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function saveEvent(e) {
@@ -323,23 +334,29 @@ async function loadPolls() {
     const statusLabels = { pending: 'Ausstehend', active: 'Aktiv', closed: 'Geschlossen' };
 
     list.innerHTML = polls.map(p => `
-        <div class="card" style="cursor:pointer" onclick="togglePollDetail(${p.id}, this)">
+        <div class="card" style="cursor:pointer" id="poll-card-${p.id}" onclick="togglePollDetail(${p.id})">
             <div class="card-info">
                 <h3>${esc(p.title)} <span class="badge badge-${p.status}">${statusLabels[p.status]}</span></h3>
                 <p>${p.event_date} ${p.event_time} Uhr | Frist: ${fmtDeadline(p.deadline)}</p>
+            </div>
+            <div class="card-actions">
+                <span class="poll-chevron" id="poll-chevron-${p.id}">Details ▼</span>
             </div>
         </div>
         <div id="poll-detail-${p.id}" class="poll-detail hidden"></div>
     `).join('') || '<p style="color:#8b949e">Noch keine Umfragen vorhanden.</p>';
 }
 
-async function togglePollDetail(id, cardEl) {
+async function togglePollDetail(id) {
     const detail = document.getElementById(`poll-detail-${id}`);
+    const chevron = document.getElementById(`poll-chevron-${id}`);
     if (!detail.classList.contains('hidden')) {
         detail.classList.add('hidden');
+        if (chevron) chevron.textContent = 'Details ▼';
         return;
     }
     await renderPollDetail(id);
+    if (chevron) chevron.textContent = 'Details ▲';
 }
 
 async function renderPollDetail(id) {
@@ -376,6 +393,8 @@ async function renderPollDetail(id) {
         </div>
     `;
     detail.classList.remove('hidden');
+    const chevron = document.getElementById(`poll-chevron-${id}`);
+    if (chevron) chevron.textContent = 'Details ▲';
 }
 
 function buildActionButtons(poll) {
