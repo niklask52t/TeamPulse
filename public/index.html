@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TeamPulse</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>TeamPulse</h1>
+        <nav>
+            <button class="nav-btn active" data-tab="events">Events</button>
+            <button class="nav-btn" data-tab="contacts">Kontakte</button>
+            <button class="nav-btn" data-tab="polls">Umfragen</button>
+        </nav>
+    </header>
+
+    <main>
+        <!-- Events Tab -->
+        <section id="events" class="tab active">
+            <div class="section-header">
+                <h2>Events</h2>
+                <button class="btn btn-primary" onclick="showEventForm()">+ Neues Event</button>
+            </div>
+
+            <div id="event-form" class="form-card hidden">
+                <h3 id="event-form-title">Neues Event</h3>
+                <form onsubmit="saveEvent(event)">
+                    <input type="hidden" id="event-id">
+                    <div class="form-group">
+                        <label>Titel</label>
+                        <input type="text" id="event-title" required placeholder="z.B. Training, Turnier...">
+                    </div>
+                    <div class="form-group">
+                        <label>Typ</label>
+                        <select id="event-type" required>
+                            <option value="training">Training</option>
+                            <option value="tournament">Turnier</option>
+                            <option value="other">Sonstiges</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Uhrzeit</label>
+                        <input type="time" id="event-time" required>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="event-recurring" onchange="toggleRecurring()">
+                            Wiederkehrend
+                        </label>
+                    </div>
+                    <div id="recurring-fields" class="hidden">
+                        <div class="form-group">
+                            <label>Wochentag</label>
+                            <select id="event-recurrence-day">
+                                <option value="1">Montag</option>
+                                <option value="2">Dienstag</option>
+                                <option value="3">Mittwoch</option>
+                                <option value="4">Donnerstag</option>
+                                <option value="5">Freitag</option>
+                                <option value="6">Samstag</option>
+                                <option value="0">Sonntag</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="date-field">
+                        <div class="form-group">
+                            <label>Datum</label>
+                            <input type="date" id="event-date">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Abstimmungsfrist (Minuten vor Event)</label>
+                        <input type="number" id="event-deadline" value="120" min="30">
+                    </div>
+                    <div class="form-group">
+                        <label>Ergebnis-Post (Minuten vor Event)</label>
+                        <input type="number" id="event-group-post" value="60" min="15">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Speichern</button>
+                        <button type="button" class="btn btn-secondary" onclick="hideEventForm()">Abbrechen</button>
+                    </div>
+                </form>
+            </div>
+
+            <div id="events-list" class="card-list"></div>
+        </section>
+
+        <!-- Contacts Tab -->
+        <section id="contacts" class="tab">
+            <div class="section-header">
+                <h2>Kontakte</h2>
+                <button class="btn btn-primary" onclick="showContactForm()">+ Neuer Kontakt</button>
+            </div>
+
+            <div id="contact-form" class="form-card hidden">
+                <h3 id="contact-form-title">Neuer Kontakt</h3>
+                <form onsubmit="saveContact(event)">
+                    <input type="hidden" id="contact-id">
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" id="contact-name" required placeholder="Max Mustermann">
+                    </div>
+                    <div class="form-group">
+                        <label>Telefonnummer</label>
+                        <input type="tel" id="contact-phone" required placeholder="+49171234567">
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Speichern</button>
+                        <button type="button" class="btn btn-secondary" onclick="hideContactForm()">Abbrechen</button>
+                    </div>
+                </form>
+            </div>
+
+            <div id="contacts-list" class="card-list"></div>
+        </section>
+
+        <!-- Polls Tab -->
+        <section id="polls" class="tab">
+            <div class="section-header">
+                <h2>Umfragen</h2>
+            </div>
+            <div id="polls-list" class="card-list"></div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
