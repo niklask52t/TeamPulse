@@ -52,6 +52,8 @@ app.post('/api/webhooks/waha', (req, res, next) => {
     req.body = req.body || {};
     req.body.event = req.body.event || 'message';
     req.body.payload = req.body.payload || req.body;
+    // Forward directly to the webhook handler in pollsRouter
+    req.url = '/webhook';
     next();
 }, pollsRouter);
 
