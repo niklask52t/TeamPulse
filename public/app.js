@@ -255,8 +255,12 @@ async function saveEvent(e) {
 
 async function deleteEvent(id) {
     if (!confirm('Event wirklich löschen?')) return;
-    await apiFetch(`${API}/api/events/${id}`, { method: 'DELETE' });
-    loadEvents();
+    try {
+        await apiFetch(`${API}/api/events/${id}`, { method: 'DELETE' });
+        loadEvents();
+    } catch (err) {
+        if (err.message !== 'Nicht angemeldet') alert('Fehler beim Löschen: ' + err.message);
+    }
 }
 
 // ===== CONTACTS =====
@@ -333,7 +337,10 @@ async function loadPolls() {
 
     const statusLabels = { pending: 'Ausstehend', active: 'Aktiv', closed: 'Geschlossen' };
 
-    list.innerHTML = polls.map(p => `
+    const active = polls.filter(p => !p.archived);
+    const archived = polls.filter(p => p.archived);
+
+    const renderPollCard = (p) => `
         <div class="card" style="cursor:pointer" id="poll-card-${p.id}" onclick="togglePollDetail(${p.id})">
             <div class="card-info">
                 <h3>${esc(p.title)} <span class="badge badge-${p.status}">${statusLabels[p.status]}</span></h3>
@@ -344,7 +351,22 @@ async function loadPolls() {
             </div>
         </div>
         <div id="poll-detail-${p.id}" class="poll-detail hidden"></div>
-    `).join('') || '<p style="color:#8b949e">Noch keine Umfragen vorhanden.</p>';
+    `;
+
+    let html = active.map(renderPollCard).join('') || '<p style="color:#8b949e">Noch keine Umfragen vorhanden.</p>';
+
+    if (archived.length > 0) {
+        html += `
+        <div class="archive-header" onclick="toggleArchive()">
+            <span>Archiv (${archived.length})</span>
+            <span id="archive-chevron">▼</span>
+        </div>
+        <div id="polls-archive" class="hidden">
+            ${archived.map(renderPollCard).join('')}
+        </div>`;
+    }
+
+    list.innerHTML = html;
 }
 
 async function togglePollDetail(id) {
@@ -411,7 +433,27 @@ function buildActionButtons(poll) {
         btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'send-event-reminder', 'Event-Erinnerung an alle Zusager senden?')">🏃 Jetzt Event-Erinnerung senden</button>`);
     }
 
+    btns.push(`<button class="btn btn-danger btn-sm" onclick="deletePoll(${poll.id})">🗑️ Löschen</button>`);
+
     return btns.join('');
+}
+
+async function deletePoll(id) {
+    if (!confirm('Umfrage wirklich löschen?')) return;
+    try {
+        await apiFetch(`${API}/api/polls/${id}`, { method: 'DELETE' });
+        loadPolls();
+    } catch (err) {
+        if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
+    }
+}
+
+function toggleArchive() {
+    const archive = document.getElementById('polls-archive');
+    const chevron = document.getElementById('archive-chevron');
+    if (!archive) return;
+    const hidden = archive.classList.toggle('hidden');
+    chevron.textContent = hidden ? '▼' : '▲';
 }
 
 async function pollAction(id, action, confirmMsg) {

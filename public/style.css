@@ -334,6 +334,26 @@ main {
     user-select: none;
 }
 
+.archive-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 1rem;
+    margin-top: 1rem;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #8b949e;
+    font-size: 0.9rem;
+    user-select: none;
+}
+
+.archive-header:hover {
+    border-color: #58a6ff;
+    color: #e1e4e8;
+}
+
 /* Poll actions */
 .poll-actions {
     display: flex;

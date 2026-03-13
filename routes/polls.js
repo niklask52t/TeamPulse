@@ -86,18 +86,42 @@ router.post('/:id/send-event-reminder', async (req, res) => {
     }
 });
 
+// DELETE poll
+router.delete('/:id', (req, res) => {
+    const deleteAll = db.transaction((id) => {
+        db.prepare('DELETE FROM poll_responses WHERE poll_id = ?').run(id);
+        return db.prepare('DELETE FROM polls WHERE id = ?').run(id);
+    });
+    const result = deleteAll(req.params.id);
+    if (result.changes === 0) return res.status(404).json({ error: 'Umfrage nicht gefunden' });
+    res.json({ success: true });
+});
+
 // WAHA webhook endpoint
 router.post('/webhook', (req, res) => {
     const { event, payload } = req.body;
 
+    // Text message response (legacy)
     if (event === 'message' && payload) {
         const phone = payload.from;
         const text = payload.body;
-
         if (phone && text) {
             const result = pollManager.processResponse(phone, text);
             if (result) {
-                console.log(`Response from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
+                console.log(`Text response from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
+            }
+        }
+    }
+
+    // Native WhatsApp poll vote
+    if (event === 'poll.vote' && payload) {
+        const phone = payload.from || payload.sender;
+        const selectedOptions = payload.poll?.selectedOptions || payload.poll?.options || [];
+        if (phone && selectedOptions.length > 0) {
+            const optionName = selectedOptions[0]?.name || selectedOptions[0] || '';
+            const result = pollManager.processResponse(phone, optionName);
+            if (result) {
+                console.log(`Poll vote from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
             }
         }
     }

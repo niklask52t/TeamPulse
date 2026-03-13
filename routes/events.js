@@ -71,9 +71,14 @@ router.put('/:id', (req, res) => {
     res.json(event);
 });
 
-// DELETE event
+// DELETE event (explicit cascade for compatibility with older DBs)
 router.delete('/:id', (req, res) => {
-    const result = db.prepare('DELETE FROM events WHERE id = ?').run(req.params.id);
+    const deleteAll = db.transaction((id) => {
+        db.prepare('DELETE FROM poll_responses WHERE poll_id IN (SELECT id FROM polls WHERE event_id = ?)').run(id);
+        db.prepare('DELETE FROM polls WHERE event_id = ?').run(id);
+        return db.prepare('DELETE FROM events WHERE id = ?').run(id);
+    });
+    const result = deleteAll(req.params.id);
     if (result.changes === 0) return res.status(404).json({ error: 'Event nicht gefunden' });
     res.json({ success: true });
 });
