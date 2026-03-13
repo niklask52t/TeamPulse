@@ -1,9 +1,26 @@
 const cron = require('node-cron');
 const db = require('../db/database');
 const pollManager = require('./pollManager');
+const { parseBerlinDateTime, TZ } = require('./timeUtils');
+
+// Returns current date string (YYYY-MM-DD) in Europe/Berlin timezone
+function berlinDateStr() {
+    return new Date().toLocaleString('sv-SE', { timeZone: TZ }).split(' ')[0];
+}
+
+// Returns current day-of-week (0=Sun…6=Sat) in Europe/Berlin timezone
+function berlinDayOfWeek() {
+    return new Date(new Date().toLocaleString('sv-SE', { timeZone: TZ })).getDay();
+}
+
+// Add N days to a YYYY-MM-DD string (timezone-safe via noon UTC)
+function addDays(dateStr, days) {
+    const d = new Date(dateStr + 'T12:00:00Z');
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().split('T')[0];
+}
 
 function startScheduler() {
-    // Run every minute to check for pending actions
     cron.schedule('* * * * *', async () => {
         try {
             await checkAndSendPolls();
@@ -20,11 +37,12 @@ function startScheduler() {
 }
 
 async function checkAndSendPolls() {
+    const nowISO = new Date().toISOString();
     const pending = db.prepare(`
         SELECT p.id FROM polls p
         WHERE p.status = 'pending' AND p.sent_at IS NULL
-        AND datetime(p.deadline) > datetime('now')
-    `).all();
+        AND datetime(p.deadline) > datetime(?)
+    `).all(nowISO);
 
     for (const poll of pending) {
         await pollManager.sendPoll(poll.id);
@@ -56,11 +74,12 @@ async function checkGroupPosts() {
         AND datetime(p.deadline) <= datetime('now')
     `).all();
 
+    const now = new Date();
     for (const poll of polls) {
-        const eventDateTime = new Date(`${poll.event_date}T${poll.event_time}`);
-        const postTime = new Date(eventDateTime.getTime() - (poll.group_post_minutes_before || 60) * 60 * 1000);
+        const eventUtc = parseBerlinDateTime(poll.event_date, poll.event_time);
+        const postTime = new Date(eventUtc.getTime() - (poll.group_post_minutes_before || 60) * 60 * 1000);
 
-        if (new Date() >= postTime) {
+        if (now >= postTime) {
             await pollManager.postGroupResults(poll.id);
             console.log(`Group results posted for poll ${poll.id}`);
         }
@@ -69,7 +88,6 @@ async function checkGroupPosts() {
 
 async function checkEventReminders() {
     const now = new Date();
-    const in60min = new Date(now.getTime() + 60 * 60 * 1000);
 
     const polls = db.prepare(`
         SELECT p.id, p.event_date, e.event_time
@@ -79,10 +97,10 @@ async function checkEventReminders() {
     `).all();
 
     for (const poll of polls) {
-        const eventDateTime = new Date(`${poll.event_date}T${poll.event_time}`);
-        const reminderTime = new Date(eventDateTime.getTime() - 60 * 60 * 1000);
+        const eventUtc = parseBerlinDateTime(poll.event_date, poll.event_time);
+        const reminderTime = new Date(eventUtc.getTime() - 60 * 60 * 1000);
 
-        if (now >= reminderTime && now < eventDateTime) {
+        if (now >= reminderTime && now < eventUtc) {
             await pollManager.sendEventReminders(poll.id);
             console.log(`Event reminder sent for poll ${poll.id}`);
         }
@@ -94,18 +112,11 @@ async function generateRecurringPolls() {
         SELECT * FROM events WHERE recurring = 1 AND active = 1
     `).all();
 
-    const dayMap = [
-        'Sonntag', 'Montag', 'Dienstag', 'Mittwoch',
-        'Donnerstag', 'Freitag', 'Samstag'
-    ];
-
     for (const event of events) {
-        // Find next occurrence of recurrence_day
-        const now = new Date();
-        const daysAhead = (event.recurrence_day - now.getDay() + 7) % 7 || 7;
-        const nextDate = new Date(now);
-        nextDate.setDate(now.getDate() + daysAhead);
-        const dateStr = nextDate.toISOString().split('T')[0];
+        const todayStr = berlinDateStr();
+        const todayDow = berlinDayOfWeek();
+        const daysAhead = (event.recurrence_day - todayDow + 7) % 7 || 7;
+        const dateStr = addDays(todayStr, daysAhead);
 
         const existing = db.prepare(`
             SELECT id FROM polls WHERE event_id = ? AND event_date = ?

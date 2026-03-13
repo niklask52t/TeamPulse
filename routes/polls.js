@@ -56,6 +56,36 @@ router.post('/:id/send', async (req, res) => {
     }
 });
 
+// POST manually send deadline reminder
+router.post('/:id/send-reminder', async (req, res) => {
+    try {
+        await pollManager.sendDeadlineReminder(Number(req.params.id));
+        res.json({ success: true });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// POST manually post results to group
+router.post('/:id/post-group', async (req, res) => {
+    try {
+        await pollManager.postGroupResults(Number(req.params.id));
+        res.json({ success: true });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// POST manually send event reminders
+router.post('/:id/send-event-reminder', async (req, res) => {
+    try {
+        await pollManager.sendEventReminders(Number(req.params.id));
+        res.json({ success: true });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
 // WAHA webhook endpoint
 router.post('/webhook', (req, res) => {
     const { event, payload } = req.body;

@@ -1,14 +1,36 @@
 const API = '';
+const TZ = 'Europe/Berlin';
+
+// ===== UHRZEIT =====
+
+function startClock() {
+    function tick() {
+        const now = new Date().toLocaleString('de-DE', {
+            timeZone: TZ,
+            weekday: 'short',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+        });
+        document.getElementById('header-clock').textContent = now;
+    }
+    tick();
+    setInterval(tick, 1000);
+}
+
+function fmtDeadline(isoStr) {
+    return new Date(isoStr).toLocaleString('de-DE', { timeZone: TZ });
+}
 
 // ===== AUTH =====
 
 async function checkAuth() {
     try {
         const res = await fetch(`${API}/api/auth/me`);
-        if (!res.ok) {
-            showLogin();
-            return;
-        }
+        if (!res.ok) { showLogin(); return; }
         const data = await res.json();
         if (data.mustChangePassword) {
             showChangePassword(data.username);
@@ -39,6 +61,7 @@ function showApp(username) {
     document.getElementById('change-pw-screen').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
     document.getElementById('current-user').textContent = username;
+    startClock();
     loadEvents();
     loadContacts();
     loadPolls();
@@ -303,10 +326,7 @@ async function loadPolls() {
         <div class="card" style="cursor:pointer" onclick="togglePollDetail(${p.id}, this)">
             <div class="card-info">
                 <h3>${esc(p.title)} <span class="badge badge-${p.status}">${statusLabels[p.status]}</span></h3>
-                <p>${p.event_date} ${p.event_time} Uhr | Frist: ${new Date(p.deadline).toLocaleString('de-DE')}</p>
-            </div>
-            <div class="card-actions">
-                ${p.status === 'pending' ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); sendPoll(${p.id})">Senden</button>` : ''}
+                <p>${p.event_date} ${p.event_time} Uhr | Frist: ${fmtDeadline(p.deadline)}</p>
             </div>
         </div>
         <div id="poll-detail-${p.id}" class="poll-detail hidden"></div>
@@ -319,7 +339,11 @@ async function togglePollDetail(id, cardEl) {
         detail.classList.add('hidden');
         return;
     }
+    await renderPollDetail(id);
+}
 
+async function renderPollDetail(id) {
+    const detail = document.getElementById(`poll-detail-${id}`);
     const res = await apiFetch(`${API}/api/polls/${id}`);
     const poll = await res.json();
 
@@ -328,21 +352,24 @@ async function togglePollDetail(id, cardEl) {
     const maybe = poll.responses.filter(r => r.response === 'maybe');
     const pending = poll.responses.filter(r => !r.response);
 
+    const actions = buildActionButtons(poll);
+
     detail.innerHTML = `
+        <div class="poll-actions">${actions}</div>
         <div class="stats">
-            <span class="stat response-yes">Ja: ${yes.length}</span>
-            <span class="stat response-no">Nein: ${no.length}</span>
-            <span class="stat response-maybe">Vllt: ${maybe.length}</span>
-            <span class="stat response-pending">Offen: ${pending.length}</span>
+            <span class="stat response-yes">✅ Ja: ${yes.length}</span>
+            <span class="stat response-no">❌ Nein: ${no.length}</span>
+            <span class="stat response-maybe">🤷 Vielleicht: ${maybe.length}</span>
+            <span class="stat response-pending">⏳ Offen: ${pending.length}</span>
         </div>
         <div class="poll-responses">
             ${poll.responses.map(r => `
                 <div class="response-row">
                     <span>${esc(r.name)}</span>
                     <span class="response-${r.response || 'pending'}">${
-                        r.response === 'yes' ? 'Ja' :
-                        r.response === 'no' ? 'Nein' :
-                        r.response === 'maybe' ? 'Vielleicht' : 'Ausstehend'
+                        r.response === 'yes' ? '✅ Ja' :
+                        r.response === 'no' ? '❌ Nein' :
+                        r.response === 'maybe' ? '🤷 Vielleicht' : '⏳ Ausstehend'
                     }</span>
                 </div>
             `).join('')}
@@ -351,9 +378,37 @@ async function togglePollDetail(id, cardEl) {
     detail.classList.remove('hidden');
 }
 
-async function sendPoll(id) {
-    await apiFetch(`${API}/api/polls/${id}/send`, { method: 'POST' });
-    loadPolls();
+function buildActionButtons(poll) {
+    const btns = [];
+
+    if (poll.status === 'pending') {
+        btns.push(`<button class="btn btn-primary btn-sm" onclick="pollAction(${poll.id}, 'send', 'Umfrage an alle senden?')">📤 Jetzt Umfrage senden</button>`);
+    }
+    if (poll.status === 'active') {
+        btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'send-reminder', 'Erinnerung an alle ohne Antwort senden?')">🔔 Jetzt Erinnerung senden</button>`);
+    }
+    if (poll.status === 'active' || poll.status === 'closed') {
+        btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'post-group', 'Ergebnis jetzt in Gruppe posten?')">📊 Jetzt Ergebnis in Gruppe posten</button>`);
+        btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'send-event-reminder', 'Event-Erinnerung an alle Zusager senden?')">🏃 Jetzt Event-Erinnerung senden</button>`);
+    }
+
+    return btns.join('');
+}
+
+async function pollAction(id, action, confirmMsg) {
+    if (!confirm(confirmMsg)) return;
+    try {
+        const res = await apiFetch(`${API}/api/polls/${id}/${action}`, { method: 'POST' });
+        if (!res.ok) {
+            const data = await res.json();
+            alert('Fehler: ' + (data.error || 'Unbekannter Fehler'));
+            return;
+        }
+        await renderPollDetail(id);
+        loadPolls();
+    } catch (err) {
+        if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
+    }
 }
 
 // ===== UTILS =====

@@ -1,6 +1,5 @@
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
 const path = require('path');
 const session = require('express-session');
 const crypto = require('crypto');
@@ -15,7 +14,6 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 
-app.use(cors());
 app.use(express.json());
 
 app.use(session({
@@ -24,26 +22,12 @@ app.use(session({
     saveUninitialized: false,
     cookie: {
         httpOnly: true,
+        sameSite: 'strict',
         maxAge: 24 * 60 * 60 * 1000, // 24h
     },
 }));
 
-// Static files (login page must be accessible without auth)
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Auth routes (no auth required)
-app.use('/api/auth', authRouter);
-
-// WAHA webhook (no auth required - machine-to-machine)
-app.post('/api/webhooks/waha', (req, res, next) => {
-    req.body = req.body || {};
-    req.body.event = req.body.event || 'message';
-    req.body.payload = req.body.payload || req.body;
-    next();
-});
-app.use('/api/webhooks/waha', pollsRouter);
-
-// Auth middleware for all other API routes
+// Auth middleware – alle API-Routen außer /api/auth und WAHA-Webhook
 function requireAuth(req, res, next) {
     if (!req.session.userId) {
         return res.status(401).json({ error: 'Nicht angemeldet' });
@@ -51,12 +35,25 @@ function requireAuth(req, res, next) {
     next();
 }
 
-app.use('/api', requireAuth);
+// Public routes
+app.use('/api/auth', authRouter);
 
-// Protected API routes
+// WAHA webhook (machine-to-machine, kein Login nötig)
+app.post('/api/webhooks/waha', (req, res, next) => {
+    req.body = req.body || {};
+    req.body.event = req.body.event || 'message';
+    req.body.payload = req.body.payload || req.body;
+    next();
+}, pollsRouter);
+
+// Alle anderen API-Routen benötigen Login
+app.use('/api', requireAuth);
 app.use('/api/contacts', contactsRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/polls', pollsRouter);
+
+// Statische Dateien (Login-HTML muss erreichbar sein)
+app.use(express.static(path.join(__dirname, 'public')));
 
 // SPA fallback
 app.get('*splat', (req, res) => {

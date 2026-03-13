@@ -320,6 +320,66 @@ main {
     font-size: 0.85rem;
 }
 
+.header-clock {
+    color: #58a6ff;
+    font-size: 0.85rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* Poll actions */
+.poll-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #30363d;
+}
+
+/* Wiki */
+.wiki-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.wiki-section {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+}
+
+.wiki-section h3 {
+    font-size: 1.05rem;
+    margin-bottom: 0.75rem;
+    color: #58a6ff;
+}
+
+.wiki-section p {
+    font-size: 0.9rem;
+    color: #c9d1d9;
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
+}
+
+.wiki-section ul,
+.wiki-section ol {
+    padding-left: 1.5rem;
+    font-size: 0.9rem;
+    color: #c9d1d9;
+    line-height: 1.8;
+}
+
+.wiki-section code {
+    background: #0d1117;
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: #79c0ff;
+}
+
 .form-group input[type="password"] {
     width: 100%;
     padding: 0.5rem;
