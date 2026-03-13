@@ -113,7 +113,26 @@ WAHA_SESSION=default
 GROUP_CHAT_ID=120363xxx@g.us
 ```
 
-> **Tipp:** WAHA_API_URL muss auf die WAHA-Docker-Instanz zeigen, z.B. `http://localhost:3000` wenn WAHA auf dem gleichen Server läuft. Der TeamPulse-Port muss anders sein (z.B. 8080).
+> **Tipp:** WAHA_API_URL muss auf die WAHA-Docker-Instanz zeigen, z.B. `http://localhost:3001` wenn WAHA auf dem gleichen Server läuft. Der TeamPulse-Port muss anders sein (z.B. 3000).
+
+#### GROUP_CHAT_ID herausfinden
+
+Die Gruppen-ID bekommt man über die WAHA-API, nachdem eine Session verbunden ist:
+
+```bash
+# Alle Chats auflisten (WAHA muss laufen und verbunden sein)
+curl http://localhost:3001/api/default/chats
+
+# Oder gefiltert nach Gruppen:
+curl http://localhost:3001/api/default/chats | node -e "
+  const d = require('fs').readFileSync('/dev/stdin','utf8');
+  JSON.parse(d)
+    .filter(c => c.id.endsWith('@g.us'))
+    .forEach(c => console.log(c.id, '-', c.name));
+"
+```
+
+Die gesuchte ID hat immer das Format `120363xxxxxxxxx@g.us`. Diese in die `.env` bei `GROUP_CHAT_ID` eintragen.
 
 #### SESSION_SECRET generieren
 
