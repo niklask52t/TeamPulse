@@ -224,7 +224,7 @@ async function loadGroups() {
             return '<tr>'
                 + '<td class="stats-name">' + esc(name) + '</td>'
                 + '<td style="font-family:monospace;font-size:0.82rem;color:var(--text-secondary);user-select:all">' + esc(id) + '</td>'
-                + '<td><button class="btn btn-secondary btn-sm" onclick="copyGroupId(\'' + esc(id).replace(/'/g, "\\'") + '\')">Kopieren</button></td>'
+                + '<td><button class="btn btn-secondary btn-sm" onclick="copyGroupId(\'' + esc(id).replace(/'/g, "\\'") + '\', this)">Kopieren</button></td>'
                 + '</tr>';
         }).join('');
         list.innerHTML = '<table class="stats-table">'
@@ -238,9 +238,13 @@ async function loadGroups() {
     }
 }
 
-function copyGroupId(id) {
+function copyGroupId(id, btn) {
     navigator.clipboard.writeText(id).then(() => {
-        // brief visual feedback not needed — clipboard is enough
+        if (!btn) return;
+        const orig = btn.textContent;
+        btn.textContent = 'Kopiert!';
+        btn.classList.add('btn-copy-success');
+        setTimeout(() => { btn.textContent = orig; btn.classList.remove('btn-copy-success'); }, 1500);
     }).catch(() => {
         prompt('Gruppen-ID:', id);
     });
