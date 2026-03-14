@@ -113,6 +113,7 @@ router.post('/:id/send-event-reminder', async (req, res) => {
 // WAHA webhook endpoint
 router.post('/webhook', (req, res) => {
     const { event, payload } = req.body;
+    const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
 
     // sender can be a string JID ("49123@c.us") OR an object {id, name, ...} depending on WAHA version
     function resolvePhone(raw) {
@@ -125,7 +126,7 @@ router.post('/webhook', (req, res) => {
     const fromPhone   = resolvePhone(payload?.from);
 
     // Log every webhook so journalctl shows what WAHA is actually sending
-    console.log(`[WEBHOOK] event=${event} type=${payload?.type} from=${fromPhone} sender=${senderPhone} senderType=${typeof payload?.sender} body=${String(payload?.body || '').slice(0, 60)}`);
+    console.log(`[WEBHOOK] event=${event} type=${payload?.type} from=${fromPhone} sender=${senderPhone} body=${String(payload?.body || '').slice(0, 60)}`);
 
     // Helper: extract vote text from any button-related payload shape
     function extractButtonVote(p) {
@@ -141,6 +142,12 @@ router.post('/webhook', (req, res) => {
         const payloadType = (payload.type || '').toLowerCase();
         const isButtonResponse = event === 'buttons_response' || payloadType === 'buttons_response';
 
+        // Only process group messages from our configured group — ignore other groups entirely
+        if (isGroup && fromPhone !== GROUP_CHAT_ID) {
+            res.json({ ok: true });
+            return;
+        }
+
         if (isButtonResponse) {
             const vote = extractButtonVote(payload);
             if (phone && vote) {
@@ -154,24 +161,30 @@ router.post('/webhook', (req, res) => {
         } else {
             const text = payload.body;
             if (phone && text) {
-                const result = pollManager.processResponse(phone, text);
-                if (result) {
-                    console.log(`[VOTE] Text from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
-                } else if (!isGroup) {
+                if (isGroup) {
+                    // Group text messages: only process as votes (no reason capture in group)
+                    const result = pollManager.processResponse(phone, text);
+                    if (result) {
+                        console.log(`[VOTE] Text from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
+                    }
+                } else {
+                    // Private messages: try reason first (more specific), then vote
                     const reasonResult = pollManager.processReasonMessage(phone, text);
                     if (reasonResult) {
                         console.log(`[REASON] Saved from ${reasonResult.contactName} (poll ${reasonResult.pollId})`);
+                    } else {
+                        const result = pollManager.processResponse(phone, text);
+                        if (result) {
+                            console.log(`[VOTE] Text from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
+                        }
                     }
-                } else {
-                    console.log(`[VOTE] Text unmatched — phone=${phone} text=${text}`);
                 }
             }
         }
     }
 
-    // Native WhatsApp poll vote
+    // Native WhatsApp poll vote — only from our group
     if (event === 'poll.vote' && payload) {
-        // Log full payload for debugging (WAHA varies by version)
         console.log(`[WEBHOOK] poll.vote full payload: ${JSON.stringify(payload).slice(0, 2000)}`);
 
         // Try all known WAHA payload shapes for voter phone

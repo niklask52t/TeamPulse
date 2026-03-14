@@ -139,7 +139,7 @@ function processResponse(phone, text) {
 
     if (!contactRow) return null;
 
-    // Parse vote from text
+    // Parse vote from text — only exact matches to avoid false positives from casual messages
     const lower = text.toLowerCase().trim();
     let response = null;
 
@@ -150,12 +150,12 @@ function processResponse(phone, text) {
         else if (stripped === 'nein') response = 'no';
         else response = 'maybe';
     }
-    // Text keywords (exact word match for short ones)
-    else if (['ja', 'yes', 'klar', 'bin dabei', 'dabei'].some(k => lower.includes(k)) || lower === 'j' || lower === '1' || lower === '👍') {
+    // Exact short replies only (no substring matching on common words)
+    else if (['ja', 'yes', 'klar', 'bin dabei', 'dabei', 'j', '1', '👍'].includes(lower)) {
         response = 'yes';
-    } else if (['nein', 'no', 'kann nicht'].some(k => lower.includes(k)) || lower === 'n' || lower === 'ne' || lower === '2' || lower === '👎') {
+    } else if (['nein', 'no', 'kann nicht', 'ne', 'n', '2', '👎'].includes(lower)) {
         response = 'no';
-    } else if (['vielleicht', 'maybe', 'vllt', 'mal sehen', 'evtl'].some(k => lower.includes(k)) || lower === '3' || lower === '🤷') {
+    } else if (['vielleicht', 'maybe', 'vllt', 'mal sehen', 'evtl', '3', '🤷'].includes(lower)) {
         response = 'maybe';
     }
 

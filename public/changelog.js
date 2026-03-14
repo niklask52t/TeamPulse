@@ -2,6 +2,15 @@
 
 const CHANGELOG = [
     {
+        version: '1.8.3',
+        date: '2026-03-14',
+        changes: [
+            { type: 'fix', text: 'Webhook ignoriert jetzt Nachrichten aus fremden Gruppen — nur die konfigurierte GROUP_CHAT_ID wird verarbeitet' },
+            { type: 'fix', text: 'Abstimmungs-Erkennung stark verschärft: nur noch exakte Antworten ("ja", "nein", "vielleicht" etc.) werden als Stimme gewertet — keine Falsch-Positiven mehr durch Alltagsnachrichten' },
+            { type: 'fix', text: 'Private Nachrichten prüfen zuerst auf Begründung, dann erst auf Stimmabgabe' },
+        ]
+    },
+    {
         version: '1.8.2',
         date: '2026-03-14',
         changes: [
