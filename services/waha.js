@@ -25,8 +25,10 @@ async function sendMessage(chatId, text) {
     return res.json();
 }
 
-async function sendPollMessage(chatId, eventTitle, eventDate, eventTime) {
+async function sendPollMessage(chatId, eventTitle, eventDate, eventTime, meetingTime) {
     const url = `${WAHA_API_URL}/api/sendPoll`;
+    let name = `${eventTitle} – ${eventDate} um ${eventTime} Uhr`;
+    if (meetingTime) name += ` (Treffen: ${meetingTime} Uhr)`;
     const res = await fetch(url, {
         method: 'POST',
         headers,
@@ -34,7 +36,7 @@ async function sendPollMessage(chatId, eventTitle, eventDate, eventTime) {
             session: WAHA_SESSION,
             chatId,
             poll: {
-                name: `${eventTitle} – ${eventDate} um ${eventTime} Uhr`,
+                name,
                 options: ['Ja ✅', 'Nein ❌', 'Vielleicht 🤷'],
                 multipleAnswers: false,
             },
@@ -48,11 +50,12 @@ async function sendPollMessage(chatId, eventTitle, eventDate, eventTime) {
 }
 
 // deadlineTime: formatted time string, e.g. "18:00 Uhr"
-async function sendReminder(chatId, eventTitle, eventDate, eventTime, deadlineTime) {
-    const text =
+async function sendReminder(chatId, eventTitle, eventDate, eventTime, deadlineTime, meetingTime) {
+    let text =
         `⏰ *Erinnerung: ${eventTitle}*\n` +
-        `📅 ${eventDate} um ${eventTime} Uhr\n\n` +
-        `Die Abstimmung endet um ${deadlineTime} Uhr!\n` +
+        `📅 ${eventDate} um ${eventTime} Uhr\n`;
+    if (meetingTime) text += `🤝 Treffen: ${meetingTime} Uhr\n`;
+    text += `\nDie Abstimmung endet um ${deadlineTime} Uhr!\n` +
         `Falls noch nicht abgestimmt, jetzt in der Umfrage antworten.`;
     return sendMessage(chatId, text);
 }
@@ -86,16 +89,19 @@ async function sendResultImage(chatId, imageBuffer, caption) {
     return r2.json();
 }
 
-async function sendEventReminder(chatId, eventTitle, eventTime) {
-    const text =
+async function sendEventReminder(chatId, eventTitle, eventTime, meetingTime) {
+    let text =
         `🏃 *${eventTitle} beginnt in 1 Stunde!*\n` +
-        `⏰ ${eventTime} Uhr\n\n` +
-        `Bis gleich!`;
+        `⏰ ${eventTime} Uhr\n`;
+    if (meetingTime) text += `🤝 Treffen: ${meetingTime} Uhr\n`;
+    text += `\nBis gleich!`;
     return sendMessage(chatId, text);
 }
 
-async function postResultsToGroup(groupId, eventTitle, eventDate, eventTime, yesNames, noNames, maybeNames) {
-    const lines = [`📊 *Ergebnis: ${eventTitle}*`, `📅 ${eventDate} um ${eventTime} Uhr`, ''];
+async function postResultsToGroup(groupId, eventTitle, eventDate, eventTime, yesNames, noNames, maybeNames, meetingTime) {
+    const lines = [`📊 *Ergebnis: ${eventTitle}*`, `📅 ${eventDate} um ${eventTime} Uhr`];
+    if (meetingTime) lines.push(`🤝 Treffen: ${meetingTime} Uhr`);
+    lines.push('');
 
     lines.push(`✅ *Zusagen (${yesNames.length}):*`);
     lines.push(yesNames.length ? yesNames.join(', ') : '—');
@@ -120,6 +126,13 @@ async function sendMaybeFollowUp(chatId, eventTitle, eventDate) {
     const text =
         `🤷 Du hast mit *Vielleicht* abgestimmt für *${eventTitle}* am ${eventDate}.\n\n` +
         `Optional: Schreib einfach kurz warum (z.B. "Komme evtl. zu spät", "Weiß noch nicht") — oder ignoriere diese Nachricht.`;
+    return sendMessage(chatId, text);
+}
+
+async function sendNoFollowUp(chatId, eventTitle, eventDate) {
+    const text =
+        `❌ Du hast für *${eventTitle}* am ${eventDate} abgesagt.\n\n` +
+        `Optional: Schreib kurz den Grund (z.B. "Krank", "Keine Zeit") — oder ignoriere diese Nachricht.`;
     return sendMessage(chatId, text);
 }
 
@@ -167,6 +180,7 @@ module.exports = {
     sendResultImage,
     sendEventReminder,
     sendMaybeFollowUp,
+    sendNoFollowUp,
     postResultsToGroup,
     getGroupParticipants,
     getAllContacts,

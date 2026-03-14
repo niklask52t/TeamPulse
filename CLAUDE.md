@@ -69,10 +69,10 @@ TeamPulse/
 - Members are upserted into the `contacts` table (phone UNIQUE constraint)
 - Poll responses reference contact IDs as before — no DB schema change needed
 
-## Vielleicht / Reason Flow
-- When someone votes 'maybe' (poll.vote), a private WhatsApp message is sent asking for an optional reason
-- If they reply privately (text message, non-group), `processReasonMessage()` checks if they have a recent 'maybe' response without a reason and saves it
-- The reason is displayed in the poll detail view alongside their name
+## Reason Follow-up Flow (Nein & Vielleicht)
+- When someone votes 'maybe' or 'no' (poll.vote), a private WhatsApp message is sent asking for an optional reason
+- If they reply privately (text message, non-group), `processReasonMessage()` checks if they have a recent 'maybe' or 'no' response without a reason and saves it
+- Reasons are displayed in the poll detail view alongside the member's name for both "no" and "maybe" responses
 
 ## Scheduler Flow (every minute)
 1. checkAndSendPolls — send pending polls
@@ -120,6 +120,7 @@ TeamPulse/
 - Frontend: Stats tab with sortable table + color-coded bar charts per member
 
 ## DB Schema Notes
-- `poll_responses.reason TEXT` — stores optional reason from 'maybe' voters
+- `events.meeting_time TEXT` — optional meeting/gathering time (separate from event_time)
+- `poll_responses.reason TEXT` — stores optional reason from 'maybe' and 'no' voters
 - `polls.archived INTEGER DEFAULT 0` — added via migration
 - Run migrations in `db/database.js` with try/catch for existing columns

@@ -18,7 +18,7 @@ async function loadEvents() {
                 ${dateDisplay}
                 <div class="card-info">
                     <h3>${esc(e.title)} <span class="badge badge-${e.type}">${typeLabels[e.type]}</span> ${recurring}</h3>
-                    <p>${e.event_time} Uhr | Frist: ${fmtHours(e.poll_deadline_minutes)} vor Event</p>
+                    <p>${e.event_time} Uhr${e.meeting_time ? ' | Treffen: ' + e.meeting_time + ' Uhr' : ''} | Frist: ${fmtHours(e.poll_deadline_minutes)} vor Event</p>
                 </div>
                 <div class="card-actions">
                     <button class="btn btn-secondary btn-sm" onclick="editEvent(${e.id})">Bearbeiten</button>
@@ -43,6 +43,7 @@ function showEventForm() {
     document.getElementById('event-title').value = '';
     document.getElementById('event-type').value = 'training';
     document.getElementById('event-time').value = '';
+    document.getElementById('event-meeting-time').value = '';
     document.getElementById('event-date').value = '';
     document.getElementById('event-date').min = todayStr();
     document.getElementById('event-recurring').checked = false;
@@ -77,6 +78,7 @@ async function editEvent(id) {
     document.getElementById('event-title').value = e.title;
     document.getElementById('event-type').value = e.type;
     document.getElementById('event-time').value = e.event_time;
+    document.getElementById('event-meeting-time').value = e.meeting_time || '';
     document.getElementById('event-date').value = e.event_date || '';
     document.getElementById('event-date').min = '';
     document.getElementById('event-recurring').checked = !!e.recurring;
@@ -96,6 +98,7 @@ async function saveEvent(e) {
         title: document.getElementById('event-title').value,
         type: document.getElementById('event-type').value,
         event_time: document.getElementById('event-time').value,
+        meeting_time: document.getElementById('event-meeting-time').value || null,
         recurring: document.getElementById('event-recurring').checked,
         recurrence_day: Number(document.getElementById('event-recurrence-day').value),
         event_date: document.getElementById('event-date').value || null,

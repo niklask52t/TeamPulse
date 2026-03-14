@@ -21,7 +21,7 @@ router.get('/:id', (req, res) => {
 
 // POST create event
 router.post('/', (req, res) => {
-    const { title, type, event_date, event_time, recurring, recurrence_day, poll_deadline_minutes, group_post_minutes_before } = req.body;
+    const { title, type, event_date, event_time, meeting_time, recurring, recurrence_day, poll_deadline_minutes, group_post_minutes_before } = req.body;
 
     if (!title || !type || !event_time) {
         return res.status(400).json({ error: 'Titel, Typ und Uhrzeit sind erforderlich' });
@@ -39,12 +39,13 @@ router.post('/', (req, res) => {
     }
 
     const result = db.prepare(`
-        INSERT INTO events (title, type, event_date, event_time, recurring, recurrence_day, poll_deadline_minutes, group_post_minutes_before)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO events (title, type, event_date, event_time, meeting_time, recurring, recurrence_day, poll_deadline_minutes, group_post_minutes_before)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
         title, type,
         event_date || '',
         event_time,
+        meeting_time || null,
         recurring ? 1 : 0,
         recurrence_day ?? null,
         poll_deadline_minutes || 120,
@@ -68,7 +69,7 @@ router.post('/', (req, res) => {
 
 // PUT update event
 router.put('/:id', (req, res) => {
-    const { title, type, event_date, event_time, recurring, recurrence_day, poll_deadline_minutes, group_post_minutes_before, active } = req.body;
+    const { title, type, event_date, event_time, meeting_time, recurring, recurrence_day, poll_deadline_minutes, group_post_minutes_before, active } = req.body;
 
     if (!title || !type || !event_time) {
         return res.status(400).json({ error: 'Titel, Typ und Uhrzeit sind erforderlich' });
@@ -79,11 +80,11 @@ router.put('/:id', (req, res) => {
     }
 
     const result = db.prepare(`
-        UPDATE events SET title = ?, type = ?, event_date = ?, event_time = ?,
+        UPDATE events SET title = ?, type = ?, event_date = ?, event_time = ?, meeting_time = ?,
         recurring = ?, recurrence_day = ?, poll_deadline_minutes = ?, group_post_minutes_before = ?, active = ?
         WHERE id = ?
     `).run(
-        title, type, event_date || '', event_time,
+        title, type, event_date || '', event_time, meeting_time || null,
         recurring ? 1 : 0, recurrence_day ?? null,
         poll_deadline_minutes || 120, group_post_minutes_before || 60,
         active !== undefined ? (active ? 1 : 0) : 1,

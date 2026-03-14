@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS events (
     type TEXT NOT NULL CHECK(type IN ('training', 'tournament', 'other')),
     event_date TEXT NOT NULL,
     event_time TEXT NOT NULL,
+    meeting_time TEXT,
     recurring INTEGER DEFAULT 0,
     recurrence_day INTEGER,
     poll_deadline_minutes INTEGER DEFAULT 1440,

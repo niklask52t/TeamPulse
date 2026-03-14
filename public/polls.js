@@ -90,8 +90,8 @@ async function renderPollDetail(id) {
         </div>
         <div class="response-groups">
             ${renderResponseGroup('✅ Zusagen', yes, 'yes')}
-            ${renderResponseGroup('❌ Absagen', no, 'no')}
-            ${renderMaybeGroup(maybe)}
+            ${renderReasonGroup('❌ Absagen', no, 'no')}
+            ${renderReasonGroup('🤷 Vielleicht', maybe, 'maybe')}
             ${renderResponseGroup('⏳ Noch ausstehend', pending, 'pending')}
         </div>
     `;
@@ -110,8 +110,10 @@ function renderResponseGroup(label, responses, type) {
         </div>`;
 }
 
-function renderMaybeGroup(responses) {
+function renderReasonGroup(label, responses, type) {
     if (responses.length === 0) return '';
+    const hasReasons = responses.some(r => r.reason);
+    if (!hasReasons) return renderResponseGroup(label, responses, type);
     const items = responses.map(r => {
         const reason = r.reason
             ? ` <span class="response-reason">– <em>${esc(r.reason)}</em></span>`
@@ -120,7 +122,7 @@ function renderMaybeGroup(responses) {
     }).join('');
     return `
         <div class="response-group">
-            <div class="response-group-label response-maybe">🤷 Vielleicht (${responses.length})</div>
+            <div class="response-group-label response-${type}">${label} (${responses.length})</div>
             <div class="response-names response-names--maybe">${items}</div>
         </div>`;
 }

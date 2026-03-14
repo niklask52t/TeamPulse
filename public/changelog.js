@@ -2,6 +2,15 @@
 
 const CHANGELOG = [
     {
+        version: '1.8.0',
+        date: '2026-03-14',
+        changes: [
+            { type: 'feature', text: 'Treffenszeit: optionale Uhrzeit pro Event, wird in Umfrage, Erinnerungen und Ergebnis-Post angezeigt' },
+            { type: 'feature', text: 'Absage-Begründung: bei "Nein"-Stimme wird privat nach dem Grund gefragt, nächste Nachricht wird gespeichert' },
+            { type: 'feature', text: 'Gründe für Absagen und Vielleicht werden im Poll-Detail mit Namen angezeigt' },
+        ]
+    },
+    {
         version: '1.7.6',
         date: '2026-03-14',
         changes: [

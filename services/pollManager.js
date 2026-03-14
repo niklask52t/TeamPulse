@@ -78,7 +78,7 @@ function createPollForEvent(eventId, eventDate, deadlineMinutes) {
 
 async function sendPoll(pollId) {
     const poll = db.prepare(`
-        SELECT p.*, e.title, e.event_time, e.type
+        SELECT p.*, e.title, e.event_time, e.meeting_time, e.type
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.id = ?
     `).get(pollId);
@@ -107,7 +107,7 @@ async function sendPoll(pollId) {
     }
 
     // Send native WhatsApp poll to group
-    await waha.sendPollMessage(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time);
+    await waha.sendPollMessage(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.meeting_time);
 
     // Mark all responses as message_sent and activate poll
     db.prepare('UPDATE poll_responses SET message_sent = 1 WHERE poll_id = ?').run(pollId);
@@ -180,44 +180,48 @@ function processResponse(phone, text) {
         WHERE poll_id = ? AND contact_id = ?
     `).run(response, activePoll.poll_id, contactRow.id);
 
-    // Send follow-up asking for reason when voting "Vielleicht"
+    // Send follow-up asking for reason when voting "Vielleicht" or "Nein"
     if (response === 'maybe') {
         const chatId = contactRow.phone.replace('+', '') + '@c.us';
         waha.sendMaybeFollowUp(chatId, activePoll.event_title, activePoll.event_date)
             .catch(e => console.error('[ERROR] sendMaybeFollowUp:', e.message));
+    } else if (response === 'no') {
+        const chatId = contactRow.phone.replace('+', '') + '@c.us';
+        waha.sendNoFollowUp(chatId, activePoll.event_title, activePoll.event_date)
+            .catch(e => console.error('[ERROR] sendNoFollowUp:', e.message));
     }
 
     return { contactName: contactRow.name, response, pollId: activePoll.poll_id };
 }
 
-// Save a reason text from a contact who previously voted 'maybe'
+// Save a reason text from a contact who previously voted 'maybe' or 'no'
 function processReasonMessage(phone, text) {
-    const normalizedPhone = phone.replace('@c.us', '').replace(/^\+/, '').replace(/\D/g, '');
+    const normalizedPhone = phone.replace(/@c\.us|@lid|@s\.whatsapp\.net/g, '').replace(/^\+/, '').replace(/\D/g, '');
     const contact = db.prepare(`
         SELECT * FROM contacts WHERE REPLACE(REPLACE(REPLACE(phone, '+', ''), ' ', ''), '-', '') = ?
     `).get(normalizedPhone);
     if (!contact) return null;
 
-    // Find most recent maybe response without a reason on a non-archived poll
-    const maybeResponse = db.prepare(`
-        SELECT pr.id, p.id as poll_id
+    // Find most recent maybe or no response without a reason on a non-archived poll
+    const pendingReason = db.prepare(`
+        SELECT pr.id, p.id as poll_id, pr.response
         FROM poll_responses pr
         JOIN polls p ON pr.poll_id = p.id
-        WHERE pr.contact_id = ? AND pr.response = 'maybe' AND pr.reason IS NULL
+        WHERE pr.contact_id = ? AND pr.response IN ('maybe', 'no') AND pr.reason IS NULL
         AND p.archived = 0
         ORDER BY p.id DESC LIMIT 1
     `).get(contact.id);
 
-    if (!maybeResponse) return null;
+    if (!pendingReason) return null;
 
-    db.prepare('UPDATE poll_responses SET reason = ? WHERE id = ?').run(text.trim(), maybeResponse.id);
-    console.log(`[INFO] Reason saved for ${contact.name}: "${text.trim()}" (poll ${maybeResponse.poll_id})`);
-    return { pollId: maybeResponse.poll_id, contactName: contact.name };
+    db.prepare('UPDATE poll_responses SET reason = ? WHERE id = ?').run(text.trim(), pendingReason.id);
+    console.log(`[INFO] Reason saved for ${contact.name} (${pendingReason.response}): "${text.trim()}" (poll ${pendingReason.poll_id})`);
+    return { pollId: pendingReason.poll_id, contactName: contact.name };
 }
 
 async function sendDeadlineReminder(pollId) {
     const poll = db.prepare(`
-        SELECT p.*, e.title, e.event_time
+        SELECT p.*, e.title, e.event_time, e.meeting_time
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.id = ?
     `).get(pollId);
@@ -237,7 +241,7 @@ async function sendDeadlineReminder(pollId) {
     for (const r of pending) {
         try {
             const chatId = r.phone.replace('+', '') + '@c.us';
-            await waha.sendReminder(chatId, poll.title, poll.event_date, poll.event_time, deadlineTime);
+            await waha.sendReminder(chatId, poll.title, poll.event_date, poll.event_time, deadlineTime, poll.meeting_time);
         } catch (err) {
             console.error(`Failed to send reminder to ${r.name}:`, err.message);
         }
@@ -249,7 +253,7 @@ async function sendDeadlineReminder(pollId) {
 // Post results to group WITHOUT closing the poll or changing status
 async function postGroupResults(pollId) {
     const poll = db.prepare(`
-        SELECT p.*, e.title, e.event_time
+        SELECT p.*, e.title, e.event_time, e.meeting_time
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.id = ?
     `).get(pollId);
@@ -258,7 +262,7 @@ async function postGroupResults(pollId) {
     if (!GROUP_CHAT_ID) throw new Error('GROUP_CHAT_ID not configured');
 
     const responses = db.prepare(`
-        SELECT pr.response, c.name
+        SELECT pr.response, pr.reason, c.name
         FROM poll_responses pr JOIN contacts c ON pr.contact_id = c.id
         WHERE pr.poll_id = ?
     `).all(pollId);
@@ -267,7 +271,7 @@ async function postGroupResults(pollId) {
     const no = responses.filter(r => r.response === 'no').map(r => r.name);
     const maybe = responses.filter(r => r.response === 'maybe').map(r => r.name);
 
-    await waha.postResultsToGroup(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, yes, no, maybe);
+    await waha.postResultsToGroup(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, yes, no, maybe, poll.meeting_time);
 
     // Send chart image to group
     try {
@@ -302,7 +306,7 @@ function extendDeadline(pollId, minutes) {
 
 async function sendEventReminders(pollId) {
     const poll = db.prepare(`
-        SELECT p.*, e.title, e.event_time
+        SELECT p.*, e.title, e.event_time, e.meeting_time
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.id = ?
     `).get(pollId);
@@ -317,7 +321,7 @@ async function sendEventReminders(pollId) {
     for (const r of yesResponses) {
         try {
             const chatId = r.phone.replace('+', '') + '@c.us';
-            await waha.sendEventReminder(chatId, poll.title, poll.event_time);
+            await waha.sendEventReminder(chatId, poll.title, poll.event_time, poll.meeting_time);
         } catch (err) {
             console.error(`Failed to send event reminder to ${r.name}:`, err.message);
         }

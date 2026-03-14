@@ -100,6 +100,10 @@
                             <input type="time" id="event-time" required>
                         </div>
                         <div class="form-group">
+                            <label>Treffenszeit (optional)</label>
+                            <input type="time" id="event-meeting-time">
+                        </div>
+                        <div class="form-group">
                             <label>
                                 <input type="checkbox" id="event-recurring" onchange="toggleRecurring()">
                                 Wiederkehrend
@@ -175,6 +179,7 @@
                         <h3>Events</h3>
                         <p><strong>Einmalig:</strong> Festes Datum (nur Zukunft). Umfrage wird sofort angelegt.</p>
                         <p><strong>Wiederkehrend:</strong> Jede Woche am gewählten Wochentag — Scheduler erstellt automatisch neue Umfragen.</p>
+                        <p><strong>Treffenszeit:</strong> Optionale Uhrzeit, wann sich das Team trifft (separat von der Event-Uhrzeit).</p>
                         <p><strong>Abstimmungsfrist:</strong> Minuten vor Event-Beginn schließt die Abstimmung. Standard: 24h.</p>
                         <p><strong>Ergebnis-Post:</strong> Minuten vor Event-Beginn wird das Ergebnis in die Gruppe gepostet.</p>
                     </div>
@@ -182,7 +187,7 @@
                         <h3>Teilnehmer &amp; Antworten</h3>
                         <p>Kein manuelles Anlegen. Beim Senden werden alle Gruppenmitglieder aus WAHA synchronisiert.</p>
                         <p>Antworten live im Dashboard, alle 15 Sekunden aktualisiert (oder manuell via Klick).</p>
-                        <p><strong>Vielleicht-Follow-up:</strong> Automatische Privatnachricht zur optionalen Begründung.</p>
+                        <p><strong>Nein/Vielleicht-Follow-up:</strong> Automatische Privatnachricht zur optionalen Begründung.</p>
                     </div>
                     <div class="wiki-section">
                         <h3>Manuelle Aktionen</h3>
