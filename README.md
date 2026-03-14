@@ -14,6 +14,7 @@ WhatsApp-basiertes Anwesenheits-Management für Teams. Erstelle Trainings, Turni
 - **Frist verlängern**: Abstimmungsdeadline direkt im Dashboard verschieben
 - **Statistiken-Tab**: Antwortquote & Ja/Nein/Vielleicht/Offen pro Mitglied aus allen abgeschlossenen Umfragen
 - **Umfrage schließen**: Manuell oder automatisch wenn die Abstimmungsfrist abläuft
+- **Gruppen-Übersicht**: Footer-Tab zeigt alle WhatsApp-Gruppen mit ID und Kopieren-Button — zum einfachen Nachschlagen der `GROUP_CHAT_ID`
 - **Erinnerungen**:
   - Automatisch 60 Min. vor Fristablauf (zeigt genaue Uhrzeit) an alle Nicht-Voter
   - 1 Stunde vor Event-Beginn an alle Zusager
@@ -121,22 +122,15 @@ GROUP_CHAT_ID=120363xxx@g.us
 
 #### GROUP_CHAT_ID herausfinden
 
-Die Gruppen-ID bekommt man über die WAHA-API, nachdem eine Session verbunden ist:
+**Am einfachsten:** Im TeamPulse-Dashboard auf den **Gruppen**-Tab im Footer klicken — dort werden alle WhatsApp-Gruppen mit Name und ID angezeigt. Die gewünschte ID kopieren und in die `.env` eintragen.
+
+Alternativ per CLI:
 
 ```bash
-# Alle Chats auflisten (WAHA muss laufen und verbunden sein)
-curl http://localhost:3000/api/default/chats
-
-# Oder gefiltert nach Gruppen:
-curl http://localhost:3000/api/default/chats | node -e "
-  const d = require('fs').readFileSync('/dev/stdin','utf8');
-  JSON.parse(d)
-    .filter(c => c.id.endsWith('@g.us'))
-    .forEach(c => console.log(c.id, '-', c.name));
-"
+curl http://<WAHA-IP>:3000/api/default/groups
 ```
 
-Die gesuchte ID hat immer das Format `120363xxxxxxxxx@g.us`. Diese in die `.env` bei `GROUP_CHAT_ID` eintragen.
+Die gesuchte ID hat immer das Format `120363xxxxxxxxx@g.us`.
 
 #### SESSION_SECRET generieren
 
@@ -157,7 +151,7 @@ sed -i "s/HIER_EINEN_LANGEN_ZUFAELLIGEN_STRING_EINSETZEN/$(openssl rand -hex 32)
 
 ```bash
 sudo -u teampulse bash -c 'cd /home/teampulse/app && node server.js'
-# Sollte "TeamPulse running on http://localhost:3000" ausgeben
+# Sollte "TeamPulse running on http://0.0.0.0:3000" ausgeben
 # Mit Ctrl+C beenden
 ```
 
@@ -216,7 +210,7 @@ Damit Abstimmungen in TeamPulse ankommen, muss WAHA Webhooks an TeamPulse senden
 
 | Feld | Wert |
 |------|------|
-| **URL** | `http://localhost:3000/api/webhooks/waha` |
+| **URL** | `http://<TeamPulse-IP>:3000/api/webhooks/waha` |
 | **Events** | `message`, `poll.vote` |
 | **Attempts** | `3` |
 | **Delay seconds** | `2` |
@@ -224,7 +218,7 @@ Damit Abstimmungen in TeamPulse ankommen, muss WAHA Webhooks an TeamPulse senden
 | **HMAC Key** | *(leer lassen)* |
 | **Custom Headers** | *(leer lassen)* |
 
-> Wenn TeamPulse auf einem anderen Port oder einer anderen Adresse erreichbar ist, URL entsprechend anpassen.
+> `<TeamPulse-IP>` durch die IP-Adresse des TeamPulse-Servers ersetzen. Wenn WAHA auf derselben Maschine läuft, `localhost` verwenden. Der Server hört auf `0.0.0.0`, ist also von allen Interfaces erreichbar.
 
 ### 14. Update-Skript installieren
 

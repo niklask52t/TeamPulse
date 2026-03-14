@@ -5,7 +5,7 @@ WhatsApp-based attendance management dashboard. Users create events (recurring t
 
 ## Tech Stack
 - **Backend**: Node.js 24 LTS + Express 5 (CommonJS)
-- **Frontend**: Vanilla HTML/CSS/JS served as static files from `public/` — split into four files
+- **Frontend**: Vanilla HTML/CSS/JS served as static files from `public/` — split into five files
 - **Database**: SQLite via libsql (better-sqlite3 compatible API), schema in `db/schema.sql`
 - **Auth**: bcrypt + express-session, default user admin/admin, force password change on first login
 - **Scheduler**: node-cron for timed messages (every minute)
@@ -25,19 +25,19 @@ TeamPulse/
 │   ├── polls.js       # Poll management, manual actions, WAHA webhook
 │   └── stats.js       # Participation stats per contact
 ├── services/
-│   ├── waha.js        # WAHA API client (sendPollMessage, sendMessage, sendReminder, sendResultImage, sendMaybeFollowUp, postResultsToGroup, getGroupParticipants, getAllContacts)
+│   ├── waha.js        # WAHA API client (sendPollMessage, sendMessage, sendReminder, sendResultImage, sendMaybeFollowUp, postResultsToGroup, getGroupParticipants, getAllContacts, getGroups)
 │   ├── scheduler.js   # Cron: send/close/archive polls, reminders, group posts
 │   ├── pollManager.js # Poll lifecycle (create, send, processResponse, processReasonMessage, close, extendDeadline)
 │   ├── chartGenerator.js  # PNG bar chart via @napi-rs/canvas
 │   └── timeUtils.js   # Europe/Berlin timezone helpers
 ├── public/            # Frontend static files (load order matters)
-│   ├── index.html     # SPA with tabs: Events, Umfragen, Statistiken + footer with Wiki/Changelog
+│   ├── index.html     # SPA with tabs: Events, Umfragen, Statistiken + footer with Wiki/Changelog/Gruppen
 │   ├── style.css
 │   ├── changelog.js   # CHANGELOG data + renderChangelog()
 │   ├── events.js      # Events tab: loadEvents, showEventForm, editEvent, saveEvent, deleteEvent
 │   ├── polls.js       # Polls tab: loadPolls, renderPollDetail, buildActionButtons, pollAction, showExtendForm
 │   ├── stats.js       # Stats tab: loadStats() — member response rate table
-│   └── app.js         # Core: auth, nav, utils, init — must load LAST
+│   └── app.js         # Core: auth, nav, utils, groups, init — must load LAST
 ├── update.sh          # Production update/reset script
 └── .env.example
 ```
@@ -53,7 +53,8 @@ TeamPulse/
 - **Frontend script load order**: changelog.js → events.js → polls.js → app.js
   All files contribute to global scope (no ES modules) — app.js defines shared globals (API, apiFetch, esc, fmtDateFancy, etc.) and calls checkAuth() last
 - Poll details auto-refresh every 15s via `openPollDetails` Set + `setInterval` in polls.js
-- Footer is a sticky thin bar at the bottom; wiki/changelog expand as panels above the bar
+- Footer is a sticky thin bar at the bottom; wiki/changelog/groups expand as panels above the bar
+- Server binds to `0.0.0.0` (all interfaces) so external WAHA instances can reach the webhook
 
 ## Poll Lifecycle
 1. **pending** → created, not yet sent
@@ -96,9 +97,15 @@ TeamPulse/
 - Session-based auth via express-session (cookie, sameSite: strict)
 - `/api/auth/*` routes are public, all other `/api/*` routes require session
 - `/api/webhooks/waha` is public (machine-to-machine)
+- `/api/groups` returns WhatsApp groups from WAHA (auth-required)
+
+## Groups
+- `GET /api/groups` (auth-required) fetches all WhatsApp groups from WAHA via `GET /api/{session}/groups`
+- Displayed in a footer panel (lazy-loaded on first open) with group name, ID, and copy button
+- Useful for finding the `GROUP_CHAT_ID` needed in `.env`
 
 ## WAHA Integration
-- WAHA runs as separate Docker container
+- WAHA runs as separate Docker container (can be on a different VM)
 - Native WhatsApp polls via POST /api/sendPoll — sent to GROUP_CHAT_ID (not individuals)
 - Webhook at `/api/webhooks/waha` — req.url rewritten to `/webhook` before pollsRouter handles it
 - Handles `message` (text reply), `poll.vote` (native poll), and `buttons_response` events

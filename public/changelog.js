@@ -2,6 +2,16 @@
 
 const CHANGELOG = [
     {
+        version: '1.7.5',
+        date: '2026-03-14',
+        changes: [
+            { type: 'feature', text: 'Gruppen-Tab im Footer: zeigt alle WhatsApp-Gruppen mit ID und Kopieren-Button (von WAHA abgerufen)' },
+            { type: 'fix', text: 'Server hört jetzt auf 0.0.0.0 statt localhost — Webhooks von externen WAHA-Instanzen funktionieren' },
+            { type: 'fix', text: '"Noch keine Events erstellt" wird nicht mehr angezeigt, während das Event-Formular offen ist' },
+            { type: 'fix', text: 'Events laden: Fehlerbehandlung hinzugefügt — bei API-Fehler wird jetzt eine Fehlermeldung statt leerer Liste angezeigt' },
+        ]
+    },
+    {
         version: '1.7.4',
         date: '2026-03-14',
         changes: [
