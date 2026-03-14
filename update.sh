@@ -19,15 +19,12 @@ do_update() {
     echo -e "${GREEN}=== TeamPulse Update ===${NC}"
     echo ""
 
-    # Backup DB before update
-    if [ -f "$APP_DIR/teampulse.db" ]; then
-        BACKUP="$APP_DIR/teampulse_backup_$(date +%Y%m%d_%H%M%S).db"
-        cp "$APP_DIR/teampulse.db" "$BACKUP"
-        echo -e "${GREEN}DB-Backup erstellt:${NC} $BACKUP"
-    fi
+    echo "Alte Backups löschen..."
+    rm -f "$APP_DIR"/teampulse_backup*.db "$APP_DIR"/teampulse_backup*.db-wal "$APP_DIR"/teampulse_backup*.db-shm
+    rm -f "$APP_DIR"/teampulse_FINAL_backup*.db
 
     echo "Code aktualisieren..."
-    sudo -u "$APP_USER" bash -c "cd $APP_DIR && git pull"
+    sudo -u "$APP_USER" bash -c "cd $APP_DIR && git fetch origin && git checkout -B main origin/main"
 
     echo "Dependencies installieren..."
     sudo -u "$APP_USER" bash -c "cd $APP_DIR && npm install --omit=dev"
@@ -71,7 +68,7 @@ do_reset() {
     rm -f "$APP_DIR"/teampulse*.db "$APP_DIR"/teampulse*.db-wal "$APP_DIR"/teampulse*.db-shm
 
     echo "Code aktualisieren..."
-    sudo -u "$APP_USER" bash -c "cd $APP_DIR && git fetch origin && git reset --hard origin/main"
+    sudo -u "$APP_USER" bash -c "cd $APP_DIR && git fetch origin && git checkout -B main origin/main"
 
     echo "Dependencies installieren..."
     sudo -u "$APP_USER" bash -c "cd $APP_DIR && rm -rf node_modules && npm install --omit=dev"
