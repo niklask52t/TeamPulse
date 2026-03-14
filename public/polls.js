@@ -1,5 +1,18 @@
 // ===== POLLS =====
 
+// Track which poll details are open for auto-refresh
+const openPollDetails = new Set();
+let pollAutoRefreshTimer = null;
+
+function startPollAutoRefresh() {
+    if (pollAutoRefreshTimer) return;
+    pollAutoRefreshTimer = setInterval(async () => {
+        for (const id of openPollDetails) {
+            try { await renderPollDetail(id); } catch { /* ignore */ }
+        }
+    }, 15000); // every 15s
+}
+
 async function loadPolls() {
     const res = await apiFetch(`${API}/api/polls`);
     const polls = await res.json();
@@ -46,9 +59,12 @@ async function togglePollDetail(id) {
     if (!detail.classList.contains('hidden')) {
         detail.classList.add('hidden');
         if (chevron) chevron.innerHTML = 'Details &#x25BC;';
+        openPollDetails.delete(id);
         return;
     }
     await renderPollDetail(id);
+    openPollDetails.add(id);
+    startPollAutoRefresh();
     if (chevron) chevron.innerHTML = 'Details &#x25B2;';
 }
 

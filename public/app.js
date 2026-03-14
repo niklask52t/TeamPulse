@@ -190,11 +190,13 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
 // ===== FOOTER =====
 
 function toggleFooterSection(section) {
-    const content = document.getElementById(`footer-${section}`);
+    const panel = document.getElementById(`footer-${section}`);
     const chevron = document.getElementById(`${section}-chevron`);
-    if (!content) return;
-    const hidden = content.classList.toggle('hidden');
-    if (chevron) chevron.innerHTML = hidden ? '&#x25BC;' : '&#x25B2;';
+    const btn = document.getElementById(`${section}-toggle-btn`);
+    if (!panel) return;
+    const isHidden = panel.classList.toggle('hidden');
+    if (chevron) chevron.innerHTML = isHidden ? '&#x25B2;' : '&#x25BC;';
+    if (btn) btn.classList.toggle('footer-link-btn--active', !isHidden);
 }
 
 // ===== UTILS =====
