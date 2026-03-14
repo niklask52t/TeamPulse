@@ -127,7 +127,7 @@
                         </div>
                         <div class="form-group">
                             <label>Abstimmungsfrist (Minuten vor Event) *</label>
-                            <input type="number" id="event-deadline" value="120" min="30" required>
+                            <input type="number" id="event-deadline" value="1440" min="30" required>
                         </div>
                         <div class="form-group">
                             <label>Ergebnis-Post (Minuten vor Event) *</label>
@@ -162,82 +162,73 @@
 
         </main>
 
-        <!-- Footer with Wiki & Changelog -->
+        <!-- Footer -->
         <footer class="app-footer">
-            <div class="footer-inner">
-                <div class="footer-section">
-                    <div class="footer-toggle" onclick="toggleFooterSection('wiki')">
-                        <h3>Wiki – Hilfe & Dokumentation</h3>
-                        <span id="wiki-chevron" class="footer-chevron">&#x25BC;</span>
+            <!-- Wiki panel (expands upward) -->
+            <div id="footer-wiki" class="footer-panel hidden">
+                <div class="footer-panel-inner wiki-content">
+                    <div class="wiki-section">
+                        <h3>Übersicht</h3>
+                        <p>TeamPulse ist ein WhatsApp-basiertes Anwesenheits-Management. Events erstellen, Umfragen automatisch versenden, Antworten übersichtlich sammeln.</p>
                     </div>
-                    <div id="footer-wiki" class="footer-content hidden">
-                        <div class="wiki-content">
-                            <div class="wiki-section">
-                                <h3>Übersicht</h3>
-                                <p>TeamPulse ist ein WhatsApp-basiertes Anwesenheits-Management. Du erstellst Events, TeamPulse sendet automatisch native WhatsApp-Umfragen (Tap-to-Vote) in die Gruppe und sammelt die Antworten übersichtlich im Dashboard.</p>
-                            </div>
-                            <div class="wiki-section">
-                                <h3>Events</h3>
-                                <p><strong>Einmalig:</strong> Festes Datum (nur Zukunft). Umfrage wird sofort angelegt.</p>
-                                <p><strong>Wiederkehrend:</strong> Jede Woche am gewählten Wochentag — Scheduler erstellt automatisch neue Umfragen.</p>
-                                <p><strong>Abstimmungsfrist:</strong> Minuten vor Event-Beginn schließt die Abstimmung. Standard: 120 Min.</p>
-                                <p><strong>Ergebnis-Post:</strong> Minuten vor Event-Beginn wird das Ergebnis in die Gruppe gepostet — erst wenn geschlossen.</p>
-                            </div>
-                            <div class="wiki-section">
-                                <h3>Teilnehmer</h3>
-                                <p>Kein manuelles Anlegen nötig. Beim Senden einer Umfrage werden alle Mitglieder der WhatsApp-Gruppe automatisch aus WAHA synchronisiert.</p>
-                            </div>
-                            <div class="wiki-section">
-                                <h3>Umfragen & Antworten</h3>
-                                <p>Status: <span class="badge badge-pending">Ausstehend</span> → <span class="badge badge-active">Aktiv</span> → <span class="badge badge-closed">Geschlossen</span></p>
-                                <p>Antworten werden gruppiert angezeigt: Zusagen, Absagen, Vielleicht (inkl. Begründung), Ausstehend.</p>
-                                <p><strong>Vielleicht-Follow-up:</strong> Wer mit "Vielleicht" abstimmt, erhält automatisch eine Privatnachricht zur optionalen Begründung.</p>
-                            </div>
-                            <div class="wiki-section">
-                                <h3>Manuelle Aktionen</h3>
-                                <ul>
-                                    <li><strong>Umfrage senden</strong> — einmalig, synct Gruppe und sendet Poll</li>
-                                    <li><strong>Erinnerung senden</strong> — mehrfach, mit Tap-Buttons (Ja/Nein/Vielleicht)</li>
-                                    <li><strong>Frist verlängern</strong> — Abstimmungsdeadline um X Minuten verschieben</li>
-                                    <li><strong>Umfrage schließen</strong> — manuell schließen</li>
-                                    <li><strong>Ergebnis posten</strong> — mehrfach, sendet Text + Chart-Bild in die Gruppe</li>
-                                    <li><strong>Event-Erinnerung</strong> — mehrfach, an alle Zusager</li>
-                                </ul>
-                            </div>
-                            <div class="wiki-section">
-                                <h3>Statistiken</h3>
-                                <p>Der Tab <em>Statistiken</em> zeigt für jedes Mitglied: Ja/Nein/Vielleicht/Offen-Werte aus allen abgeschlossenen Umfragen sowie die Antwortquote in Prozent.</p>
-                            </div>
-                            <div class="wiki-section">
-                                <h3>Automatischer Ablauf (jede Minute)</h3>
-                                <ol>
-                                    <li>Ausstehende Umfragen versenden</li>
-                                    <li>60 Min vor Frist: Erinnerung (zeigt genaue Uhrzeit)</li>
-                                    <li>Frist abgelaufen: Umfrage automatisch schließen</li>
-                                    <li>Geschlossen + Post-Zeit: Ergebnis in Gruppe posten</li>
-                                    <li>1h vor Event: Erinnerung an alle Zusager</li>
-                                    <li>1h nach Event: Umfrage ins Archiv</li>
-                                    <li>Wiederkehrend: Nächste Woche neue Umfrage erstellen</li>
-                                </ol>
-                            </div>
-                        </div>
+                    <div class="wiki-section">
+                        <h3>Events</h3>
+                        <p><strong>Einmalig:</strong> Festes Datum (nur Zukunft). Umfrage wird sofort angelegt.</p>
+                        <p><strong>Wiederkehrend:</strong> Jede Woche am gewählten Wochentag — Scheduler erstellt automatisch neue Umfragen.</p>
+                        <p><strong>Abstimmungsfrist:</strong> Minuten vor Event-Beginn schließt die Abstimmung. Standard: 24h (1440 Min).</p>
+                        <p><strong>Ergebnis-Post:</strong> Minuten vor Event-Beginn wird das Ergebnis in die Gruppe gepostet.</p>
+                    </div>
+                    <div class="wiki-section">
+                        <h3>Teilnehmer &amp; Antworten</h3>
+                        <p>Kein manuelles Anlegen. Beim Senden werden alle Gruppenmitglieder aus WAHA synchronisiert.</p>
+                        <p>Antworten live im Dashboard, alle 15 Sekunden aktualisiert (oder manuell via Klick).</p>
+                        <p><strong>Vielleicht-Follow-up:</strong> Automatische Privatnachricht zur optionalen Begründung.</p>
+                    </div>
+                    <div class="wiki-section">
+                        <h3>Manuelle Aktionen</h3>
+                        <ul>
+                            <li><strong>Umfrage senden</strong> — einmalig, synct Gruppe und sendet Poll</li>
+                            <li><strong>Erinnerung senden</strong> — mit Tap-Buttons (Ja/Nein/Vielleicht)</li>
+                            <li><strong>Frist verlängern</strong> — Deadline um X Minuten verschieben</li>
+                            <li><strong>Umfrage schließen</strong> — manuell schließen</li>
+                            <li><strong>Ergebnis posten</strong> — sendet Text + Chart-Bild in die Gruppe</li>
+                            <li><strong>Event-Erinnerung</strong> — an alle Zusager</li>
+                        </ul>
+                    </div>
+                    <div class="wiki-section">
+                        <h3>Automatischer Ablauf (jede Minute)</h3>
+                        <ol>
+                            <li>Ausstehende Umfragen versenden</li>
+                            <li>60 Min vor Frist: Erinnerung (mit Tap-Buttons)</li>
+                            <li>Frist abgelaufen: Umfrage automatisch schließen</li>
+                            <li>Geschlossen + Post-Zeit: Ergebnis + Chart in Gruppe</li>
+                            <li>1h vor Event: Erinnerung an alle Zusager</li>
+                            <li>1h nach Event: Umfrage ins Archiv</li>
+                            <li>Wiederkehrend: Nächste Woche neue Umfrage erstellen</li>
+                        </ol>
                     </div>
                 </div>
-
-                <div class="footer-section">
-                    <div class="footer-toggle" onclick="toggleFooterSection('changelog')">
-                        <h3>Changelog</h3>
-                        <span id="changelog-chevron" class="footer-chevron">&#x25BC;</span>
-                    </div>
-                    <div id="footer-changelog" class="footer-content hidden">
-                        <div id="changelog-list" class="card-list"></div>
-                    </div>
+            </div>
+            <!-- Changelog panel (expands upward) -->
+            <div id="footer-changelog" class="footer-panel hidden">
+                <div class="footer-panel-inner">
+                    <div id="changelog-list" class="card-list"></div>
                 </div>
-
-                <div class="footer-bottom">
-                    <span>TeamPulse</span>
+            </div>
+            <!-- Thin footer bar -->
+            <div class="footer-bar">
+                <span class="footer-brand">
+                    <span class="footer-brand-name">TeamPulse</span>
                     <span class="footer-dot"></span>
                     <span>WhatsApp Attendance Management</span>
+                </span>
+                <div class="footer-links">
+                    <button class="footer-link-btn" onclick="toggleFooterSection('wiki')" id="wiki-toggle-btn">
+                        Hilfe <span id="wiki-chevron" class="footer-chevron-btn">&#x25B2;</span>
+                    </button>
+                    <button class="footer-link-btn" onclick="toggleFooterSection('changelog')" id="changelog-toggle-btn">
+                        Changelog <span id="changelog-chevron" class="footer-chevron-btn">&#x25B2;</span>
+                    </button>
                 </div>
             </div>
         </footer>

@@ -43,6 +43,7 @@ TeamPulse/
 ```
 
 ## Key Conventions
+- Default poll_deadline_minutes = 1440 (24h before event)
 - German UI, English code
 - REST API endpoints under `/api/`
 - All event times stored as Berlin local time, converted to UTC via parseBerlinDateTime()
@@ -51,6 +52,8 @@ TeamPulse/
 - Express error handler logs all errors to console (visible in journalctl)
 - **Frontend script load order**: changelog.js → events.js → polls.js → app.js
   All files contribute to global scope (no ES modules) — app.js defines shared globals (API, apiFetch, esc, fmtDateFancy, etc.) and calls checkAuth() last
+- Poll details auto-refresh every 15s via `openPollDetails` Set + `setInterval` in polls.js
+- Footer is a sticky thin bar at the bottom; wiki/changelog expand as panels above the bar
 
 ## Poll Lifecycle
 1. **pending** → created, not yet sent

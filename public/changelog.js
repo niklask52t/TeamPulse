@@ -2,6 +2,16 @@
 
 const CHANGELOG = [
     {
+        version: '1.7.0',
+        date: '2026-03-14',
+        changes: [
+            { type: 'feature', text: 'Antworten auto-refresh alle 15 Sekunden bei offenem Poll-Detail' },
+            { type: 'feature', text: 'Footer neu: dünne Leiste am Seitenende, Wiki & Changelog als ausklappbare Panels' },
+            { type: 'feature', text: 'Design-Overhaul: Animationen, Glassmorphism, Glow-Effekte, Dot-Grid-Hintergrund' },
+            { type: 'feature', text: 'Standard Abstimmungsfrist geändert: 120 Min → 24h (1440 Min)' },
+        ]
+    },
+    {
         version: '1.6.0',
         date: '2026-03-14',
         changes: [

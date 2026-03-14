@@ -38,7 +38,7 @@ function showEventForm() {
     document.getElementById('event-date').value = '';
     document.getElementById('event-date').min = todayStr();
     document.getElementById('event-recurring').checked = false;
-    document.getElementById('event-deadline').value = '120';
+    document.getElementById('event-deadline').value = '1440';
     document.getElementById('event-group-post').value = '60';
     toggleRecurring();
     attachFormListeners('event-form-el');

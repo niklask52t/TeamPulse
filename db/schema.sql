@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS events (
     event_time TEXT NOT NULL,
     recurring INTEGER DEFAULT 0,
     recurrence_day INTEGER,
-    poll_deadline_minutes INTEGER DEFAULT 120,
+    poll_deadline_minutes INTEGER DEFAULT 1440,
     group_post_minutes_before INTEGER DEFAULT 60,
     active INTEGER DEFAULT 1,
     created_at TEXT DEFAULT (datetime('now'))
