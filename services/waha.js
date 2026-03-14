@@ -87,6 +87,13 @@ async function postResultsToGroup(groupId, eventTitle, eventDate, eventTime, yes
     return sendMessage(groupId, lines.join('\n'));
 }
 
+async function sendMaybeFollowUp(chatId, eventTitle, eventDate) {
+    const text =
+        `🤷 Du hast mit *Vielleicht* abgestimmt für *${eventTitle}* am ${eventDate}.\n\n` +
+        `Optional: Schreib einfach kurz warum (z.B. "Komme evtl. zu spät", "Weiß noch nicht") — oder ignoriere diese Nachricht.`;
+    return sendMessage(chatId, text);
+}
+
 // Get all participants of a group
 async function getGroupParticipants(groupId) {
     const url = `${WAHA_API_URL}/api/${WAHA_SESSION}/groups/${encodeURIComponent(groupId)}/participants/v2`;
@@ -117,6 +124,7 @@ module.exports = {
     sendPollMessage,
     sendReminder,
     sendEventReminder,
+    sendMaybeFollowUp,
     postResultsToGroup,
     getGroupParticipants,
     getAllContacts,

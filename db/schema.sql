@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS poll_responses (
     poll_id INTEGER NOT NULL,
     contact_id INTEGER NOT NULL,
     response TEXT CHECK(response IN ('yes', 'no', 'maybe')),
+    reason TEXT,
     message_sent INTEGER DEFAULT 0,
     responded_at TEXT,
     FOREIGN KEY (poll_id) REFERENCES polls(id) ON DELETE CASCADE,
