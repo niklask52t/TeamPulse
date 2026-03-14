@@ -62,6 +62,7 @@
             <nav>
                 <button class="nav-btn active" data-tab="events">Events</button>
                 <button class="nav-btn" data-tab="polls">Umfragen</button>
+                <button class="nav-btn" data-tab="stats">Statistiken</button>
             </nav>
             <div class="header-right">
                 <span id="header-clock" class="header-clock"></span>
@@ -142,6 +143,15 @@
                 <div id="events-list" class="card-list"></div>
             </section>
 
+            <!-- Stats Tab -->
+            <section id="stats" class="tab">
+                <div class="section-header">
+                    <h2>Statistiken</h2>
+                    <button class="btn btn-secondary" onclick="loadStats()">&#x21BB; Aktualisieren</button>
+                </div>
+                <div id="stats-list" class="card-list"></div>
+            </section>
+
             <!-- Polls Tab -->
             <section id="polls" class="tab">
                 <div class="section-header">
@@ -187,11 +197,16 @@
                                 <h3>Manuelle Aktionen</h3>
                                 <ul>
                                     <li><strong>Umfrage senden</strong> — einmalig, synct Gruppe und sendet Poll</li>
-                                    <li><strong>Erinnerung senden</strong> — mehrfach, nur bei aktiver Umfrage</li>
+                                    <li><strong>Erinnerung senden</strong> — mehrfach, mit Tap-Buttons (Ja/Nein/Vielleicht)</li>
+                                    <li><strong>Frist verlängern</strong> — Abstimmungsdeadline um X Minuten verschieben</li>
                                     <li><strong>Umfrage schließen</strong> — manuell schließen</li>
-                                    <li><strong>Ergebnis posten</strong> — mehrfach, schließt Umfrage NICHT</li>
+                                    <li><strong>Ergebnis posten</strong> — mehrfach, sendet Text + Chart-Bild in die Gruppe</li>
                                     <li><strong>Event-Erinnerung</strong> — mehrfach, an alle Zusager</li>
                                 </ul>
+                            </div>
+                            <div class="wiki-section">
+                                <h3>Statistiken</h3>
+                                <p>Der Tab <em>Statistiken</em> zeigt für jedes Mitglied: Ja/Nein/Vielleicht/Offen-Werte aus allen abgeschlossenen Umfragen sowie die Antwortquote in Prozent.</p>
                             </div>
                             <div class="wiki-section">
                                 <h3>Automatischer Ablauf (jede Minute)</h3>
@@ -228,10 +243,11 @@
         </footer>
     </div>
 
-    <!-- Load order: changelog → events → polls → app (app defines globals + calls checkAuth) -->
+    <!-- Load order: changelog → events → polls → stats → app (app defines globals + calls checkAuth) -->
     <script src="changelog.js"></script>
     <script src="events.js"></script>
     <script src="polls.js"></script>
+    <script src="stats.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

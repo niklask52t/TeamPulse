@@ -118,6 +118,10 @@ function buildActionButtons(poll) {
     if (poll.status === 'active') {
         btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'send-reminder', 'Erinnerung an alle ohne Antwort senden?')">Jetzt Erinnerung senden</button>`);
         btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'close', 'Umfrage jetzt manuell schließen?')">Umfrage schließen</button>`);
+        btns.push(`<button class="btn btn-secondary btn-sm" onclick="showExtendForm(${poll.id})">Frist verlängern</button>`);
+    }
+    if (poll.status === 'pending') {
+        btns.push(`<button class="btn btn-secondary btn-sm" onclick="showExtendForm(${poll.id})">Frist verlängern</button>`);
     }
     if (poll.status === 'active' || poll.status === 'closed') {
         btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'post-group', 'Ergebnis jetzt in Gruppe posten?')">Jetzt Ergebnis posten</button>`);
@@ -144,6 +148,43 @@ function toggleArchive() {
     if (!archive) return;
     const hidden = archive.classList.toggle('hidden');
     chevron.innerHTML = hidden ? '&#x25BC;' : '&#x25B2;';
+}
+
+function showExtendForm(pollId) {
+    const existing = document.getElementById(`extend-form-${pollId}`);
+    if (existing) { existing.remove(); return; }
+    const detail = document.getElementById(`poll-detail-${pollId}`);
+    if (!detail) return;
+    const form = document.createElement('div');
+    form.id = `extend-form-${pollId}`;
+    form.className = 'extend-form';
+    form.innerHTML = `
+        <label>Frist um <input type="number" id="extend-minutes-${pollId}" value="30" min="1" max="1440" style="width:70px"> Minuten verlängern</label>
+        <button class="btn btn-primary btn-sm" onclick="submitExtend(${pollId})">Verlängern</button>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('extend-form-${pollId}').remove()">Abbrechen</button>
+    `;
+    detail.querySelector('.poll-actions').after(form);
+}
+
+async function submitExtend(pollId) {
+    const minutes = Number(document.getElementById(`extend-minutes-${pollId}`)?.value);
+    if (!minutes || minutes < 1) { alert('Ungültige Minutenzahl'); return; }
+    try {
+        const res = await apiFetch(`${API}/api/polls/${pollId}/extend`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ minutes }),
+        });
+        if (!res.ok) {
+            const data = await res.json();
+            alert('Fehler: ' + (data.error || 'Unbekannter Fehler'));
+            return;
+        }
+        await renderPollDetail(pollId);
+        loadPolls();
+    } catch (err) {
+        if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
+    }
 }
 
 async function pollAction(id, action, confirmMsg) {

@@ -1,6 +1,7 @@
 const db = require('../db/database');
 const waha = require('./waha');
 const { parseBerlinDateTime, TZ } = require('./timeUtils');
+const { generateResultChart } = require('./chartGenerator');
 
 const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
 
@@ -236,7 +237,7 @@ async function sendDeadlineReminder(pollId) {
     for (const r of pending) {
         try {
             const chatId = r.phone.replace('+', '') + '@c.us';
-            await waha.sendReminder(chatId, poll.title, poll.event_date, poll.event_time, deadlineTime);
+            await waha.sendReminderWithButtons(chatId, poll.title, poll.event_date, poll.event_time, deadlineTime);
         } catch (err) {
             console.error(`Failed to send reminder to ${r.name}:`, err.message);
         }
@@ -267,6 +268,16 @@ async function postGroupResults(pollId) {
     const maybe = responses.filter(r => r.response === 'maybe').map(r => r.name);
 
     await waha.postResultsToGroup(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, yes, no, maybe);
+
+    // Send chart image to group
+    try {
+        const pending = responses.filter(r => !r.response).length;
+        const imageBuffer = generateResultChart(poll.title, poll.event_date, yes.length, no.length, maybe.length, pending);
+        await waha.sendResultImage(GROUP_CHAT_ID, imageBuffer, `📊 Abstimmung: ${poll.title} – ${poll.event_date}`);
+    } catch (err) {
+        console.error('[ERROR] sendResultImage:', err.message);
+    }
+
     // Only mark as posted (don't change status — use closePoll() for that)
     db.prepare('UPDATE polls SET group_posted = 1 WHERE id = ?').run(pollId);
 }
@@ -274,6 +285,19 @@ async function postGroupResults(pollId) {
 // Explicitly close a poll (deadline passed or manual action)
 function closePoll(pollId) {
     db.prepare("UPDATE polls SET status = 'closed' WHERE id = ? AND status = 'active'").run(pollId);
+}
+
+// Extend the deadline of an active or pending poll by N minutes
+function extendDeadline(pollId, minutes) {
+    const poll = db.prepare('SELECT * FROM polls WHERE id = ?').get(pollId);
+    if (!poll) throw new Error(`Poll ${pollId} not found`);
+    if (poll.status === 'closed') throw new Error('Geschlossene Umfragen können nicht verlängert werden');
+
+    const current = new Date(poll.deadline);
+    const newDeadline = new Date(current.getTime() + minutes * 60 * 1000);
+    db.prepare('UPDATE polls SET deadline = ?, reminder_sent = 0 WHERE id = ?')
+        .run(newDeadline.toISOString(), pollId);
+    return newDeadline.toISOString();
 }
 
 async function sendEventReminders(pollId) {
@@ -311,5 +335,6 @@ module.exports = {
     sendDeadlineReminder,
     postGroupResults,
     closePoll,
+    extendDeadline,
     sendEventReminders,
 };

@@ -87,6 +87,7 @@ function showApp(username) {
     startClock();
     loadEvents();
     loadPolls();
+    loadStats();
     renderChangelog();
     const savedTab = localStorage.getItem('activeTab') || 'events';
     activateTab(savedTab);
@@ -165,6 +166,7 @@ async function apiFetch(url, options) {
 
 function activateTab(tabId) {
     if (['wiki', 'changelog', 'contacts'].includes(tabId)) tabId = 'events';
+    if (tabId === 'stats') loadStats();
     if (!checkDirtyAndClose()) return;
     hideAllForms();
 
