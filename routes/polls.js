@@ -19,7 +19,7 @@ router.get('/:id', (req, res) => {
         SELECT p.*, e.title, e.type, e.event_time
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.id = ?
-    `).get(req.params.id);
+    `).get(Number(req.params.id));
     if (!poll) return res.status(404).json({ error: 'Umfrage nicht gefunden' });
 
     const responses = db.prepare(`
@@ -46,7 +46,7 @@ router.post('/create', (req, res) => {
     }
 });
 
-// POST manually send poll
+// POST manually send poll to group
 router.post('/:id/send', async (req, res) => {
     try {
         await pollManager.sendPoll(Number(req.params.id));
@@ -66,10 +66,20 @@ router.post('/:id/send-reminder', async (req, res) => {
     }
 });
 
-// POST manually post results to group
+// POST manually post results to group (does NOT close the poll)
 router.post('/:id/post-group', async (req, res) => {
     try {
         await pollManager.postGroupResults(Number(req.params.id));
+        res.json({ success: true });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
+// POST manually close poll
+router.post('/:id/close', (req, res) => {
+    try {
+        pollManager.closePoll(Number(req.params.id));
         res.json({ success: true });
     } catch (err) {
         res.status(400).json({ error: err.message });
@@ -101,9 +111,9 @@ router.delete('/:id', (req, res) => {
 router.post('/webhook', (req, res) => {
     const { event, payload } = req.body;
 
-    // Text message response (legacy)
+    // Text message response (legacy / individual)
     if (event === 'message' && payload) {
-        const phone = payload.from;
+        const phone = payload.from || payload.sender;
         const text = payload.body;
         if (phone && text) {
             const result = pollManager.processResponse(phone, text);
@@ -113,9 +123,10 @@ router.post('/webhook', (req, res) => {
         }
     }
 
-    // Native WhatsApp poll vote
+    // Native WhatsApp poll vote (group or individual)
     if (event === 'poll.vote' && payload) {
-        const phone = payload.from || payload.sender;
+        // For group polls: sender is in payload.from (the voter's JID), not the group
+        const phone = payload.sender || payload.from;
         const selectedOptions = payload.poll?.selectedOptions || payload.poll?.options || [];
         if (phone && selectedOptions.length > 0) {
             const optionName = selectedOptions[0]?.name || selectedOptions[0] || '';
