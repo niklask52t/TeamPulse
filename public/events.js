@@ -16,7 +16,7 @@ async function loadEvents() {
             ${dateDisplay}
             <div class="card-info">
                 <h3>${esc(e.title)} <span class="badge badge-${e.type}">${typeLabels[e.type]}</span> ${recurring}</h3>
-                <p>${e.event_time} Uhr | Frist: ${e.poll_deadline_minutes} min vor Event</p>
+                <p>${e.event_time} Uhr | Frist: ${fmtHours(e.poll_deadline_minutes)} vor Event</p>
             </div>
             <div class="card-actions">
                 <button class="btn btn-secondary btn-sm" onclick="editEvent(${e.id})">Bearbeiten</button>
@@ -38,8 +38,8 @@ function showEventForm() {
     document.getElementById('event-date').value = '';
     document.getElementById('event-date').min = todayStr();
     document.getElementById('event-recurring').checked = false;
-    document.getElementById('event-deadline').value = '1440';
-    document.getElementById('event-group-post').value = '60';
+    document.getElementById('event-deadline').value = '24';
+    document.getElementById('event-group-post').value = '1';
     toggleRecurring();
     attachFormListeners('event-form-el');
     document.getElementById('event-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -73,8 +73,8 @@ async function editEvent(id) {
     document.getElementById('event-date').min = '';
     document.getElementById('event-recurring').checked = !!e.recurring;
     document.getElementById('event-recurrence-day').value = e.recurrence_day ?? 1;
-    document.getElementById('event-deadline').value = e.poll_deadline_minutes;
-    document.getElementById('event-group-post').value = e.group_post_minutes_before;
+    document.getElementById('event-deadline').value = e.poll_deadline_minutes / 60;
+    document.getElementById('event-group-post').value = e.group_post_minutes_before / 60;
     toggleRecurring();
     attachFormListeners('event-form-el');
     document.getElementById(`event-card-${id}`)?.classList.add('hidden');
@@ -91,8 +91,8 @@ async function saveEvent(e) {
         recurring: document.getElementById('event-recurring').checked,
         recurrence_day: Number(document.getElementById('event-recurrence-day').value),
         event_date: document.getElementById('event-date').value || null,
-        poll_deadline_minutes: Number(document.getElementById('event-deadline').value),
-        group_post_minutes_before: Number(document.getElementById('event-group-post').value),
+        poll_deadline_minutes: Math.round(Number(document.getElementById('event-deadline').value) * 60),
+        group_post_minutes_before: Math.round(Number(document.getElementById('event-group-post').value) * 60),
     };
 
     try {

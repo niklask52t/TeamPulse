@@ -2,6 +2,16 @@
 
 const CHANGELOG = [
     {
+        version: '1.7.3',
+        date: '2026-03-14',
+        changes: [
+            { type: 'fix', text: 'Webhook: Button-Taps wurden nie als Votes erkannt — WAHA sendet sie als message-Event mit type=buttons_response, jetzt korrekt abgefangen' },
+            { type: 'fix', text: 'Webhook: Alle eingehenden Events werden jetzt geloggt (journalctl → [WEBHOOK] Zeilen)' },
+            { type: 'fix', text: 'Ergebnis-Bild: Multipart/form-data statt JSON Base64 (WAHA /api/sendFile), mit JSON-Fallback' },
+            { type: 'feature', text: 'Fristen überall in Stunden statt Minuten (UI: h statt min, Eingabe 24h / 1h Standard)' },
+        ]
+    },
+    {
         version: '1.7.2',
         date: '2026-03-14',
         changes: [

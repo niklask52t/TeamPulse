@@ -114,49 +114,63 @@ router.post('/:id/send-event-reminder', async (req, res) => {
 router.post('/webhook', (req, res) => {
     const { event, payload } = req.body;
 
-    // Text message
-    if (event === 'message' && payload) {
+    // Log every webhook for debugging
+    console.log(`[WEBHOOK] event=${event} type=${payload?.type} from=${payload?.from} sender=${payload?.sender} body=${String(payload?.body || '').slice(0, 60)}`);
+
+    // Helper: extract vote text from any button-related payload shape
+    function extractButtonVote(p) {
+        // Direct id from our button definition ('yes'/'no'/'maybe')
+        return p.selectedButtonId || p.buttonId
+            // button response sub-object (some WAHA versions)
+            || p.buttonResponse?.selectedButtonId || p.buttonResponse?.buttonId
+            // fall back to body text (the button label like "Ja ✅")
+            || p.body || '';
+    }
+
+    // message OR buttons_response at top level — both arrive as event="message" in many WAHA builds
+    if ((event === 'message' || event === 'buttons_response') && payload) {
         const isGroup = (payload.from || '').endsWith('@g.us');
-        // For group messages, sender is the person; for private, from is the person
         const phone = isGroup ? (payload.sender || payload.from) : payload.from;
-        const text = payload.body;
-        if (phone && text) {
-            const result = pollManager.processResponse(phone, text);
-            if (result) {
-                console.log(`Text response from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
-            } else if (!isGroup) {
-                // Private message that didn't match a vote → try to save as a 'Vielleicht' reason
-                const reasonResult = pollManager.processReasonMessage(phone, text);
-                if (reasonResult) {
-                    console.log(`Reason saved from ${reasonResult.contactName} (poll ${reasonResult.pollId})`);
+        const payloadType = (payload.type || '').toLowerCase();
+        const isButtonResponse = event === 'buttons_response' || payloadType === 'buttons_response';
+
+        if (isButtonResponse) {
+            // Button tap: use button id if available, else button body text
+            const vote = extractButtonVote(payload);
+            if (phone && vote) {
+                const result = pollManager.processResponse(phone, vote);
+                if (result) {
+                    console.log(`[VOTE] Button tap from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
+                } else {
+                    console.log(`[VOTE] Button tap unmatched — phone=${phone} vote=${vote}`);
+                }
+            }
+        } else {
+            // Plain text message
+            const text = payload.body;
+            if (phone && text) {
+                const result = pollManager.processResponse(phone, text);
+                if (result) {
+                    console.log(`[VOTE] Text from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
+                } else if (!isGroup) {
+                    const reasonResult = pollManager.processReasonMessage(phone, text);
+                    if (reasonResult) {
+                        console.log(`[REASON] Saved from ${reasonResult.contactName} (poll ${reasonResult.pollId})`);
+                    }
                 }
             }
         }
     }
 
-    // Native WhatsApp poll vote (group or individual)
+    // Native WhatsApp poll vote (kept for compatibility)
     if (event === 'poll.vote' && payload) {
-        // For group polls: sender is the voter's JID
         const phone = payload.sender || payload.from;
         const selectedOptions = payload.poll?.selectedOptions || payload.poll?.options || [];
         if (phone && selectedOptions.length > 0) {
             const optionName = selectedOptions[0]?.name || selectedOptions[0] || '';
             const result = pollManager.processResponse(phone, optionName);
             if (result) {
-                console.log(`Poll vote from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
-            }
-        }
-    }
-
-    // Button tap response (from sendButtons message)
-    if (event === 'buttons_response' && payload) {
-        const phone = payload.sender || payload.from;
-        // selectedButtonId is the button id we set ('yes'/'no'/'maybe'), title is the display text
-        const buttonId = payload.selectedButtonId || payload.buttonId || payload.title || '';
-        if (phone && buttonId) {
-            const result = pollManager.processResponse(phone, buttonId);
-            if (result) {
-                console.log(`Button response from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
+                console.log(`[VOTE] Poll.vote from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
             }
         }
     }

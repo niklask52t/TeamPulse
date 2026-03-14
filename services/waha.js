@@ -119,29 +119,51 @@ async function sendReminderWithButtons(chatId, eventTitle, eventDate, eventTime,
     }
 }
 
-// Send a PNG image buffer as a WhatsApp image message with optional caption
+// Send a PNG image buffer as a WhatsApp image message with optional caption.
+// Tries multipart/form-data first (most compatible), falls back to JSON base64.
 async function sendResultImage(chatId, imageBuffer, caption) {
-    const url = `${WAHA_API_URL}/api/sendImage`;
-    const dataUri = `data:image/png;base64,${imageBuffer.toString('base64')}`;
-    const res = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-            session: WAHA_SESSION,
-            chatId,
-            file: {
-                url: dataUri,
-                filename: 'ergebnis.png',
-                mimetype: 'image/png',
-            },
-            caption: caption || '',
-        }),
-    });
-    if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`WAHA sendImage failed (${res.status}): ${body}`);
+    // Attempt 1: multipart/form-data via /api/sendFile
+    try {
+        const form = new FormData();
+        form.append('session', WAHA_SESSION);
+        form.append('chatId', chatId);
+        form.append('caption', caption || '');
+        form.append('file', new Blob([imageBuffer], { type: 'image/png' }), 'ergebnis.png');
+        const apiKey = WAHA_API_KEY ? { 'X-Api-Key': WAHA_API_KEY } : {};
+        const res = await fetch(`${WAHA_API_URL}/api/sendFile`, {
+            method: 'POST',
+            headers: apiKey,
+            body: form,
+        });
+        if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+        console.log('[INFO] sendResultImage: sent via multipart/form-data');
+        return res.json();
+    } catch (err1) {
+        console.warn('[WARN] sendResultImage multipart failed:', err1.message, '— trying JSON base64');
     }
-    return res.json();
+
+    // Attempt 2: JSON with base64 data field via /api/sendFile
+    try {
+        const res = await fetch(`${WAHA_API_URL}/api/sendFile`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+                session: WAHA_SESSION,
+                chatId,
+                file: {
+                    mimetype: 'image/png',
+                    filename: 'ergebnis.png',
+                    data: imageBuffer.toString('base64'),
+                },
+                caption: caption || '',
+            }),
+        });
+        if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+        console.log('[INFO] sendResultImage: sent via JSON base64');
+        return res.json();
+    } catch (err2) {
+        throw new Error(`sendResultImage failed (both methods): ${err2.message}`);
+    }
 }
 
 async function sendEventReminder(chatId, eventTitle, eventTime) {

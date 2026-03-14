@@ -15,6 +15,14 @@ function startClock() {
     setInterval(tick, 1000);
 }
 
+// Format minutes as human-readable hours (e.g. 90 → "1.5h", 30 → "30 Min")
+function fmtHours(minutes) {
+    if (!minutes) return '—';
+    if (minutes % 60 === 0) return `${minutes / 60}h`;
+    if (minutes < 60) return `${minutes} Min`;
+    return `${(minutes / 60).toFixed(1).replace('.0', '')}h`;
+}
+
 function fmtDeadline(isoStr) {
     return new Date(isoStr).toLocaleString('de-DE', { timeZone: TZ });
 }
