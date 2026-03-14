@@ -10,7 +10,6 @@ const eventsRouter = require('./routes/events');
 const pollsRouter = require('./routes/polls');
 const statsRouter = require('./routes/stats');
 const { startScheduler } = require('./services/scheduler');
-const waha = require('./services/waha');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -80,9 +79,8 @@ app.use((err, req, res, next) => {
     res.status(err.status || 500).json({ error: err.message || 'Interner Serverfehler' });
 });
 
-const server = app.listen(PORT, async () => {
+const server = app.listen(PORT, () => {
     console.log(`TeamPulse running on http://localhost:${PORT}`);
-    await waha.detectCapabilities();
     startScheduler();
 });
 

@@ -2,33 +2,6 @@ const WAHA_API_URL = process.env.WAHA_API_URL || 'http://localhost:3000';
 const WAHA_API_KEY = process.env.WAHA_API_KEY || '';
 const WAHA_SESSION = process.env.WAHA_SESSION || 'default';
 
-// Capability flags — set once at startup via detectCapabilities()
-let capButtons = false;
-let capImage   = false;
-
-// Engines known to support interactive buttons and file/image sending
-const ENGINES_WITH_BUTTONS = ['WEBJS', 'VENOM'];
-const ENGINES_WITH_IMAGE   = ['WEBJS', 'VENOM', 'NOWEB'];
-
-async function detectCapabilities() {
-    try {
-        const res = await fetch(`${WAHA_API_URL}/api/sessions/${WAHA_SESSION}`, { headers: getHeaders });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        // Engine field location varies by WAHA version
-        const engine = (
-            data.engine?.engine || data.config?.engine || data.engine || ''
-        ).toUpperCase().trim();
-
-        capButtons = ENGINES_WITH_BUTTONS.includes(engine);
-        capImage   = ENGINES_WITH_IMAGE.includes(engine);
-
-        console.log(`[WAHA] Engine: ${engine || '(unknown)'} | buttons: ${capButtons} | image: ${capImage}`);
-    } catch (err) {
-        console.warn(`[WAHA] detectCapabilities failed: ${err.message} — defaulting buttons=false image=false`);
-    }
-}
-
 const headers = {
     'Content-Type': 'application/json',
     ...(WAHA_API_KEY && { 'X-Api-Key': WAHA_API_KEY }),
@@ -84,70 +57,8 @@ async function sendReminder(chatId, eventTitle, eventDate, eventTime, deadlineTi
     return sendMessage(chatId, text);
 }
 
-// Send poll to group: buttons (WEBJS/VENOM) or native WA poll (NOWEB).
-async function sendPollButtons(chatId, eventTitle, eventDate, eventTime) {
-    if (!capButtons) {
-        return sendPollMessage(chatId, eventTitle, eventDate, eventTime);
-    }
-
-    const body =
-        `🗳️ *${eventTitle}*\n` +
-        `📅 ${eventDate} um ${eventTime} Uhr\n\n` +
-        `Kannst du dabei sein?`;
-    const res = await fetch(`${WAHA_API_URL}/api/sendButtons`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-            session: WAHA_SESSION,
-            chatId,
-            body,
-            buttons: [
-                { id: 'yes',   body: 'Ja ✅' },
-                { id: 'no',    body: 'Nein ❌' },
-                { id: 'maybe', body: 'Vielleicht 🤷' },
-            ],
-        }),
-    });
-    if (!res.ok) {
-        const b = await res.text();
-        throw new Error(`WAHA sendButtons failed (${res.status}): ${b}`);
-    }
-    return res.json();
-}
-
-// Send reminder: buttons (WEBJS/VENOM) or plain text (NOWEB).
-async function sendReminderWithButtons(chatId, eventTitle, eventDate, eventTime, deadlineTime) {
-    if (!capButtons) {
-        return sendReminder(chatId, eventTitle, eventDate, eventTime, deadlineTime);
-    }
-
-    const body = `⏰ *Erinnerung: ${eventTitle}*\n📅 ${eventDate} um ${eventTime} Uhr\n\nAbstimmung endet um ${deadlineTime} Uhr!`;
-    const res = await fetch(`${WAHA_API_URL}/api/sendButtons`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-            session: WAHA_SESSION,
-            chatId,
-            body,
-            buttons: [
-                { id: 'yes',   body: 'Ja ✅' },
-                { id: 'no',    body: 'Nein ❌' },
-                { id: 'maybe', body: 'Vielleicht 🤷' },
-            ],
-        }),
-    });
-    if (!res.ok) {
-        const b = await res.text();
-        throw new Error(`WAHA sendButtons failed (${res.status}): ${b}`);
-    }
-    return res.json();
-}
-
-// Send result chart image — only called when capImage=true (WEBJS/VENOM/NOWEB).
+// Send result chart image — tries multipart/form-data first, then JSON base64.
 async function sendResultImage(chatId, imageBuffer, caption) {
-    if (!capImage) return null;
-
-    // Try multipart/form-data first, then JSON base64
     const apiKey = WAHA_API_KEY ? { 'X-Api-Key': WAHA_API_KEY } : {};
     const form = new FormData();
     form.append('session', WAHA_SESSION);
@@ -238,12 +149,9 @@ async function getAllContacts() {
 }
 
 module.exports = {
-    detectCapabilities,
     sendMessage,
     sendPollMessage,
-    sendPollButtons,
     sendReminder,
-    sendReminderWithButtons,
     sendResultImage,
     sendEventReminder,
     sendMaybeFollowUp,

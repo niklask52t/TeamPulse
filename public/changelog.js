@@ -2,6 +2,15 @@
 
 const CHANGELOG = [
     {
+        version: '1.7.4',
+        date: '2026-03-14',
+        changes: [
+            { type: 'delete', text: 'sendButtons komplett entfernt — WhatsApp hat sendButtons für inoffizielle Clients 2024 deaktiviert, es funktioniert grundsätzlich nicht mehr' },
+            { type: 'delete', text: 'detectCapabilities() entfernt — kein Startup-Check mehr nötig, immer native WA-Umfrage' },
+            { type: 'fix', text: 'Haupt-Umfrage & Erinnerungen nutzen jetzt ausschließlich native WhatsApp-Umfrage (sendPoll) bzw. plain text' },
+        ]
+    },
+    {
         version: '1.7.3',
         date: '2026-03-14',
         changes: [

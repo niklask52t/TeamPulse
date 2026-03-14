@@ -25,7 +25,7 @@ TeamPulse/
 │   ├── polls.js       # Poll management, manual actions, WAHA webhook
 │   └── stats.js       # Participation stats per contact
 ├── services/
-│   ├── waha.js        # WAHA API client (sendPoll, sendText, sendReminder, sendReminderWithButtons, sendResultImage, sendMaybeFollowUp, getGroupParticipants, getAllContacts)
+│   ├── waha.js        # WAHA API client (sendPollMessage, sendMessage, sendReminder, sendResultImage, sendMaybeFollowUp, postResultsToGroup, getGroupParticipants, getAllContacts)
 │   ├── scheduler.js   # Cron: send/close/archive polls, reminders, group posts
 │   ├── pollManager.js # Poll lifecycle (create, send, processResponse, processReasonMessage, close, extendDeadline)
 │   ├── chartGenerator.js  # PNG bar chart via @napi-rs/canvas
@@ -84,7 +84,7 @@ TeamPulse/
 
 ## Manual Actions (poll detail)
 - Send poll: once only (pending → active), syncs group members first
-- Send reminder: multiple times (active only) — uses WAHA sendButtons with Ja/Nein/Vielleicht tap buttons; auto-falls back to plain text if unsupported
+- Send reminder: multiple times (active only) — sends plain text reminder to all non-voters with deadline time
 - Extend deadline: adjustable via form (any minutes, resets reminder_sent=0 so another reminder can fire)
 - Close poll: manual close (active → closed)
 - Post group results: multiple times (active/closed) — sends text + PNG chart image; does NOT close the poll
@@ -104,8 +104,8 @@ TeamPulse/
 - Handles `message` (text reply), `poll.vote` (native poll), and `buttons_response` events
 - Group messages: `payload.sender` = voter JID; private messages: `payload.from` = sender JID
 - Poll options: "Ja ✅", "Nein ❌", "Vielleicht 🤷" — matched by emoji-stripped exact match first, then keyword includes
-- `sendReminderWithButtons` sends interactive buttons; falls back to `sendReminder` on error
-- `sendResultImage` sends a PNG chart (base64) via POST /api/sendImage
+- `sendReminder` sends plain text reminder (sendButtons was removed — WA deprecated it for unofficial clients in 2024)
+- `sendResultImage` sends a PNG chart via POST /api/sendFile (multipart first, JSON base64 fallback)
 
 ## Stats
 - `GET /api/stats` returns per-contact totals from closed polls: yes/no/maybe/no_response + response_rate %
