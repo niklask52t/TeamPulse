@@ -168,9 +168,42 @@
 
         <!-- Footer -->
         <footer class="app-footer">
-            <!-- Wiki panel (expands upward) -->
-            <div id="footer-wiki" class="footer-panel hidden">
-                <div class="footer-panel-inner wiki-content">
+            <!-- Groups panel (expands upward, DEV_MODE only) -->
+            <div id="footer-groups" class="footer-panel hidden">
+                <div class="footer-panel-inner">
+                    <div id="groups-list" class="card-list"></div>
+                </div>
+            </div>
+            <!-- Thin footer bar -->
+            <div class="footer-bar">
+                <span class="footer-brand">
+                    <span class="footer-brand-name">TeamPulse</span>
+                    <span class="footer-dot"></span>
+                    <span>WhatsApp Attendance Management</span>
+                </span>
+                <div class="footer-links">
+                    <button class="footer-link-btn" onclick="openOverlay('wiki')" id="wiki-toggle-btn">
+                        Hilfe
+                    </button>
+                    <button class="footer-link-btn" onclick="openOverlay('changelog')" id="changelog-toggle-btn">
+                        Changelog
+                    </button>
+                    <button class="footer-link-btn hidden" onclick="toggleFooterSection('groups')" id="groups-toggle-btn">
+                        Gruppen <span id="groups-chevron" class="footer-chevron-btn">&#x25B2;</span>
+                    </button>
+                </div>
+            </div>
+        </footer>
+
+        <!-- Wiki Overlay -->
+        <div id="overlay-wiki" class="overlay hidden">
+            <div class="overlay-backdrop" onclick="closeOverlay('wiki')"></div>
+            <div class="overlay-content">
+                <div class="overlay-header">
+                    <h2>Hilfe</h2>
+                    <button class="overlay-close" onclick="closeOverlay('wiki')">&times;</button>
+                </div>
+                <div class="overlay-body wiki-content">
                     <div class="wiki-section">
                         <h3>Erste Schritte</h3>
                         <p>Standard-Login: <strong>admin / admin</strong> — beim ersten Login muss das Passwort geändert werden.</p>
@@ -208,11 +241,11 @@
                         <h3>Manuelle Aktionen</h3>
                         <ul>
                             <li><strong>Umfrage senden</strong> — sendet native WhatsApp-Poll in die Gruppe. Nur bei Status "Ausstehend", einmalig.</li>
-                            <li><strong>⏰ Abstimmungs-Erinnerung</strong> — Privatnachricht an alle ohne Antwort mit Frist-Uhrzeit. Mehrfach möglich.</li>
+                            <li><strong>Abstimmungs-Erinnerung</strong> — Privatnachricht an alle ohne Antwort mit Frist-Uhrzeit. Mehrfach möglich.</li>
                             <li><strong>Frist verlängern</strong> — Deadline um beliebige Minuten verschieben. Löst ggf. erneute Auto-Erinnerung aus.</li>
                             <li><strong>Umfrage schließen</strong> — manuell schließen. Nur bei "Aktiv".</li>
                             <li><strong>Ergebnis posten</strong> — Text + Chart-Bild in die Gruppe. Schließt die Umfrage NICHT. Mehrfach möglich.</li>
-                            <li><strong>🏃 Start-Erinnerung</strong> — Privatnachricht an alle Zusager ("Event beginnt in 1h"). Mehrfach möglich.</li>
+                            <li><strong>Start-Erinnerung</strong> — Privatnachricht an alle Zusager ("Event beginnt in 1h"). Mehrfach möglich.</li>
                         </ul>
                     </div>
                     <div class="wiki-section">
@@ -221,8 +254,8 @@
                         <ol>
                             <li><strong>Ausstehende Umfragen senden</strong> — sobald fällig</li>
                             <li><strong>Erinnerung</strong> — 60 Min vor Fristende an alle Nicht-Voter (privat)</li>
-                            <li><strong>Frist abgelaufen → schließen</strong> — automatisch</li>
-                            <li><strong>Ergebnis posten</strong> — zur konfigurierten Zeit (Stunden vor Event)</li>
+                            <li><strong>Frist abgelaufen</strong> — automatisch schließen</li>
+                            <li><strong>Ergebnis posten</strong> — sofort nach Schließung</li>
                             <li><strong>Event-Erinnerung</strong> — 1h vor Event an alle Zusager (privat)</li>
                             <li><strong>Wiederkehrend</strong> — nächste Woche neue Umfrage erstellen</li>
                             <li><strong>Archivieren</strong> — 24h nach Event-Ende</li>
@@ -257,38 +290,21 @@
                     </div>
                 </div>
             </div>
-            <!-- Changelog panel (expands upward) -->
-            <div id="footer-changelog" class="footer-panel hidden">
-                <div class="footer-panel-inner">
+        </div>
+
+        <!-- Changelog Overlay -->
+        <div id="overlay-changelog" class="overlay hidden">
+            <div class="overlay-backdrop" onclick="closeOverlay('changelog')"></div>
+            <div class="overlay-content">
+                <div class="overlay-header">
+                    <h2>Changelog</h2>
+                    <button class="overlay-close" onclick="closeOverlay('changelog')">&times;</button>
+                </div>
+                <div class="overlay-body">
                     <div id="changelog-list" class="card-list"></div>
                 </div>
             </div>
-            <!-- Groups panel (expands upward) -->
-            <div id="footer-groups" class="footer-panel hidden">
-                <div class="footer-panel-inner">
-                    <div id="groups-list" class="card-list"></div>
-                </div>
-            </div>
-            <!-- Thin footer bar -->
-            <div class="footer-bar">
-                <span class="footer-brand">
-                    <span class="footer-brand-name">TeamPulse</span>
-                    <span class="footer-dot"></span>
-                    <span>WhatsApp Attendance Management</span>
-                </span>
-                <div class="footer-links">
-                    <button class="footer-link-btn" onclick="toggleFooterSection('wiki')" id="wiki-toggle-btn">
-                        Hilfe <span id="wiki-chevron" class="footer-chevron-btn">&#x25B2;</span>
-                    </button>
-                    <button class="footer-link-btn" onclick="toggleFooterSection('changelog')" id="changelog-toggle-btn">
-                        Changelog <span id="changelog-chevron" class="footer-chevron-btn">&#x25B2;</span>
-                    </button>
-                    <button class="footer-link-btn hidden" onclick="toggleFooterSection('groups')" id="groups-toggle-btn">
-                        Gruppen <span id="groups-chevron" class="footer-chevron-btn">&#x25B2;</span>
-                    </button>
-                </div>
-            </div>
-        </footer>
+        </div>
     </div>
 
     <!-- Load order: changelog → events → polls → stats → app (app defines globals + calls checkAuth) -->

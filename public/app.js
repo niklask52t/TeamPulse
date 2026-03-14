@@ -250,6 +250,32 @@ function copyGroupId(id, btn) {
     });
 }
 
+// ===== OVERLAYS =====
+
+function openOverlay(name) {
+    const overlay = document.getElementById(`overlay-${name}`);
+    if (!overlay) return;
+    overlay.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeOverlay(name) {
+    const overlay = document.getElementById(`overlay-${name}`);
+    if (!overlay) return;
+    overlay.classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+// Close overlay on Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        document.querySelectorAll('.overlay:not(.hidden)').forEach(el => {
+            const name = el.id.replace('overlay-', '');
+            closeOverlay(name);
+        });
+    }
+});
+
 // ===== FOOTER =====
 
 function toggleFooterSection(section) {

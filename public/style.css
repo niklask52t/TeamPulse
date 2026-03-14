@@ -797,18 +797,6 @@ main {
     padding: 1.25rem 1.25rem;
 }
 
-/* Wiki panel uses grid inside footer */
-.footer-panel-inner.wiki-content {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.65rem;
-}
-
-.footer-panel .wiki-section,
-.footer-panel .changelog-release {
-    background: var(--bg-primary);
-}
-
 .footer-panel .stats-table-wrap,
 .footer-panel .stats-table thead th {
     background: var(--bg-primary);
@@ -888,6 +876,102 @@ main {
 
 .footer-link-btn--active .footer-chevron-btn {
     transform: rotate(180deg);
+}
+
+/* ===== OVERLAY ===== */
+.overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease;
+}
+
+.overlay-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+
+.overlay-content {
+    position: relative;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    width: 92%;
+    max-width: 960px;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-lg), 0 0 40px rgba(88,166,255,0.1);
+    animation: fadeInUp 0.25s ease;
+}
+
+.overlay-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.overlay-header h2 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.overlay-close {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 1.4rem;
+    line-height: 1;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.overlay-close:hover {
+    color: var(--text-primary);
+    border-color: var(--red);
+    background: rgba(248,81,73,0.1);
+}
+
+.overlay-body {
+    padding: 1.25rem 1.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.overlay-body.wiki-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+@media (max-width: 700px) {
+    .overlay-content {
+        width: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+    .overlay-body.wiki-content {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* ===== STATS ===== */
@@ -1028,8 +1112,7 @@ main {
 
     main { margin-top: 1rem; }
 
-    .wiki-content,
-    .footer-panel-inner.wiki-content {
+    .wiki-content {
         grid-template-columns: 1fr;
     }
 

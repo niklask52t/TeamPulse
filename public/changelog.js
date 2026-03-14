@@ -2,6 +2,14 @@
 
 const CHANGELOG = [
     {
+        version: '1.8.2',
+        date: '2026-03-14',
+        changes: [
+            { type: 'feature', text: 'Hilfe und Changelog als eigene Overlay-Fenster statt Footer-Panels — bessere Übersicht auf großen Bildschirmen' },
+            { type: 'feature', text: 'Overlays schließen mit Escape-Taste oder Klick auf Hintergrund' },
+        ]
+    },
+    {
         version: '1.8.1',
         date: '2026-03-14',
         changes: [
