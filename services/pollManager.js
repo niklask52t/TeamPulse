@@ -104,8 +104,10 @@ async function sendPoll(pollId) {
         }
     }
 
-    // Send ONE poll to the group chat
+    // Send native WhatsApp poll to group (tracked via poll.vote webhook)
     await waha.sendPollMessage(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time);
+    // Also send button message so members can respond inline (buttons_response webhook)
+    await waha.sendPollButtons(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time);
 
     // Mark all responses as message_sent and activate poll
     db.prepare('UPDATE poll_responses SET message_sent = 1 WHERE poll_id = ?').run(pollId);

@@ -159,6 +159,19 @@ router.post('/webhook', (req, res) => {
         }
     }
 
+    // Button tap response (from sendButtons message)
+    if (event === 'buttons_response' && payload) {
+        const phone = payload.sender || payload.from;
+        // selectedButtonId is the button id we set ('yes'/'no'/'maybe'), title is the display text
+        const buttonId = payload.selectedButtonId || payload.buttonId || payload.title || '';
+        if (phone && buttonId) {
+            const result = pollManager.processResponse(phone, buttonId);
+            if (result) {
+                console.log(`Button response from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
+            }
+        }
+    }
+
     res.json({ ok: true });
 });
 
