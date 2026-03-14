@@ -2,6 +2,16 @@
 
 const CHANGELOG = [
     {
+        version: '1.7.6',
+        date: '2026-03-14',
+        changes: [
+            { type: 'fix', text: 'Poll-Votes über native WhatsApp-Umfragen werden jetzt korrekt erkannt — LID-Format (@lid) wird unterstützt' },
+            { type: 'fix', text: 'Neue Gruppenmitglieder können sofort abstimmen, auch wenn sie erst nach dem Senden beigetreten sind' },
+            { type: 'fix', text: 'Umfrage kann nicht mehr doppelt gesendet werden (aktive/geschlossene Polls blockiert)' },
+            { type: 'fix', text: 'Gruppen-IDs im Footer werden jetzt korrekt als Text angezeigt (statt [object Object])' },
+        ]
+    },
+    {
         version: '1.7.5',
         date: '2026-03-14',
         changes: [
