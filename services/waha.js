@@ -2,6 +2,10 @@ const WAHA_API_URL = process.env.WAHA_API_URL || 'http://localhost:3000';
 const WAHA_API_KEY = process.env.WAHA_API_KEY || '';
 const WAHA_SESSION = process.env.WAHA_SESSION || 'default';
 
+// Capability cache — null = untested, true/false = known
+let capButtons = null;
+let capImage   = null;
+
 const headers = {
     'Content-Type': 'application/json',
     ...(WAHA_API_KEY && { 'X-Api-Key': WAHA_API_KEY }),
@@ -57,15 +61,20 @@ async function sendReminder(chatId, eventTitle, eventDate, eventTime, deadlineTi
     return sendMessage(chatId, text);
 }
 
-// Send a button message to the GROUP alongside the native poll (fallback: plain text)
+// Send poll to group: buttons if supported, native WA poll otherwise.
+// Result is cached after first attempt — no repeated probing.
 async function sendPollButtons(chatId, eventTitle, eventDate, eventTime) {
-    const url = `${WAHA_API_URL}/api/sendButtons`;
+    if (capButtons === false) {
+        console.log('[INFO] sendPollButtons: buttons not supported → using native poll');
+        return sendPollMessage(chatId, eventTitle, eventDate, eventTime);
+    }
+
     const body =
         `🗳️ *${eventTitle}*\n` +
         `📅 ${eventDate} um ${eventTime} Uhr\n\n` +
         `Kannst du dabei sein?`;
     try {
-        const res = await fetch(url, {
+        const res = await fetch(`${WAHA_API_URL}/api/sendButtons`, {
             method: 'POST',
             headers,
             body: JSON.stringify({
@@ -79,25 +88,26 @@ async function sendPollButtons(chatId, eventTitle, eventDate, eventTime) {
                 ],
             }),
         });
-        if (!res.ok) throw new Error(`status ${res.status}`);
+        if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+        capButtons = true;
+        console.log('[INFO] sendPollButtons: buttons supported ✓');
         return res.json();
-    } catch {
-        // Fallback: plain text with voting instructions
-        const text =
-            `🗳️ *${eventTitle}*\n` +
-            `📅 ${eventDate} um ${eventTime} Uhr\n\n` +
-            `Dabei? Antworte mit: *Ja*, *Nein* oder *Vielleicht*`;
-        return sendMessage(chatId, text);
+    } catch (err) {
+        capButtons = false;
+        console.log(`[INFO] sendPollButtons: buttons not supported (${err.message}) → switching to native poll`);
+        return sendPollMessage(chatId, eventTitle, eventDate, eventTime);
     }
 }
 
-// Send reminder with tap buttons (Ja/Nein/Vielleicht).
-// Falls back to plain text if WAHA returns an error.
+// Send reminder with buttons if supported, plain text otherwise (uses same capButtons cache).
 async function sendReminderWithButtons(chatId, eventTitle, eventDate, eventTime, deadlineTime) {
-    const url = `${WAHA_API_URL}/api/sendButtons`;
+    if (capButtons === false) {
+        return sendReminder(chatId, eventTitle, eventDate, eventTime, deadlineTime);
+    }
+
     const body = `⏰ *Erinnerung: ${eventTitle}*\n📅 ${eventDate} um ${eventTime} Uhr\n\nAbstimmung endet um ${deadlineTime} Uhr!`;
     try {
-        const res = await fetch(url, {
+        const res = await fetch(`${WAHA_API_URL}/api/sendButtons`, {
             method: 'POST',
             headers,
             body: JSON.stringify({
@@ -111,38 +121,45 @@ async function sendReminderWithButtons(chatId, eventTitle, eventDate, eventTime,
                 ],
             }),
         });
-        if (!res.ok) throw new Error(`status ${res.status}`);
+        if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+        capButtons = true;
         return res.json();
-    } catch {
-        // Fallback to plain text reminder
+    } catch (err) {
+        capButtons = false;
+        console.log(`[INFO] sendReminderWithButtons: not supported (${err.message}) → plain text`);
         return sendReminder(chatId, eventTitle, eventDate, eventTime, deadlineTime);
     }
 }
 
-// Send a PNG image buffer as a WhatsApp image message with optional caption.
-// Tries multipart/form-data first (most compatible), falls back to JSON base64.
+// Send result chart image. Tries multipart then JSON base64.
+// Result is cached — if WAHA doesn't support it, skips silently forever.
 async function sendResultImage(chatId, imageBuffer, caption) {
-    // Attempt 1: multipart/form-data via /api/sendFile
+    if (capImage === false) {
+        console.log('[INFO] sendResultImage: not supported by this WAHA instance, skipping');
+        return null;
+    }
+
+    // Attempt 1: multipart/form-data
     try {
         const form = new FormData();
         form.append('session', WAHA_SESSION);
         form.append('chatId', chatId);
         form.append('caption', caption || '');
         form.append('file', new Blob([imageBuffer], { type: 'image/png' }), 'ergebnis.png');
-        const apiKey = WAHA_API_KEY ? { 'X-Api-Key': WAHA_API_KEY } : {};
         const res = await fetch(`${WAHA_API_URL}/api/sendFile`, {
             method: 'POST',
-            headers: apiKey,
+            headers: WAHA_API_KEY ? { 'X-Api-Key': WAHA_API_KEY } : {},
             body: form,
         });
         if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-        console.log('[INFO] sendResultImage: sent via multipart/form-data');
+        capImage = true;
+        console.log('[INFO] sendResultImage: supported ✓ (multipart)');
         return res.json();
     } catch (err1) {
-        console.warn('[WARN] sendResultImage multipart failed:', err1.message, '— trying JSON base64');
+        console.log('[INFO] sendResultImage multipart failed:', err1.message, '— trying JSON base64');
     }
 
-    // Attempt 2: JSON with base64 data field via /api/sendFile
+    // Attempt 2: JSON with base64
     try {
         const res = await fetch(`${WAHA_API_URL}/api/sendFile`, {
             method: 'POST',
@@ -150,19 +167,18 @@ async function sendResultImage(chatId, imageBuffer, caption) {
             body: JSON.stringify({
                 session: WAHA_SESSION,
                 chatId,
-                file: {
-                    mimetype: 'image/png',
-                    filename: 'ergebnis.png',
-                    data: imageBuffer.toString('base64'),
-                },
+                file: { mimetype: 'image/png', filename: 'ergebnis.png', data: imageBuffer.toString('base64') },
                 caption: caption || '',
             }),
         });
         if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-        console.log('[INFO] sendResultImage: sent via JSON base64');
+        capImage = true;
+        console.log('[INFO] sendResultImage: supported ✓ (JSON base64)');
         return res.json();
     } catch (err2) {
-        throw new Error(`sendResultImage failed (both methods): ${err2.message}`);
+        capImage = false;
+        console.log(`[INFO] sendResultImage: not supported by this WAHA instance (${err2.message}) — chart will be text-only`);
+        return null;
     }
 }
 
