@@ -215,6 +215,12 @@
                     <div id="changelog-list" class="card-list"></div>
                 </div>
             </div>
+            <!-- Groups panel (expands upward) -->
+            <div id="footer-groups" class="footer-panel hidden">
+                <div class="footer-panel-inner">
+                    <div id="groups-list" class="card-list"></div>
+                </div>
+            </div>
             <!-- Thin footer bar -->
             <div class="footer-bar">
                 <span class="footer-brand">
@@ -228,6 +234,9 @@
                     </button>
                     <button class="footer-link-btn" onclick="toggleFooterSection('changelog')" id="changelog-toggle-btn">
                         Changelog <span id="changelog-chevron" class="footer-chevron-btn">&#x25B2;</span>
+                    </button>
+                    <button class="footer-link-btn" onclick="toggleFooterSection('groups')" id="groups-toggle-btn">
+                        Gruppen <span id="groups-chevron" class="footer-chevron-btn">&#x25B2;</span>
                     </button>
                 </div>
             </div>

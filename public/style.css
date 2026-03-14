@@ -802,6 +802,11 @@ main {
     background: var(--bg-primary);
 }
 
+.footer-panel .stats-table-wrap,
+.footer-panel .stats-table thead th {
+    background: var(--bg-primary);
+}
+
 /* Thin footer bar */
 .footer-bar {
     max-width: 940px;

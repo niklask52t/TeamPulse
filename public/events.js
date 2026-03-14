@@ -1,34 +1,42 @@
 // ===== EVENTS =====
 
 async function loadEvents() {
-    const res = await apiFetch(`${API}/api/events`);
-    const events = await res.json();
     const list = document.getElementById('events-list');
+    try {
+        const res = await apiFetch(`${API}/api/events`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const events = await res.json();
 
-    const typeLabels = { training: 'Training', tournament: 'Turnier', other: 'Sonstiges' };
-    const dayNames = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+        const typeLabels = { training: 'Training', tournament: 'Turnier', other: 'Sonstiges' };
+        const dayNames = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 
-    list.innerHTML = events.map(e => {
-        const recurring = e.recurring ? `<span class="badge badge-recurring">Jeden ${dayNames[e.recurrence_day]}</span>` : '';
-        const dateDisplay = e.event_date ? fmtDateFancy(e.event_date) : '';
-        return `
-        <div class="card" id="event-card-${e.id}">
-            ${dateDisplay}
-            <div class="card-info">
-                <h3>${esc(e.title)} <span class="badge badge-${e.type}">${typeLabels[e.type]}</span> ${recurring}</h3>
-                <p>${e.event_time} Uhr | Frist: ${fmtHours(e.poll_deadline_minutes)} vor Event</p>
-            </div>
-            <div class="card-actions">
-                <button class="btn btn-secondary btn-sm" onclick="editEvent(${e.id})">Bearbeiten</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteEvent(${e.id})">Löschen</button>
-            </div>
-        </div>`;
-    }).join('') || '<p style="color:var(--text-secondary)">Noch keine Events erstellt.</p>';
+        list.innerHTML = events.map(e => {
+            const recurring = e.recurring ? `<span class="badge badge-recurring">Jeden ${dayNames[e.recurrence_day]}</span>` : '';
+            const dateDisplay = e.event_date ? fmtDateFancy(e.event_date) : '';
+            return `
+            <div class="card" id="event-card-${e.id}">
+                ${dateDisplay}
+                <div class="card-info">
+                    <h3>${esc(e.title)} <span class="badge badge-${e.type}">${typeLabels[e.type]}</span> ${recurring}</h3>
+                    <p>${e.event_time} Uhr | Frist: ${fmtHours(e.poll_deadline_minutes)} vor Event</p>
+                </div>
+                <div class="card-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="editEvent(${e.id})">Bearbeiten</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteEvent(${e.id})">Löschen</button>
+                </div>
+            </div>`;
+        }).join('') || '<p style="color:var(--text-secondary)">Noch keine Events erstellt.</p>';
+    } catch (err) {
+        if (err.message !== 'Nicht angemeldet') {
+            list.innerHTML = '<p style="color:var(--red)">Fehler beim Laden der Events: ' + esc(err.message) + '</p>';
+        }
+    }
 }
 
 function showEventForm() {
     if (!checkDirtyAndClose()) return;
     clearDirty();
+    document.getElementById('events-list').innerHTML = '';
     document.getElementById('event-form').classList.remove('hidden');
     document.getElementById('event-form-title').textContent = 'Neues Event';
     document.getElementById('event-id').value = '';

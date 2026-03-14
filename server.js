@@ -10,6 +10,7 @@ const eventsRouter = require('./routes/events');
 const pollsRouter = require('./routes/polls');
 const statsRouter = require('./routes/stats');
 const { startScheduler } = require('./services/scheduler');
+const { getGroups } = require('./services/waha');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -60,6 +61,16 @@ app.post('/api/webhooks/waha', (req, res, next) => {
 
 // Alle anderen API-Routen benötigen Login
 app.use('/api', requireAuth);
+// WhatsApp groups from WAHA
+app.get('/api/groups', async (req, res, next) => {
+    try {
+        const groups = await getGroups();
+        res.json(groups);
+    } catch (err) {
+        next(err);
+    }
+});
+
 app.use('/api/contacts', contactsRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/polls', pollsRouter);
@@ -79,8 +90,8 @@ app.use((err, req, res, next) => {
     res.status(err.status || 500).json({ error: err.message || 'Interner Serverfehler' });
 });
 
-const server = app.listen(PORT, () => {
-    console.log(`TeamPulse running on http://localhost:${PORT}`);
+const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`TeamPulse running on http://0.0.0.0:${PORT}`);
     startScheduler();
 });
 

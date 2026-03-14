@@ -148,6 +148,18 @@ async function getAllContacts() {
     return Array.isArray(data) ? data : (data.contacts || []);
 }
 
+// Get all groups the session is part of
+async function getGroups() {
+    const url = `${WAHA_API_URL}/api/${WAHA_SESSION}/groups`;
+    const res = await fetch(url, { headers: getHeaders });
+    if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`WAHA getGroups failed (${res.status}): ${body}`);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+}
+
 module.exports = {
     sendMessage,
     sendPollMessage,
@@ -158,4 +170,5 @@ module.exports = {
     postResultsToGroup,
     getGroupParticipants,
     getAllContacts,
+    getGroups,
 };

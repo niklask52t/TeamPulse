@@ -195,6 +195,51 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => activateTab(btn.dataset.tab));
 });
 
+// ===== GROUPS =====
+
+let groupsLoaded = false;
+
+async function loadGroups() {
+    const list = document.getElementById('groups-list');
+    if (!list) return;
+    list.innerHTML = '<p style="color:var(--text-secondary)">Gruppen werden geladen...</p>';
+    try {
+        const res = await apiFetch(`${API}/api/groups`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const groups = await res.json();
+        if (!groups.length) {
+            list.innerHTML = '<p style="color:var(--text-secondary)">Keine Gruppen gefunden.</p>';
+            return;
+        }
+        const currentGroup = '${API}' ? '' : (document.cookie || '');
+        const rows = groups.map(g => {
+            const id = g.id || g._id || g.chatId || '';
+            const name = g.name || g.subject || g.title || id;
+            return '<tr>'
+                + '<td class="stats-name">' + esc(name) + '</td>'
+                + '<td style="font-family:monospace;font-size:0.82rem;color:var(--text-secondary);user-select:all">' + esc(id) + '</td>'
+                + '<td><button class="btn btn-secondary btn-sm" onclick="copyGroupId(\'' + esc(id).replace(/'/g, "\\'") + '\')">Kopieren</button></td>'
+                + '</tr>';
+        }).join('');
+        list.innerHTML = '<table class="stats-table">'
+            + '<thead><tr><th>Gruppenname</th><th>Gruppen-ID</th><th></th></tr></thead>'
+            + '<tbody>' + rows + '</tbody></table>';
+        groupsLoaded = true;
+    } catch (err) {
+        if (err.message !== 'Nicht angemeldet') {
+            list.innerHTML = '<p style="color:var(--red)">Fehler beim Laden: ' + esc(err.message) + '</p>';
+        }
+    }
+}
+
+function copyGroupId(id) {
+    navigator.clipboard.writeText(id).then(() => {
+        // brief visual feedback not needed — clipboard is enough
+    }).catch(() => {
+        prompt('Gruppen-ID:', id);
+    });
+}
+
 // ===== FOOTER =====
 
 function toggleFooterSection(section) {
@@ -205,6 +250,8 @@ function toggleFooterSection(section) {
     const isHidden = panel.classList.toggle('hidden');
     if (chevron) chevron.innerHTML = isHidden ? '&#x25B2;' : '&#x25BC;';
     if (btn) btn.classList.toggle('footer-link-btn--active', !isHidden);
+    // Lazy-load groups on first open
+    if (section === 'groups' && !isHidden && !groupsLoaded) loadGroups();
 }
 
 // ===== UTILS =====
