@@ -88,6 +88,7 @@ async function sendReminderWithButtons(chatId, eventTitle, eventDate, eventTime,
 // Send a PNG image buffer as a WhatsApp image message with optional caption
 async function sendResultImage(chatId, imageBuffer, caption) {
     const url = `${WAHA_API_URL}/api/sendImage`;
+    const dataUri = `data:image/png;base64,${imageBuffer.toString('base64')}`;
     const res = await fetch(url, {
         method: 'POST',
         headers,
@@ -95,9 +96,9 @@ async function sendResultImage(chatId, imageBuffer, caption) {
             session: WAHA_SESSION,
             chatId,
             file: {
-                mimetype: 'image/png',
+                url: dataUri,
                 filename: 'ergebnis.png',
-                data: imageBuffer.toString('base64'),
+                mimetype: 'image/png',
             },
             caption: caption || '',
         }),
