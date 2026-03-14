@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS events (
     meeting_time TEXT,
     recurring INTEGER DEFAULT 0,
     recurrence_day INTEGER,
-    poll_deadline_minutes INTEGER DEFAULT 1440,
+    poll_send_minutes_before INTEGER DEFAULT 1440,
+    poll_deadline_minutes INTEGER DEFAULT 60,
     group_post_minutes_before INTEGER DEFAULT 60,
     active INTEGER DEFAULT 1,
     created_at TEXT DEFAULT (datetime('now'))
@@ -33,6 +34,7 @@ CREATE TABLE IF NOT EXISTS polls (
     event_id INTEGER NOT NULL,
     event_date TEXT NOT NULL,
     sent_at TEXT,
+    send_after TEXT,
     deadline TEXT NOT NULL,
     reminder_sent INTEGER DEFAULT 0,
     group_posted INTEGER DEFAULT 0,

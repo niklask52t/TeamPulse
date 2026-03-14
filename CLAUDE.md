@@ -43,7 +43,8 @@ TeamPulse/
 ```
 
 ## Key Conventions
-- Default poll_deadline_minutes = 1440 (24h before event)
+- Default poll_send_minutes_before = 1440 (24h before event — when poll is sent)
+- Default poll_deadline_minutes = 60 (1h before event — when poll closes AND results are posted)
 - German UI, English code
 - REST API endpoints under `/api/`
 - All event times stored as Berlin local time, converted to UTC via parseBerlinDateTime()
@@ -81,13 +82,13 @@ TeamPulse/
 - Groups tab is hidden by default, only shown when DEV_MODE is true
 
 ## Scheduler Flow (every minute)
-1. checkAndSendPolls — send pending polls
+1. checkAndSendPolls — send pending polls when `send_after` time is reached
 2. checkDeadlineReminders — 60min before deadline (shows actual deadline time, not minutes)
 3. checkAndClosePolls — close active polls past deadline
-4. checkGroupPosts — post results for closed polls at scheduled time
+4. checkGroupPosts — post results immediately for closed polls (no separate timing)
 5. checkEventReminders — 1h before event
 6. generateRecurringPolls — create next week's polls
-7. archiveOldPolls — archive 1h after event
+7. archiveOldPolls — archive 24h after event
 
 ## Manual Actions (poll detail)
 - Send poll: once only (pending → active), syncs group members first
@@ -127,6 +128,8 @@ TeamPulse/
 
 ## DB Schema Notes
 - `events.meeting_time TEXT` — optional meeting/gathering time (separate from event_time)
+- `events.poll_send_minutes_before INTEGER DEFAULT 1440` — when to send the poll (minutes before event)
+- `polls.send_after TEXT` — ISO timestamp: earliest time the poll should be sent
 - `poll_responses.reason TEXT` — stores optional reason from 'maybe' and 'no' voters
 - `polls.archived INTEGER DEFAULT 0` — added via migration
 - Run migrations in `db/database.js` with try/catch for existing columns

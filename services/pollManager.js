@@ -51,17 +51,18 @@ async function syncGroupParticipants() {
     }
 }
 
-function createPollForEvent(eventId, eventDate, deadlineMinutes) {
+function createPollForEvent(eventId, eventDate, deadlineMinutes, sendMinutesBefore) {
     const event = db.prepare('SELECT * FROM events WHERE id = ?').get(eventId);
     if (!event) throw new Error(`Event ${eventId} not found`);
 
     const eventDateTime = parseBerlinDateTime(eventDate, event.event_time);
-    const deadline = new Date(eventDateTime.getTime() - deadlineMinutes * 60 * 1000);
+    const deadline = new Date(eventDateTime.getTime() - (deadlineMinutes || 60) * 60 * 1000);
+    const sendAfter = new Date(eventDateTime.getTime() - (sendMinutesBefore || event.poll_send_minutes_before || 1440) * 60 * 1000);
 
     const result = db.prepare(`
-        INSERT INTO polls (event_id, event_date, deadline, status)
-        VALUES (?, ?, ?, 'pending')
-    `).run(eventId, eventDate, deadline.toISOString());
+        INSERT INTO polls (event_id, event_date, send_after, deadline, status)
+        VALUES (?, ?, ?, ?, 'pending')
+    `).run(eventId, eventDate, sendAfter.toISOString(), deadline.toISOString());
 
     const pollId = result.lastInsertRowid;
 

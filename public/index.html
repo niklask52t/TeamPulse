@@ -130,12 +130,12 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>Abstimmungsfrist (Stunden vor Event) *</label>
-                            <input type="number" id="event-deadline" value="24" min="0.5" step="0.5" required>
+                            <label>Umfrage senden (Stunden vor Event) *</label>
+                            <input type="number" id="event-send-before" value="24" min="0.5" step="0.5" required>
                         </div>
                         <div class="form-group">
-                            <label>Ergebnis-Post (Stunden vor Event) *</label>
-                            <input type="number" id="event-group-post" value="1" min="0.25" step="0.25" required>
+                            <label>Abstimmungsfrist &amp; Ergebnis-Post (Stunden vor Event) *</label>
+                            <input type="number" id="event-deadline" value="1" min="0.25" step="0.25" required>
                         </div>
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary">Speichern</button>
@@ -183,8 +183,8 @@
                         <p><strong>Wiederkehrend:</strong> Wähle einen Wochentag — der Scheduler erstellt jede Woche automatisch eine neue Umfrage.</p>
                         <p><strong>Uhrzeit:</strong> Wann das Event beginnt (z.B. 19:00).</p>
                         <p><strong>Treffenszeit:</strong> Optional — wann sich das Team trifft (z.B. 18:30). Wird in allen Nachrichten zusätzlich angezeigt.</p>
-                        <p><strong>Abstimmungsfrist:</strong> Stunden vor Event-Beginn, wann die Abstimmung schließt. Standard: 24h.</p>
-                        <p><strong>Ergebnis-Post:</strong> Stunden vor Event-Beginn, wann das Ergebnis automatisch in die Gruppe gepostet wird.</p>
+                        <p><strong>Umfrage senden:</strong> Stunden vor Event-Beginn, wann die Umfrage gesendet wird. Standard: 24h.</p>
+                        <p><strong>Abstimmungsfrist:</strong> Stunden vor Event-Beginn, wann die Abstimmung schließt UND das Ergebnis automatisch gepostet wird. Standard: 1h.</p>
                     </div>
                     <div class="wiki-section">
                         <h3>Umfragen-Lebenszyklus</h3>

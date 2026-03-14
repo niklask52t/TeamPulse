@@ -5,12 +5,13 @@ const CHANGELOG = [
         version: '1.8.0',
         date: '2026-03-14',
         changes: [
+            { type: 'feature', text: 'Umfrage-Versand konfigurierbar: neues Feld "Umfrage senden (Stunden vor Event)", Standard 24h' },
+            { type: 'feature', text: 'Abstimmungsfrist und Ergebnis-Post vereint: ein Feld, Ergebnis wird sofort bei Fristablauf gepostet (Standard 1h)' },
             { type: 'feature', text: 'Treffenszeit: optionale Uhrzeit pro Event, wird in Umfrage, Erinnerungen und Ergebnis-Post angezeigt' },
-            { type: 'feature', text: 'Absage-Begründung: bei "Nein"-Stimme wird privat nach dem Grund gefragt, nächste Nachricht wird gespeichert' },
-            { type: 'feature', text: 'Gründe für Absagen und Vielleicht werden im Poll-Detail mit Namen angezeigt' },
+            { type: 'feature', text: 'Absage-Begründung: bei "Nein"-Stimme wird privat nach dem Grund gefragt (5-Min-Fenster)' },
             { type: 'feature', text: 'DEV_MODE: Gruppen-Tab im Footer nur sichtbar wenn DEV_MODE=true in .env' },
-            { type: 'feature', text: '5-Minuten-Fenster: Begründung für Nein/Vielleicht muss innerhalb von 5 Min gesendet werden' },
-            { type: 'feature', text: 'Hilfe-Seite komplett überarbeitet: 10 Abschnitte mit Erste Schritte, Lebenszyklus, Konfiguration, Webhook-Setup, Fehlerbehebung' },
+            { type: 'feature', text: 'Hilfe-Seite komplett überarbeitet: 10 Abschnitte inkl. Konfiguration, Webhook-Setup, Fehlerbehebung' },
+            { type: 'delete', text: 'Separates "Ergebnis-Post"-Feld entfernt — Ergebnis wird automatisch bei Fristablauf gepostet' },
         ]
     },
     {

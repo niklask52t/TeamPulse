@@ -44,7 +44,8 @@ async function checkAndSendPolls() {
         SELECT p.id FROM polls p
         WHERE p.status = 'pending' AND p.sent_at IS NULL
         AND datetime(p.deadline) > datetime(?)
-    `).all(nowISO);
+        AND (p.send_after IS NULL OR datetime(p.send_after) <= datetime(?))
+    `).all(nowISO, nowISO);
 
     for (const poll of pending) {
         try {
@@ -87,27 +88,19 @@ async function checkAndClosePolls() {
     }
 }
 
-// Post group results ONLY for CLOSED polls (not active!)
+// Post group results immediately for closed polls
 async function checkGroupPosts() {
     const polls = db.prepare(`
-        SELECT p.id, p.event_date, e.event_time, e.group_post_minutes_before
-        FROM polls p JOIN events e ON p.event_id = e.id
+        SELECT p.id FROM polls p
         WHERE p.status = 'closed' AND p.group_posted = 0 AND p.archived = 0
     `).all();
 
-    const now = new Date();
     for (const poll of polls) {
-        const eventUtc = parseBerlinDateTime(poll.event_date, poll.event_time);
-        if (isNaN(eventUtc.getTime())) continue;
-        const postTime = new Date(eventUtc.getTime() - (poll.group_post_minutes_before || 60) * 60 * 1000);
-
-        if (now >= postTime) {
-            try {
-                await pollManager.postGroupResults(poll.id);
-                console.log(`Group results posted for poll ${poll.id}`);
-            } catch (err) {
-                console.error(`[ERROR] postGroupResults ${poll.id}:`, err.message);
-            }
+        try {
+            await pollManager.postGroupResults(poll.id);
+            console.log(`Group results posted for poll ${poll.id}`);
+        } catch (err) {
+            console.error(`[ERROR] postGroupResults ${poll.id}:`, err.message);
         }
     }
 }
@@ -155,7 +148,7 @@ async function generateRecurringPolls() {
 
         if (!existing) {
             try {
-                const pollId = pollManager.createPollForEvent(event.id, dateStr, event.poll_deadline_minutes);
+                const pollId = pollManager.createPollForEvent(event.id, dateStr, event.poll_deadline_minutes, event.poll_send_minutes_before);
                 console.log(`Created recurring poll ${pollId} for ${event.title} on ${dateStr}`);
             } catch (err) {
                 console.error(`[ERROR] createPollForEvent recurring ${event.id}:`, err.message);
