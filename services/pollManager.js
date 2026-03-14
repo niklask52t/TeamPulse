@@ -104,8 +104,8 @@ async function sendPoll(pollId) {
         }
     }
 
-    // Send button message to group (buttons_response webhook handles votes)
-    await waha.sendPollButtons(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time);
+    // Send native WhatsApp poll to group
+    await waha.sendPollMessage(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time);
 
     // Mark all responses as message_sent and activate poll
     db.prepare('UPDATE poll_responses SET message_sent = 1 WHERE poll_id = ?').run(pollId);
@@ -237,7 +237,7 @@ async function sendDeadlineReminder(pollId) {
     for (const r of pending) {
         try {
             const chatId = r.phone.replace('+', '') + '@c.us';
-            await waha.sendReminderWithButtons(chatId, poll.title, poll.event_date, poll.event_time, deadlineTime);
+            await waha.sendReminder(chatId, poll.title, poll.event_date, poll.event_time, deadlineTime);
         } catch (err) {
             console.error(`Failed to send reminder to ${r.name}:`, err.message);
         }
