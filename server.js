@@ -65,7 +65,12 @@ app.use('/api', requireAuth);
 app.get('/api/groups', async (req, res, next) => {
     try {
         const groups = await getGroups();
-        res.json(groups);
+        // Normalize: WAHA may return id as object with _serialized
+        const normalized = groups.map(g => ({
+            id: typeof g.id === 'object' ? (g.id._serialized || g.id.user + '@' + g.id.server || JSON.stringify(g.id)) : (g.id || ''),
+            name: g.name || g.subject || g.title || '',
+        }));
+        res.json(normalized);
     } catch (err) {
         next(err);
     }
