@@ -66,15 +66,9 @@ do_reset() {
     echo "Service stoppen..."
     systemctl stop "$SERVICE" || true
 
-    # Backup DB one last time before deletion
-    if [ -f "$APP_DIR/teampulse.db" ]; then
-        BACKUP="$APP_DIR/teampulse_FINAL_backup_$(date +%Y%m%d_%H%M%S).db"
-        cp "$APP_DIR/teampulse.db" "$BACKUP"
-        echo -e "${YELLOW}Letztes DB-Backup erstellt:${NC} $BACKUP"
-    fi
-
-    echo "Datenbank löschen..."
+    echo "Datenbank und alle Backups löschen..."
     rm -f "$APP_DIR/teampulse.db" "$APP_DIR/teampulse.db-wal" "$APP_DIR/teampulse.db-shm"
+    rm -f "$APP_DIR"/teampulse*.db "$APP_DIR"/teampulse*.db-wal "$APP_DIR"/teampulse*.db-shm
 
     echo "Code aktualisieren..."
     sudo -u "$APP_USER" bash -c "cd $APP_DIR && git fetch origin && git reset --hard origin/main"
