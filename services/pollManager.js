@@ -139,25 +139,14 @@ function processResponse(phone, text) {
 
     if (!contactRow) return null;
 
-    // Parse vote from text — only exact matches to avoid false positives from casual messages
+    // Parse vote — matches native WhatsApp poll options ("Ja ✅", "Nein ❌", "Vielleicht 🤷")
     const lower = text.toLowerCase().trim();
+    const stripped = lower.replace(/[✅❌🤷\uFE0F\u200D]/g, '').trim();
     let response = null;
 
-    // Native poll options (exact match with emoji stripped)
-    const stripped = lower.replace(/[✅❌🤷\uFE0F\u200D]/g, '').trim();
-    if (stripped === 'ja' || stripped === 'nein' || stripped === 'vielleicht') {
-        if (stripped === 'ja') response = 'yes';
-        else if (stripped === 'nein') response = 'no';
-        else response = 'maybe';
-    }
-    // Exact short replies only (no substring matching on common words)
-    else if (['ja', 'yes', 'klar', 'bin dabei', 'dabei', 'j', '1', '👍'].includes(lower)) {
-        response = 'yes';
-    } else if (['nein', 'no', 'kann nicht', 'ne', 'n', '2', '👎'].includes(lower)) {
-        response = 'no';
-    } else if (['vielleicht', 'maybe', 'vllt', 'mal sehen', 'evtl', '3', '🤷'].includes(lower)) {
-        response = 'maybe';
-    }
+    if (stripped === 'ja') response = 'yes';
+    else if (stripped === 'nein') response = 'no';
+    else if (stripped === 'vielleicht') response = 'maybe';
 
     if (!response) return null;
 

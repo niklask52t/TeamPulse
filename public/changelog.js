@@ -5,9 +5,9 @@ const CHANGELOG = [
         version: '1.8.3',
         date: '2026-03-14',
         changes: [
-            { type: 'fix', text: 'Webhook ignoriert jetzt Nachrichten aus fremden Gruppen — nur die konfigurierte GROUP_CHAT_ID wird verarbeitet' },
-            { type: 'fix', text: 'Abstimmungs-Erkennung stark verschärft: nur noch exakte Antworten ("ja", "nein", "vielleicht" etc.) werden als Stimme gewertet — keine Falsch-Positiven mehr durch Alltagsnachrichten' },
-            { type: 'fix', text: 'Private Nachrichten prüfen zuerst auf Begründung, dann erst auf Stimmabgabe' },
+            { type: 'fix', text: 'Abstimmung nur noch über native WhatsApp-Umfrage (poll.vote) — Text-Nachrichten in Gruppen werden komplett ignoriert' },
+            { type: 'fix', text: 'Private Nachrichten werden nur noch für Begründungen verarbeitet, nicht mehr als Stimmabgabe' },
+            { type: 'delete', text: 'Text-basierte Stimmenerkennung (Keyword-Matching auf "ja", "nein" etc.) entfernt — war Ursache für falsche Follow-up-Nachrichten' },
         ]
     },
     {

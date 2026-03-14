@@ -128,56 +128,18 @@ router.post('/webhook', (req, res) => {
     // Log every webhook so journalctl shows what WAHA is actually sending
     console.log(`[WEBHOOK] event=${event} type=${payload?.type} from=${fromPhone} sender=${senderPhone} body=${String(payload?.body || '').slice(0, 60)}`);
 
-    // Helper: extract vote text from any button-related payload shape
-    function extractButtonVote(p) {
-        return p.selectedButtonId || p.buttonId
-            || p.buttonResponse?.selectedButtonId || p.buttonResponse?.buttonId
-            || p.body || '';
-    }
-
-    // message OR buttons_response — WAHA sends button taps as event="message" with type="buttons_response"
-    if ((event === 'message' || event === 'buttons_response') && payload) {
+    // Private text messages — only for reason capture (no text-based voting)
+    if (event === 'message' && payload) {
         const isGroup = fromPhone.endsWith('@g.us');
-        const phone   = isGroup ? (senderPhone || fromPhone) : fromPhone;
-        const payloadType = (payload.type || '').toLowerCase();
-        const isButtonResponse = event === 'buttons_response' || payloadType === 'buttons_response';
 
-        // Only process group messages from our configured group — ignore other groups entirely
-        if (isGroup && fromPhone !== GROUP_CHAT_ID) {
-            res.json({ ok: true });
-            return;
-        }
-
-        if (isButtonResponse) {
-            const vote = extractButtonVote(payload);
-            if (phone && vote) {
-                const result = pollManager.processResponse(phone, vote);
-                if (result) {
-                    console.log(`[VOTE] Button from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
-                } else {
-                    console.log(`[VOTE] Button unmatched — phone=${phone} vote=${vote}`);
-                }
-            }
-        } else {
+        // Ignore ALL group text messages — votes come exclusively via poll.vote
+        if (!isGroup) {
+            const phone = fromPhone;
             const text = payload.body;
             if (phone && text) {
-                if (isGroup) {
-                    // Group text messages: only process as votes (no reason capture in group)
-                    const result = pollManager.processResponse(phone, text);
-                    if (result) {
-                        console.log(`[VOTE] Text from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
-                    }
-                } else {
-                    // Private messages: try reason first (more specific), then vote
-                    const reasonResult = pollManager.processReasonMessage(phone, text);
-                    if (reasonResult) {
-                        console.log(`[REASON] Saved from ${reasonResult.contactName} (poll ${reasonResult.pollId})`);
-                    } else {
-                        const result = pollManager.processResponse(phone, text);
-                        if (result) {
-                            console.log(`[VOTE] Text from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
-                        }
-                    }
+                const reasonResult = pollManager.processReasonMessage(phone, text);
+                if (reasonResult) {
+                    console.log(`[REASON] Saved from ${reasonResult.contactName} (poll ${reasonResult.pollId})`);
                 }
             }
         }
