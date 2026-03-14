@@ -34,6 +34,17 @@ router.put('/:id', (req, res) => {
     res.json({ id: Number(req.params.id), name, phone });
 });
 
+// PUT set LID mapping for a contact
+router.put('/:id/lid', (req, res) => {
+    const { lid } = req.body;
+    if (!lid) return res.status(400).json({ error: 'LID erforderlich' });
+    const lidDigits = String(lid).replace(/@lid/g, '').replace(/\D/g, '');
+    const result = db.prepare('UPDATE contacts SET lid = ? WHERE id = ?').run(lidDigits, req.params.id);
+    if (result.changes === 0) return res.status(404).json({ error: 'Kontakt nicht gefunden' });
+    const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(req.params.id);
+    res.json(contact);
+});
+
 // DELETE contact
 router.delete('/:id', (req, res) => {
     const result = db.prepare('DELETE FROM contacts WHERE id = ?').run(req.params.id);

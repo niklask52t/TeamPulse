@@ -17,29 +17,47 @@ async function syncGroupParticipants() {
             waha.getAllContacts(),
         ]);
 
-        // Build phone → name map from WAHA contacts
+        // Build phone → name map and phone → lid map from WAHA contacts
         const nameMap = {};
+        const lidMap = {}; // phone digits → lid digits
         for (const c of allContacts) {
             if (!c.id) continue;
             const phone = c.id.replace('@c.us', '');
             nameMap[phone] = c.name || c.pushname || c.shortName || '';
+            // WAHA may provide lid in various fields
+            const lid = c.lid || c.lidJid || c.linkedDeviceId || '';
+            if (lid) {
+                const lidDigits = String(lid).replace(/@lid/g, '').replace(/\D/g, '');
+                if (lidDigits) lidMap[phone] = lidDigits;
+            }
         }
 
         const upsert = db.prepare(`
             INSERT INTO contacts (name, phone) VALUES (?, ?)
             ON CONFLICT(phone) DO UPDATE SET name = excluded.name WHERE excluded.name != ''
         `);
+        const updateLid = db.prepare('UPDATE contacts SET lid = ? WHERE phone = ?');
 
         let synced = 0;
         for (const p of participants) {
+            // Log participant data for LID debugging
+            console.log(`[SYNC] Participant: ${JSON.stringify({ id: p.id, jid: p.jid, lid: p.lid, lidJid: p.lidJid }).slice(0, 200)}`);
             const rawId = p.id || p.jid || '';
             if (!rawId || rawId.endsWith('@g.us')) continue; // skip sub-groups / bots without phone
+            // Skip LID-only participants (no real phone number)
+            if (rawId.endsWith('@lid')) continue;
             const phoneDigits = rawId.replace('@c.us', '').replace(/\D/g, '');
             if (!phoneDigits) continue;
             const phone = '+' + phoneDigits;
             const name = nameMap[phoneDigits] || nameMap[rawId.replace('@c.us', '')] || phone;
             try {
                 upsert.run(name, phone);
+                // Store LID from participant data or contact list
+                const lid = p.lid || p.lidJid || '';
+                const lidDigits = lid ? String(lid).replace(/@lid/g, '').replace(/\D/g, '') : (lidMap[phoneDigits] || '');
+                if (lidDigits) {
+                    updateLid.run(lidDigits, phone);
+                }
                 synced++;
             } catch (err) {
                 console.error(`[WARN] syncGroupParticipants upsert failed for ${phone}:`, err.message);
@@ -117,6 +135,7 @@ async function sendPoll(pollId) {
 }
 
 function processResponse(phone, text) {
+    const isLid = phone.includes('@lid');
     const normalizedPhone = phone.replace(/@c\.us|@lid|@s\.whatsapp\.net/g, '').replace(/^\+/, '').replace(/\D/g, '');
 
     // Try to find existing contact by phone digits
@@ -124,8 +143,20 @@ function processResponse(phone, text) {
         SELECT * FROM contacts WHERE REPLACE(REPLACE(REPLACE(phone, '+', ''), ' ', ''), '-', '') = ?
     `).get(normalizedPhone);
 
+    // If not found by phone, try matching by LID (WhatsApp Linked ID)
+    if (!contactRow && isLid) {
+        contactRow = db.prepare('SELECT * FROM contacts WHERE lid = ?').get(normalizedPhone);
+        if (contactRow) {
+            console.log(`[INFO] Matched LID ${normalizedPhone} to contact ${contactRow.name} (${contactRow.phone})`);
+        }
+    }
+
     if (!contactRow) {
-        // Auto-create contact for group members who voted but aren't in DB yet
+        // Don't auto-create contacts for LIDs — they're not real phone numbers
+        if (isLid) {
+            console.log(`[WARN] Unknown LID ${normalizedPhone} — run sync to populate LID mappings`);
+            return null;
+        }
         try {
             db.prepare(
                 'INSERT OR IGNORE INTO contacts (name, phone) VALUES (?, ?)'
