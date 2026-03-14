@@ -5,6 +5,20 @@ const TZ = 'Europe/Berlin';
 
 const CHANGELOG = [
     {
+        version: '1.4.0',
+        date: '2026-03-14',
+        changes: [
+            { type: 'feature', text: 'Umfrage wird in die Gruppe geschickt (statt Einzelnachrichten)' },
+            { type: 'feature', text: 'Teilnehmer automatisch aus WAHA-Gruppe synchronisiert — kein manuelles Kontakte-Management' },
+            { type: 'feature', text: 'Manuelle Funktion "Umfrage schließen"' },
+            { type: 'feature', text: 'Ergebnis posten schließt Umfrage NICHT mehr — mehrfach möglich' },
+            { type: 'feature', text: 'Erinnerung zeigt jetzt genaue Uhrzeit der Abstimmungsfrist' },
+            { type: 'fix', text: 'Poll-Votes aus Gruppe wurden nicht aufgezeichnet (payload.sender statt payload.from)' },
+            { type: 'fix', text: 'Footer jetzt immer am Seitenende' },
+            { type: 'delete', text: 'Kontakte-Tab entfernt — Teilnehmer kommen aus der WAHA-Gruppe' },
+        ]
+    },
+    {
         version: '1.3.0',
         date: '2026-03-13',
         changes: [
@@ -146,7 +160,6 @@ function showApp(username) {
     document.getElementById('current-user').textContent = username;
     startClock();
     loadEvents();
-    loadContacts();
     loadPolls();
     renderChangelog();
     const savedTab = localStorage.getItem('activeTab') || 'events';
@@ -228,8 +241,8 @@ async function apiFetch(url, options) {
 // ===== NAVIGATION =====
 
 function activateTab(tabId) {
-    // Wiki/changelog are now in footer, not tabs — ignore if someone saved them
-    if (tabId === 'wiki' || tabId === 'changelog') tabId = 'events';
+    // Wiki/changelog/contacts are now elsewhere — redirect to events
+    if (['wiki', 'changelog', 'contacts'].includes(tabId)) tabId = 'events';
     // Close any open forms when switching tabs
     if (!checkDirtyAndClose()) return;
     hideAllForms();
@@ -245,7 +258,6 @@ function activateTab(tabId) {
 
 function hideAllForms() {
     hideEventForm();
-    hideContactForm();
 }
 
 document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -389,93 +401,6 @@ async function deleteEvent(id) {
     }
 }
 
-// ===== CONTACTS =====
-
-async function loadContacts() {
-    const res = await apiFetch(`${API}/api/contacts`);
-    const contacts = await res.json();
-    const list = document.getElementById('contacts-list');
-
-    list.innerHTML = contacts.map(c => `
-        <div class="card">
-            <div class="card-info">
-                <h3>${esc(c.name)}</h3>
-                <p>${esc(c.phone)}</p>
-            </div>
-            <div class="card-actions">
-                <button class="btn btn-secondary btn-sm" onclick="editContact(${c.id}, '${esc(c.name)}', '${esc(c.phone)}')">Bearbeiten</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteContact(${c.id})">Löschen</button>
-            </div>
-        </div>
-    `).join('') || '<p style="color:#8b949e">Noch keine Kontakte angelegt.</p>';
-}
-
-function showContactForm() {
-    if (!checkDirtyAndClose()) return;
-    clearDirty();
-    document.getElementById('contact-form').classList.remove('hidden');
-    document.getElementById('contact-form-title').textContent = 'Neuer Kontakt';
-    document.getElementById('contact-id').value = '';
-    document.getElementById('contact-name').value = '';
-    document.getElementById('contact-phone').value = '';
-    attachFormListeners('contact-form-el');
-}
-
-function hideContactForm() {
-    document.getElementById('contact-form').classList.add('hidden');
-    clearDirty();
-}
-
-function editContact(id, name, phone) {
-    if (!checkDirtyAndClose()) return;
-    clearDirty();
-    document.getElementById('contact-form').classList.remove('hidden');
-    document.getElementById('contact-form-title').textContent = 'Kontakt bearbeiten';
-    document.getElementById('contact-id').value = id;
-    document.getElementById('contact-name').value = name;
-    document.getElementById('contact-phone').value = phone;
-    attachFormListeners('contact-form-el');
-}
-
-async function saveContact(e) {
-    e.preventDefault();
-    const id = document.getElementById('contact-id').value;
-    const data = {
-        name: document.getElementById('contact-name').value,
-        phone: document.getElementById('contact-phone').value,
-    };
-
-    try {
-        let res;
-        if (id) {
-            res = await apiFetch(`${API}/api/contacts/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-        } else {
-            res = await apiFetch(`${API}/api/contacts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-        }
-        if (!res.ok) {
-            const err = await res.json();
-            alert('Fehler: ' + (err.error || 'Unbekannter Fehler'));
-            return;
-        }
-    } catch (err) {
-        if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
-        return;
-    }
-
-    hideContactForm();
-    loadContacts();
-}
-
-async function deleteContact(id) {
-    if (!confirm('Kontakt wirklich löschen?')) return;
-    try {
-        await apiFetch(`${API}/api/contacts/${id}`, { method: 'DELETE' });
-        loadContacts();
-    } catch (err) {
-        if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
-    }
-}
-
 // ===== POLLS =====
 
 async function loadPolls() {
@@ -573,11 +498,13 @@ function buildActionButtons(poll) {
 
     // Send poll: only once, only when pending
     if (poll.status === 'pending' && !poll.sent_at) {
-        btns.push(`<button class="btn btn-primary btn-sm" onclick="pollAction(${poll.id}, 'send', 'Umfrage an alle senden?')">Jetzt Umfrage senden</button>`);
+        btns.push(`<button class="btn btn-primary btn-sm" onclick="pollAction(${poll.id}, 'send', 'Umfrage in Gruppe senden?')">Jetzt Umfrage senden</button>`);
     }
     // Reminder: multiple times, only when active
     if (poll.status === 'active') {
         btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'send-reminder', 'Erinnerung an alle ohne Antwort senden?')">Jetzt Erinnerung senden</button>`);
+        // Manual close: only when active
+        btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'close', 'Umfrage jetzt manuell schließen?')">Umfrage schließen</button>`);
     }
     // Group post & event reminder: multiple times, active or closed
     if (poll.status === 'active' || poll.status === 'closed') {

@@ -61,7 +61,6 @@
             <h1>TeamPulse</h1>
             <nav>
                 <button class="nav-btn active" data-tab="events">Events</button>
-                <button class="nav-btn" data-tab="contacts">Kontakte</button>
                 <button class="nav-btn" data-tab="polls">Umfragen</button>
             </nav>
             <div class="header-right">
@@ -141,35 +140,6 @@
                 </div>
 
                 <div id="events-list" class="card-list"></div>
-            </section>
-
-            <!-- Contacts Tab -->
-            <section id="contacts" class="tab">
-                <div class="section-header">
-                    <h2>Kontakte</h2>
-                    <button class="btn btn-primary" onclick="showContactForm()">+ Neuer Kontakt</button>
-                </div>
-
-                <div id="contact-form" class="form-card hidden">
-                    <h3 id="contact-form-title">Neuer Kontakt</h3>
-                    <form id="contact-form-el" onsubmit="saveContact(event)">
-                        <input type="hidden" id="contact-id">
-                        <div class="form-group">
-                            <label>Name *</label>
-                            <input type="text" id="contact-name" required placeholder="Max Mustermann">
-                        </div>
-                        <div class="form-group">
-                            <label>Telefonnummer * <small>(Format: +49171234567)</small></label>
-                            <input type="tel" id="contact-phone" required placeholder="+49171234567" pattern="\+[0-9]{7,15}" title="Internationale Nummer mit + (z.B. +49171234567)">
-                        </div>
-                        <div class="form-actions">
-                            <button type="submit" class="btn btn-primary">Speichern</button>
-                            <button type="button" class="btn btn-secondary" onclick="hideContactForm()">Abbrechen</button>
-                        </div>
-                    </form>
-                </div>
-
-                <div id="contacts-list" class="card-list"></div>
             </section>
 
             <!-- Polls Tab -->

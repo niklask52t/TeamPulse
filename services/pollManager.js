@@ -1,8 +1,54 @@
 const db = require('../db/database');
 const waha = require('./waha');
-const { parseBerlinDateTime } = require('./timeUtils');
+const { parseBerlinDateTime, TZ } = require('./timeUtils');
 
 const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
+
+// Sync group participants from WAHA into the local contacts table
+async function syncGroupParticipants() {
+    if (!GROUP_CHAT_ID) {
+        console.warn('[WARN] GROUP_CHAT_ID not set, skipping participant sync');
+        return;
+    }
+    try {
+        const [participants, allContacts] = await Promise.all([
+            waha.getGroupParticipants(GROUP_CHAT_ID),
+            waha.getAllContacts(),
+        ]);
+
+        // Build phone → name map from WAHA contacts
+        const nameMap = {};
+        for (const c of allContacts) {
+            if (!c.id) continue;
+            const phone = c.id.replace('@c.us', '');
+            nameMap[phone] = c.name || c.pushname || c.shortName || '';
+        }
+
+        const upsert = db.prepare(`
+            INSERT INTO contacts (name, phone) VALUES (?, ?)
+            ON CONFLICT(phone) DO UPDATE SET name = excluded.name WHERE excluded.name != ''
+        `);
+
+        let synced = 0;
+        for (const p of participants) {
+            const rawId = p.id || p.jid || '';
+            if (!rawId || rawId.endsWith('@g.us')) continue; // skip sub-groups / bots without phone
+            const phoneDigits = rawId.replace('@c.us', '').replace(/\D/g, '');
+            if (!phoneDigits) continue;
+            const phone = '+' + phoneDigits;
+            const name = nameMap[phoneDigits] || nameMap[rawId.replace('@c.us', '')] || phone;
+            try {
+                upsert.run(name, phone);
+                synced++;
+            } catch (err) {
+                console.error(`[WARN] syncGroupParticipants upsert failed for ${phone}:`, err.message);
+            }
+        }
+        console.log(`[INFO] Synced ${synced} group participants to contacts`);
+    } catch (err) {
+        console.error('[ERROR] syncGroupParticipants:', err.message);
+    }
+}
 
 function createPollForEvent(eventId, eventDate, deadlineMinutes) {
     const event = db.prepare('SELECT * FROM events WHERE id = ?').get(eventId);
@@ -37,40 +83,67 @@ async function sendPoll(pollId) {
     `).get(pollId);
     if (!poll) throw new Error(`Poll ${pollId} not found`);
 
-    const responses = db.prepare(`
-        SELECT pr.*, c.phone, c.name
-        FROM poll_responses pr JOIN contacts c ON pr.contact_id = c.id
-        WHERE pr.poll_id = ? AND pr.message_sent = 0
-    `).all(pollId);
+    if (!GROUP_CHAT_ID) throw new Error('GROUP_CHAT_ID not configured');
 
-    for (const r of responses) {
-        try {
-            const chatId = r.phone.replace('+', '') + '@c.us';
-            await waha.sendPollMessage(chatId, poll.title, poll.event_date, poll.event_time);
-            db.prepare('UPDATE poll_responses SET message_sent = 1 WHERE id = ?').run(r.id);
-        } catch (err) {
-            console.error(`Failed to send poll to ${r.name} (${r.phone}):`, err.message);
+    // Sync latest group members before sending
+    await syncGroupParticipants();
+
+    // Add any new contacts (synced after poll creation) as pending responses
+    const existingContactIds = db.prepare(`
+        SELECT contact_id FROM poll_responses WHERE poll_id = ?
+    `).all(pollId).map(r => r.contact_id);
+
+    const allContacts = db.prepare('SELECT * FROM contacts').all();
+    const insertResponse = db.prepare(`
+        INSERT OR IGNORE INTO poll_responses (poll_id, contact_id) VALUES (?, ?)
+    `);
+    for (const c of allContacts) {
+        if (!existingContactIds.includes(c.id)) {
+            insertResponse.run(pollId, c.id);
         }
     }
 
+    // Send ONE poll to the group chat
+    await waha.sendPollMessage(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time);
+
+    // Mark all responses as message_sent and activate poll
+    db.prepare('UPDATE poll_responses SET message_sent = 1 WHERE poll_id = ?').run(pollId);
     db.prepare("UPDATE polls SET status = 'active', sent_at = datetime('now') WHERE id = ?").run(pollId);
+    console.log(`[INFO] Poll ${pollId} sent to group ${GROUP_CHAT_ID}`);
 }
 
 function processResponse(phone, text) {
-    const normalizedPhone = phone.replace('@c.us', '').replace(/^\+/, '');
+    const normalizedPhone = phone.replace('@c.us', '').replace(/^\+/, '').replace(/\D/g, '');
     const contact = db.prepare(`
-        SELECT * FROM contacts WHERE REPLACE(REPLACE(phone, '+', ''), ' ', '') = ?
-    `).get(normalizedPhone.replace(/\s/g, ''));
+        SELECT * FROM contacts WHERE REPLACE(REPLACE(REPLACE(phone, '+', ''), ' ', ''), '-', '') = ?
+    `).get(normalizedPhone);
 
-    if (!contact) return null;
+    if (!contact) {
+        // Auto-create contact for group members who voted but aren't in DB yet
+        try {
+            const insertResult = db.prepare(
+                'INSERT OR IGNORE INTO contacts (name, phone) VALUES (?, ?)'
+            ).run(phone.replace('@c.us', ''), '+' + normalizedPhone);
+            if (insertResult.changes > 0) {
+                console.log(`[INFO] Auto-created contact for ${normalizedPhone}`);
+            }
+        } catch { /* ignore */ }
+    }
 
+    const contactRow = db.prepare(`
+        SELECT * FROM contacts WHERE REPLACE(REPLACE(REPLACE(phone, '+', ''), ' ', ''), '-', '') = ?
+    `).get(normalizedPhone);
+
+    if (!contactRow) return null;
+
+    // Find the most recent ACTIVE poll (voted via group poll → match by deadline proximity)
     const activePoll = db.prepare(`
         SELECT pr.id as response_id, p.id as poll_id
         FROM poll_responses pr
         JOIN polls p ON pr.poll_id = p.id
-        WHERE pr.contact_id = ? AND p.status = 'active' AND pr.response IS NULL
+        WHERE pr.contact_id = ? AND p.status = 'active'
         ORDER BY p.deadline ASC LIMIT 1
-    `).get(contact.id);
+    `).get(contactRow.id);
 
     if (!activePoll) return null;
 
@@ -84,7 +157,7 @@ function processResponse(phone, text) {
         else if (stripped === 'nein') response = 'no';
         else response = 'maybe';
     }
-    // Text keywords (use exact word match for short keywords)
+    // Text keywords (exact word match for short ones)
     else if (['ja', 'yes', 'klar', 'bin dabei', 'dabei'].some(k => lower.includes(k)) || lower === 'j' || lower === '1' || lower === '👍') {
         response = 'yes';
     } else if (['nein', 'no', 'kann nicht'].some(k => lower.includes(k)) || lower === 'n' || lower === 'ne' || lower === '2' || lower === '👎') {
@@ -95,11 +168,17 @@ function processResponse(phone, text) {
 
     if (!response) return null;
 
+    // Upsert: insert response row if not exists, then update
     db.prepare(`
-        UPDATE poll_responses SET response = ?, responded_at = datetime('now') WHERE id = ?
-    `).run(response, activePoll.response_id);
+        INSERT OR IGNORE INTO poll_responses (poll_id, contact_id) VALUES (?, ?)
+    `).run(activePoll.poll_id, contactRow.id);
 
-    return { contactName: contact.name, response, pollId: activePoll.poll_id };
+    db.prepare(`
+        UPDATE poll_responses SET response = ?, responded_at = datetime('now')
+        WHERE poll_id = ? AND contact_id = ?
+    `).run(response, activePoll.poll_id, contactRow.id);
+
+    return { contactName: contactRow.name, response, pollId: activePoll.poll_id };
 }
 
 async function sendDeadlineReminder(pollId) {
@@ -110,6 +189,11 @@ async function sendDeadlineReminder(pollId) {
     `).get(pollId);
     if (!poll) return;
 
+    // Format actual deadline time in Berlin timezone
+    const deadlineTime = new Date(poll.deadline).toLocaleString('de-DE', {
+        timeZone: TZ, hour: '2-digit', minute: '2-digit',
+    });
+
     const pending = db.prepare(`
         SELECT pr.*, c.phone, c.name
         FROM poll_responses pr JOIN contacts c ON pr.contact_id = c.id
@@ -119,7 +203,7 @@ async function sendDeadlineReminder(pollId) {
     for (const r of pending) {
         try {
             const chatId = r.phone.replace('+', '') + '@c.us';
-            await waha.sendReminder(chatId, poll.title, poll.event_date, poll.event_time, 60);
+            await waha.sendReminder(chatId, poll.title, poll.event_date, poll.event_time, deadlineTime);
         } catch (err) {
             console.error(`Failed to send reminder to ${r.name}:`, err.message);
         }
@@ -128,6 +212,7 @@ async function sendDeadlineReminder(pollId) {
     db.prepare('UPDATE polls SET reminder_sent = 1 WHERE id = ?').run(pollId);
 }
 
+// Post results to group WITHOUT closing the poll or changing status
 async function postGroupResults(pollId) {
     const poll = db.prepare(`
         SELECT p.*, e.title, e.event_time
@@ -135,6 +220,8 @@ async function postGroupResults(pollId) {
         WHERE p.id = ?
     `).get(pollId);
     if (!poll) return;
+
+    if (!GROUP_CHAT_ID) throw new Error('GROUP_CHAT_ID not configured');
 
     const responses = db.prepare(`
         SELECT pr.response, c.name
@@ -147,7 +234,13 @@ async function postGroupResults(pollId) {
     const maybe = responses.filter(r => r.response === 'maybe').map(r => r.name);
 
     await waha.postResultsToGroup(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, yes, no, maybe);
-    db.prepare("UPDATE polls SET group_posted = 1, status = 'closed' WHERE id = ?").run(pollId);
+    // Only mark as posted (don't change status — use closePoll() for that)
+    db.prepare('UPDATE polls SET group_posted = 1 WHERE id = ?').run(pollId);
+}
+
+// Explicitly close a poll (deadline passed or manual action)
+function closePoll(pollId) {
+    db.prepare("UPDATE polls SET status = 'closed' WHERE id = ? AND status = 'active'").run(pollId);
 }
 
 async function sendEventReminders(pollId) {
@@ -177,10 +270,12 @@ async function sendEventReminders(pollId) {
 }
 
 module.exports = {
+    syncGroupParticipants,
     createPollForEvent,
     sendPoll,
     processResponse,
     sendDeadlineReminder,
     postGroupResults,
+    closePoll,
     sendEventReminders,
 };

@@ -7,16 +7,16 @@ const headers = {
     ...(WAHA_API_KEY && { 'X-Api-Key': WAHA_API_KEY }),
 };
 
+const getHeaders = {
+    ...(WAHA_API_KEY && { 'X-Api-Key': WAHA_API_KEY }),
+};
+
 async function sendMessage(chatId, text) {
     const url = `${WAHA_API_URL}/api/sendText`;
     const res = await fetch(url, {
         method: 'POST',
         headers,
-        body: JSON.stringify({
-            session: WAHA_SESSION,
-            chatId,
-            text,
-        }),
+        body: JSON.stringify({ session: WAHA_SESSION, chatId, text }),
     });
     if (!res.ok) {
         const body = await res.text();
@@ -47,12 +47,13 @@ async function sendPollMessage(chatId, eventTitle, eventDate, eventTime) {
     return res.json();
 }
 
-async function sendReminder(chatId, eventTitle, eventDate, eventTime, minutesLeft) {
+// deadlineTime: formatted time string, e.g. "18:00 Uhr"
+async function sendReminder(chatId, eventTitle, eventDate, eventTime, deadlineTime) {
     const text =
         `⏰ *Erinnerung: ${eventTitle}*\n` +
-        `📅 ${eventDate} um ${eventTime}\n\n` +
-        `Die Abstimmung endet in ${minutesLeft} Minuten!\n` +
-        `Falls noch nicht geantwortet, bitte jetzt antworten (Ja/Nein/Vielleicht).`;
+        `📅 ${eventDate} um ${eventTime} Uhr\n\n` +
+        `Die Abstimmung endet um ${deadlineTime} Uhr!\n` +
+        `Falls noch nicht abgestimmt, jetzt in der Umfrage antworten.`;
     return sendMessage(chatId, text);
 }
 
@@ -65,7 +66,7 @@ async function sendEventReminder(chatId, eventTitle, eventTime) {
 }
 
 async function postResultsToGroup(groupId, eventTitle, eventDate, eventTime, yesNames, noNames, maybeNames) {
-    const lines = [`📊 *Ergebnis: ${eventTitle}*`, `📅 ${eventDate} um ${eventTime}`, ''];
+    const lines = [`📊 *Ergebnis: ${eventTitle}*`, `📅 ${eventDate} um ${eventTime} Uhr`, ''];
 
     lines.push(`✅ *Zusagen (${yesNames.length}):*`);
     lines.push(yesNames.length ? yesNames.join(', ') : '—');
@@ -81,10 +82,34 @@ async function postResultsToGroup(groupId, eventTitle, eventDate, eventTime, yes
         lines.push('');
     }
 
-    const noResponse = [];
     lines.push(`Total: ${yesNames.length + noNames.length + maybeNames.length} Antworten`);
 
     return sendMessage(groupId, lines.join('\n'));
+}
+
+// Get all participants of a group
+async function getGroupParticipants(groupId) {
+    const url = `${WAHA_API_URL}/api/${WAHA_SESSION}/groups/${encodeURIComponent(groupId)}/participants/v2`;
+    const res = await fetch(url, { headers: getHeaders });
+    if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`WAHA getGroupParticipants failed (${res.status}): ${body}`);
+    }
+    const data = await res.json();
+    // Handle both array and { participants: [...] } response shapes
+    return Array.isArray(data) ? data : (data.participants || []);
+}
+
+// Get all contacts known to WAHA (for name resolution)
+async function getAllContacts() {
+    const url = `${WAHA_API_URL}/api/contacts/all?session=${WAHA_SESSION}`;
+    const res = await fetch(url, { headers: getHeaders });
+    if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`WAHA getAllContacts failed (${res.status}): ${body}`);
+    }
+    const data = await res.json();
+    return Array.isArray(data) ? data : (data.contacts || []);
 }
 
 module.exports = {
@@ -93,4 +118,6 @@ module.exports = {
     sendReminder,
     sendEventReminder,
     postResultsToGroup,
+    getGroupParticipants,
+    getAllContacts,
 };
