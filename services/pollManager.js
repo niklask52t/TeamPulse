@@ -83,6 +83,8 @@ async function sendPoll(pollId) {
         WHERE p.id = ?
     `).get(pollId);
     if (!poll) throw new Error(`Poll ${pollId} not found`);
+    if (poll.status === 'active') throw new Error('Umfrage wurde bereits gesendet');
+    if (poll.status === 'closed') throw new Error('Umfrage ist bereits geschlossen');
 
     if (!GROUP_CHAT_ID) throw new Error('GROUP_CHAT_ID not configured');
 

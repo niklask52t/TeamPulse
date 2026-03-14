@@ -169,16 +169,36 @@ router.post('/webhook', (req, res) => {
         }
     }
 
-    // Native WhatsApp poll vote (kept for compatibility)
+    // Native WhatsApp poll vote
     if (event === 'poll.vote' && payload) {
-        const phone = senderPhone || fromPhone;
-        const selectedOptions = payload.poll?.selectedOptions || payload.poll?.options || [];
+        // Log full payload for debugging (WAHA varies by version)
+        console.log(`[WEBHOOK] poll.vote full payload: ${JSON.stringify(payload).slice(0, 500)}`);
+
+        // Try all known WAHA payload shapes for voter phone
+        const phone = senderPhone || fromPhone
+            || resolvePhone(payload.vote?.voter)
+            || resolvePhone(payload.voter)
+            || resolvePhone(payload.vote?.from)
+            || '';
+
+        // Try all known shapes for selected options
+        const selectedOptions = payload.vote?.selectedOptions
+            || payload.selectedOptions
+            || payload.poll?.selectedOptions
+            || payload.poll?.options
+            || payload.vote?.options
+            || [];
+
         if (phone && selectedOptions.length > 0) {
-            const optionName = selectedOptions[0]?.name || selectedOptions[0] || '';
+            const optionName = selectedOptions[0]?.name || selectedOptions[0]?.value || selectedOptions[0] || '';
             const result = pollManager.processResponse(phone, optionName);
             if (result) {
                 console.log(`[VOTE] poll.vote from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
+            } else {
+                console.log(`[VOTE] poll.vote unmatched — phone=${phone} option=${optionName}`);
             }
+        } else {
+            console.log(`[VOTE] poll.vote missing data — phone=${phone} options=${JSON.stringify(selectedOptions)}`);
         }
     }
 
