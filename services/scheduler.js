@@ -175,7 +175,7 @@ async function archiveOldPolls() {
     for (const poll of polls) {
         const eventUtc = parseBerlinDateTime(poll.event_date, poll.event_time);
         if (isNaN(eventUtc.getTime())) continue;
-        const archiveTime = new Date(eventUtc.getTime() + 60 * 60 * 1000); // 1h after event
+        const archiveTime = new Date(eventUtc.getTime() + 24 * 60 * 60 * 1000); // 24h after event
         if (now >= archiveTime) {
             db.prepare('UPDATE polls SET archived = 1 WHERE id = ?').run(poll.id);
             console.log(`Poll ${poll.id} archived`);

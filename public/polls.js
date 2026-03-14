@@ -143,20 +143,10 @@ function buildActionButtons(poll) {
         btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'post-group', 'Ergebnis jetzt in Gruppe posten?')">Ergebnis posten</button>`);
         btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'send-event-reminder', 'Start-Erinnerung an alle Zusager senden?')">🏃 Start-Erinnerung (Zusager)</button>`);
     }
-    btns.push(`<button class="btn btn-danger btn-sm" onclick="deletePoll(${poll.id})">Löschen</button>`);
 
     return btns.join('');
 }
 
-async function deletePoll(id) {
-    if (!confirm('Umfrage wirklich löschen?')) return;
-    try {
-        await apiFetch(`${API}/api/polls/${id}`, { method: 'DELETE' });
-        loadPolls();
-    } catch (err) {
-        if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
-    }
-}
 
 function toggleArchive() {
     const archive = document.getElementById('polls-archive');
