@@ -2,6 +2,14 @@
 
 const CHANGELOG = [
     {
+        version: '1.8.1',
+        date: '2026-03-14',
+        changes: [
+            { type: 'fix', text: 'Wiederkehrende Events erstellen jetzt sofort eine Umfrage für den nächsten Termin (statt auf Scheduler zu warten)' },
+            { type: 'feature', text: 'Ausstehende Umfragen werden in eigenem ausklappbaren Bereich angezeigt (wie Archiv)' },
+        ]
+    },
+    {
         version: '1.8.0',
         date: '2026-03-14',
         changes: [

@@ -58,10 +58,15 @@ TeamPulse/
 - Server binds to `0.0.0.0` (all interfaces) so external WAHA instances can reach the webhook
 
 ## Poll Lifecycle
-1. **pending** → created, not yet sent
+1. **pending** → created (immediately when event is created, for both recurring and one-off), not yet sent
 2. **active** → sent to group via WhatsApp, collecting responses
 3. **closed** → deadline passed (auto by scheduler) or manually closed
-4. **archived** → 1h after event ends, moved to archive
+4. **archived** → 24h after event ends, moved to archive
+
+## Poll Creation
+- **One-off events**: Poll created immediately when event is saved
+- **Recurring events**: First poll created immediately for the next occurrence; subsequent polls created by `generateRecurringPolls()` in the scheduler
+- Pending polls are shown in a collapsible "Ausstehend" section in the Umfragen tab
 
 ## Group Participant Sync
 - Before sending a poll, `syncGroupParticipants()` fetches group members from WAHA

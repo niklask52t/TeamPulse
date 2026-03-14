@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
 const pollManager = require('../services/pollManager');
-const { berlinToday } = require('../services/timeUtils');
+const { berlinToday, TZ } = require('../services/timeUtils');
 
 // GET all events
 router.get('/', (req, res) => {
@@ -65,6 +65,23 @@ router.post('/', (req, res) => {
             event.pollId = pollId;
         } catch (err) {
             console.error('[ERROR] createPollForEvent:', err);
+        }
+    }
+
+    // For recurring events, create the first poll for the next occurrence immediately
+    if (recurring && recurrence_day != null) {
+        try {
+            const todayStr = berlinToday();
+            const todayDow = new Date(new Date().toLocaleString('sv-SE', { timeZone: TZ })).getDay();
+            const daysAhead = (recurrence_day - todayDow + 7) % 7 || 7;
+            const d = new Date(todayStr + 'T12:00:00Z');
+            d.setUTCDate(d.getUTCDate() + daysAhead);
+            const nextDate = d.toISOString().split('T')[0];
+            const pollId = pollManager.createPollForEvent(event.id, nextDate, deadlineMin, sendMin);
+            event.pollId = pollId;
+            console.log(`[INFO] Created first recurring poll ${pollId} for ${event.title} on ${nextDate}`);
+        } catch (err) {
+            console.error('[ERROR] createPollForEvent (recurring first):', err);
         }
     }
 

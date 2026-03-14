@@ -20,7 +20,8 @@ async function loadPolls() {
 
     const statusLabels = { pending: 'Ausstehend', active: 'Aktiv', closed: 'Geschlossen' };
 
-    const active = polls.filter(p => !p.archived);
+    const activePending = polls.filter(p => !p.archived && p.status === 'pending');
+    const activeNonPending = polls.filter(p => !p.archived && p.status !== 'pending');
     const archived = polls.filter(p => p.archived);
 
     const renderPollCard = (p) => `
@@ -37,7 +38,18 @@ async function loadPolls() {
         <div id="poll-detail-${p.id}" class="poll-detail hidden"></div>
     `;
 
-    let html = active.map(renderPollCard).join('') || '<p style="color:var(--text-secondary)">Noch keine Umfragen vorhanden.</p>';
+    let html = activeNonPending.map(renderPollCard).join('') || '<p style="color:var(--text-secondary)">Noch keine Umfragen vorhanden.</p>';
+
+    if (activePending.length > 0) {
+        html += `
+        <div class="archive-header" onclick="togglePending()">
+            <span>Ausstehend (${activePending.length})</span>
+            <span id="pending-chevron">&#x25BC;</span>
+        </div>
+        <div id="polls-pending" class="hidden">
+            ${activePending.map(renderPollCard).join('')}
+        </div>`;
+    }
 
     if (archived.length > 0) {
         html += `
@@ -149,6 +161,14 @@ function buildActionButtons(poll) {
     return btns.join('');
 }
 
+
+function togglePending() {
+    const el = document.getElementById('polls-pending');
+    const chevron = document.getElementById('pending-chevron');
+    if (!el) return;
+    const hidden = el.classList.toggle('hidden');
+    chevron.innerHTML = hidden ? '&#x25BC;' : '&#x25B2;';
+}
 
 function toggleArchive() {
     const archive = document.getElementById('polls-archive');
