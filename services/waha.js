@@ -125,14 +125,14 @@ async function postResultsToGroup(groupId, eventTitle, eventDate, eventTime, yes
 async function sendMaybeFollowUp(chatId, eventTitle, eventDate) {
     const text =
         `🤷 Du hast mit *Vielleicht* abgestimmt für *${eventTitle}* am ${eventDate}.\n\n` +
-        `Optional: Schreib einfach kurz warum (z.B. "Komme evtl. zu spät", "Weiß noch nicht") — oder ignoriere diese Nachricht.`;
+        `Optional: Schreib innerhalb von *5 Minuten* kurz warum (z.B. "Komme evtl. zu spät", "Weiß noch nicht") — oder ignoriere diese Nachricht.`;
     return sendMessage(chatId, text);
 }
 
 async function sendNoFollowUp(chatId, eventTitle, eventDate) {
     const text =
         `❌ Du hast für *${eventTitle}* am ${eventDate} abgesagt.\n\n` +
-        `Optional: Schreib kurz den Grund (z.B. "Krank", "Keine Zeit") — oder ignoriere diese Nachricht.`;
+        `Optional: Schreib innerhalb von *5 Minuten* kurz den Grund (z.B. "Krank", "Keine Zeit") — oder ignoriere diese Nachricht.`;
     return sendMessage(chatId, text);
 }
 

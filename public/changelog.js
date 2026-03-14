@@ -8,6 +8,9 @@ const CHANGELOG = [
             { type: 'feature', text: 'Treffenszeit: optionale Uhrzeit pro Event, wird in Umfrage, Erinnerungen und Ergebnis-Post angezeigt' },
             { type: 'feature', text: 'Absage-Begründung: bei "Nein"-Stimme wird privat nach dem Grund gefragt, nächste Nachricht wird gespeichert' },
             { type: 'feature', text: 'Gründe für Absagen und Vielleicht werden im Poll-Detail mit Namen angezeigt' },
+            { type: 'feature', text: 'DEV_MODE: Gruppen-Tab im Footer nur sichtbar wenn DEV_MODE=true in .env' },
+            { type: 'feature', text: '5-Minuten-Fenster: Begründung für Nein/Vielleicht muss innerhalb von 5 Min gesendet werden' },
+            { type: 'feature', text: 'Hilfe-Seite komplett überarbeitet: 10 Abschnitte mit Erste Schritte, Lebenszyklus, Konfiguration, Webhook-Setup, Fehlerbehebung' },
         ]
     },
     {

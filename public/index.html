@@ -172,51 +172,88 @@
             <div id="footer-wiki" class="footer-panel hidden">
                 <div class="footer-panel-inner wiki-content">
                     <div class="wiki-section">
-                        <h3>Übersicht</h3>
-                        <p>TeamPulse ist ein WhatsApp-basiertes Anwesenheits-Management. Events erstellen, Umfragen automatisch versenden, Antworten übersichtlich sammeln.</p>
+                        <h3>Erste Schritte</h3>
+                        <p>Standard-Login: <strong>admin / admin</strong> — beim ersten Login muss das Passwort geändert werden.</p>
+                        <p>TeamPulse verbindet sich mit einer WAHA-Instanz (WhatsApp HTTP API) und versendet native WhatsApp-Umfragen in eine konfigurierte Gruppe.</p>
+                        <p>Teilnehmer werden automatisch aus der WhatsApp-Gruppe synchronisiert — kein manuelles Anlegen von Kontakten nötig.</p>
                     </div>
                     <div class="wiki-section">
-                        <h3>Events</h3>
-                        <p><strong>Einmalig:</strong> Festes Datum (nur Zukunft). Umfrage wird sofort angelegt.</p>
-                        <p><strong>Wiederkehrend:</strong> Jede Woche am gewählten Wochentag — Scheduler erstellt automatisch neue Umfragen.</p>
-                        <p><strong>Treffenszeit:</strong> Optionale Uhrzeit, wann sich das Team trifft (separat von der Event-Uhrzeit).</p>
-                        <p><strong>Abstimmungsfrist:</strong> Minuten vor Event-Beginn schließt die Abstimmung. Standard: 24h.</p>
-                        <p><strong>Ergebnis-Post:</strong> Minuten vor Event-Beginn wird das Ergebnis in die Gruppe gepostet.</p>
+                        <h3>Events anlegen</h3>
+                        <p><strong>Einmalig:</strong> Festes Datum (nur Zukunft). Umfrage wird sofort als "Ausstehend" angelegt.</p>
+                        <p><strong>Wiederkehrend:</strong> Wähle einen Wochentag — der Scheduler erstellt jede Woche automatisch eine neue Umfrage.</p>
+                        <p><strong>Uhrzeit:</strong> Wann das Event beginnt (z.B. 19:00).</p>
+                        <p><strong>Treffenszeit:</strong> Optional — wann sich das Team trifft (z.B. 18:30). Wird in allen Nachrichten zusätzlich angezeigt.</p>
+                        <p><strong>Abstimmungsfrist:</strong> Stunden vor Event-Beginn, wann die Abstimmung schließt. Standard: 24h.</p>
+                        <p><strong>Ergebnis-Post:</strong> Stunden vor Event-Beginn, wann das Ergebnis automatisch in die Gruppe gepostet wird.</p>
                     </div>
                     <div class="wiki-section">
-                        <h3>Teilnehmer &amp; Antworten</h3>
-                        <p>Kein manuelles Anlegen. Beim Senden werden alle Gruppenmitglieder aus WAHA synchronisiert.</p>
-                        <p>Antworten live im Dashboard, alle 15 Sekunden aktualisiert (oder manuell via Klick).</p>
-                        <p><strong>Nein/Vielleicht-Follow-up:</strong> Automatische Privatnachricht zur optionalen Begründung.</p>
+                        <h3>Umfragen-Lebenszyklus</h3>
+                        <p>Jede Umfrage durchläuft vier Phasen:</p>
+                        <ol>
+                            <li><strong>Ausstehend</strong> — angelegt, aber noch nicht gesendet</li>
+                            <li><strong>Aktiv</strong> — WhatsApp-Poll in der Gruppe, Stimmen werden gesammelt</li>
+                            <li><strong>Geschlossen</strong> — Frist abgelaufen oder manuell geschlossen</li>
+                            <li><strong>Archiviert</strong> — 24h nach Event-Ende, wandert ins Archiv</li>
+                        </ol>
+                        <p>Automatisches Schließen passiert, sobald die Abstimmungsfrist abläuft. Ergebnisse werden als Text + Bild-Chart in die Gruppe gepostet.</p>
+                    </div>
+                    <div class="wiki-section">
+                        <h3>Abstimmen &amp; Antworten</h3>
+                        <p>Teilnehmer stimmen direkt in WhatsApp über die native Umfrage ab: <strong>Ja / Nein / Vielleicht</strong>.</p>
+                        <p><strong>Bei "Nein" oder "Vielleicht":</strong> Der Voter bekommt eine private Nachricht und kann innerhalb von <strong>5 Minuten</strong> optional einen Grund angeben. Die nächste Nachricht im Chat wird als Begründung gespeichert.</p>
+                        <p><strong>Ergebnisse:</strong> Im Dashboard werden alle Antworten mit Namen angezeigt — gruppiert nach Zusagen, Absagen (mit Grund), Vielleicht (mit Grund) und Ausstehend.</p>
+                        <p>Antworten werden alle 15 Sekunden automatisch aktualisiert, wenn ein Poll-Detail geöffnet ist.</p>
                     </div>
                     <div class="wiki-section">
                         <h3>Manuelle Aktionen</h3>
                         <ul>
-                            <li><strong>Umfrage senden</strong> — sendet native WhatsApp-Poll in die Gruppe (Ja/Nein/Vielleicht)</li>
-                            <li><strong>⏰ Abstimmungs-Erinnerung</strong> — privat an alle ohne Antwort, mit Frist-Hinweis</li>
-                            <li><strong>Frist verlängern</strong> — Deadline um X Minuten verschieben</li>
-                            <li><strong>Umfrage schließen</strong> — manuell schließen</li>
-                            <li><strong>Ergebnis posten</strong> — sendet Text + Chart-Bild in die Gruppe</li>
-                            <li><strong>🏃 Start-Erinnerung (Zusager)</strong> — privat an alle Ja-Voter, Event beginnt in 1h</li>
+                            <li><strong>Umfrage senden</strong> — sendet native WhatsApp-Poll in die Gruppe. Nur bei Status "Ausstehend", einmalig.</li>
+                            <li><strong>⏰ Abstimmungs-Erinnerung</strong> — Privatnachricht an alle ohne Antwort mit Frist-Uhrzeit. Mehrfach möglich.</li>
+                            <li><strong>Frist verlängern</strong> — Deadline um beliebige Minuten verschieben. Löst ggf. erneute Auto-Erinnerung aus.</li>
+                            <li><strong>Umfrage schließen</strong> — manuell schließen. Nur bei "Aktiv".</li>
+                            <li><strong>Ergebnis posten</strong> — Text + Chart-Bild in die Gruppe. Schließt die Umfrage NICHT. Mehrfach möglich.</li>
+                            <li><strong>🏃 Start-Erinnerung</strong> — Privatnachricht an alle Zusager ("Event beginnt in 1h"). Mehrfach möglich.</li>
                         </ul>
                     </div>
                     <div class="wiki-section">
-                        <h3>Gruppen-Tab (Footer)</h3>
-                        <p>Zeigt alle WhatsApp-Gruppen mit Name und Gruppen-ID.</p>
-                        <p>Zum Kopieren der <strong>GROUP_CHAT_ID</strong> für die <code>.env</code>-Konfiguration.</p>
-                        <p>Daten werden beim ersten Öffnen von WAHA abgerufen.</p>
+                        <h3>Automatischer Ablauf</h3>
+                        <p>Der Scheduler prüft jede Minute:</p>
+                        <ol>
+                            <li><strong>Ausstehende Umfragen senden</strong> — sobald fällig</li>
+                            <li><strong>Erinnerung</strong> — 60 Min vor Fristende an alle Nicht-Voter (privat)</li>
+                            <li><strong>Frist abgelaufen → schließen</strong> — automatisch</li>
+                            <li><strong>Ergebnis posten</strong> — zur konfigurierten Zeit (Stunden vor Event)</li>
+                            <li><strong>Event-Erinnerung</strong> — 1h vor Event an alle Zusager (privat)</li>
+                            <li><strong>Wiederkehrend</strong> — nächste Woche neue Umfrage erstellen</li>
+                            <li><strong>Archivieren</strong> — 24h nach Event-Ende</li>
+                        </ol>
                     </div>
                     <div class="wiki-section">
-                        <h3>Automatischer Ablauf (jede Minute)</h3>
-                        <ol>
-                            <li>Ausstehende Umfragen versenden</li>
-                            <li>60 Min vor Frist: Erinnerung (mit Tap-Buttons)</li>
-                            <li>Frist abgelaufen: Umfrage automatisch schließen</li>
-                            <li>Geschlossen + Post-Zeit: Ergebnis + Chart in Gruppe</li>
-                            <li>1h vor Event: Erinnerung an alle Zusager</li>
-                            <li>24h nach Event: Umfrage ins Archiv</li>
-                            <li>Wiederkehrend: Nächste Woche neue Umfrage erstellen</li>
-                        </ol>
+                        <h3>Statistiken</h3>
+                        <p>Der Statistiken-Tab zeigt pro Mitglied: Zusagen, Absagen, Vielleicht, keine Antwort und die Antwortquote in Prozent.</p>
+                        <p>Nur <strong>geschlossene</strong> Umfragen fließen ein — offene oder ausstehende Umfragen zählen nicht gegen die Quote.</p>
+                    </div>
+                    <div class="wiki-section">
+                        <h3>Konfiguration (.env)</h3>
+                        <p><code>WAHA_API_URL</code> — URL der WAHA-Instanz (z.B. http://172.16.80.27:3000)</p>
+                        <p><code>WAHA_API_KEY</code> — API-Key für WAHA-Authentifizierung</p>
+                        <p><code>GROUP_CHAT_ID</code> — WhatsApp-Gruppen-ID (Format: 120363xxx@g.us)</p>
+                        <p><code>SESSION_SECRET</code> — Zufälliger String für Session-Verschlüsselung</p>
+                        <p><code>DEV_MODE</code> — Bei "true" wird der Gruppen-Tab im Footer sichtbar (zum Nachschlagen von Gruppen-IDs)</p>
+                    </div>
+                    <div class="wiki-section">
+                        <h3>WAHA Webhook</h3>
+                        <p>In der WAHA-Session muss ein Webhook konfiguriert sein:</p>
+                        <p><strong>URL:</strong> <code>http://&lt;TeamPulse-IP&gt;:3000/api/webhooks/waha</code></p>
+                        <p><strong>Events:</strong> <code>message</code>, <code>poll.vote</code></p>
+                        <p>Ohne korrekten Webhook werden Abstimmungen nicht erkannt. TeamPulse lauscht auf 0.0.0.0, ist also von allen Netzwerk-Interfaces erreichbar.</p>
+                    </div>
+                    <div class="wiki-section">
+                        <h3>Fehlerbehebung</h3>
+                        <p><strong>Stimmen werden nicht erkannt:</strong> Prüfe ob WAHA-Webhooks korrekt konfiguriert sind. Logs: <code>journalctl -u teampulse -f</code></p>
+                        <p><strong>Gruppen-ID finden:</strong> <code>DEV_MODE=true</code> in .env setzen, dann im Footer-Tab "Gruppen" nachschauen.</p>
+                        <p><strong>Erinnerung kam nicht:</strong> Erinnerungen werden 60 Min vor Fristende gesendet. Prüfe die Deadline der Umfrage.</p>
+                        <p><strong>Passwort vergessen:</strong> Auf dem Server mit Node.js das Passwort zurücksetzen (siehe README).</p>
                     </div>
                 </div>
             </div>
@@ -246,7 +283,7 @@
                     <button class="footer-link-btn" onclick="toggleFooterSection('changelog')" id="changelog-toggle-btn">
                         Changelog <span id="changelog-chevron" class="footer-chevron-btn">&#x25B2;</span>
                     </button>
-                    <button class="footer-link-btn" onclick="toggleFooterSection('groups')" id="groups-toggle-btn">
+                    <button class="footer-link-btn hidden" onclick="toggleFooterSection('groups')" id="groups-toggle-btn">
                         Gruppen <span id="groups-chevron" class="footer-chevron-btn">&#x25B2;</span>
                     </button>
                 </div>

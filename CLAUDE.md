@@ -71,8 +71,14 @@ TeamPulse/
 
 ## Reason Follow-up Flow (Nein & Vielleicht)
 - When someone votes 'maybe' or 'no' (poll.vote), a private WhatsApp message is sent asking for an optional reason
-- If they reply privately (text message, non-group), `processReasonMessage()` checks if they have a recent 'maybe' or 'no' response without a reason and saves it
+- The voter has **5 minutes** to reply with a reason — after that, `processReasonMessage()` ignores the message (SQL: `responded_at >= datetime('now', '-5 minutes')`)
+- Only the next private message within the 5-minute window is saved as the reason
 - Reasons are displayed in the poll detail view alongside the member's name for both "no" and "maybe" responses
+
+## DEV_MODE
+- `DEV_MODE=true` in `.env` enables the "Gruppen" footer tab (shows all WhatsApp groups with IDs from WAHA)
+- Exposed to frontend via `GET /api/config` → `{ devMode: true/false }`
+- Groups tab is hidden by default, only shown when DEV_MODE is true
 
 ## Scheduler Flow (every minute)
 1. checkAndSendPolls — send pending polls

@@ -202,13 +202,14 @@ function processReasonMessage(phone, text) {
     `).get(normalizedPhone);
     if (!contact) return null;
 
-    // Find most recent maybe or no response without a reason on a non-archived poll
+    // Find most recent maybe or no response without a reason (within 5 minutes)
     const pendingReason = db.prepare(`
         SELECT pr.id, p.id as poll_id, pr.response
         FROM poll_responses pr
         JOIN polls p ON pr.poll_id = p.id
         WHERE pr.contact_id = ? AND pr.response IN ('maybe', 'no') AND pr.reason IS NULL
         AND p.archived = 0
+        AND pr.responded_at >= datetime('now', '-5 minutes')
         ORDER BY p.id DESC LIMIT 1
     `).get(contact.id);
 

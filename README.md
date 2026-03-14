@@ -15,7 +15,7 @@ WhatsApp-basiertes Anwesenheits-Management für Teams. Erstelle Trainings, Turni
 - **Frist verlängern**: Abstimmungsdeadline direkt im Dashboard verschieben
 - **Statistiken-Tab**: Antwortquote & Ja/Nein/Vielleicht/Offen pro Mitglied aus allen abgeschlossenen Umfragen
 - **Umfrage schließen**: Manuell oder automatisch wenn die Abstimmungsfrist abläuft
-- **Gruppen-Übersicht**: Footer-Tab zeigt alle WhatsApp-Gruppen mit ID und Kopieren-Button — zum einfachen Nachschlagen der `GROUP_CHAT_ID`
+- **Gruppen-Übersicht** (DEV_MODE): Footer-Tab zeigt alle WhatsApp-Gruppen mit ID und Kopieren-Button — zum einfachen Nachschlagen der `GROUP_CHAT_ID`
 - **Erinnerungen**:
   - Automatisch 60 Min. vor Fristablauf (zeigt genaue Uhrzeit) an alle Nicht-Voter
   - 1 Stunde vor Event-Beginn an alle Zusager
@@ -47,6 +47,7 @@ WhatsApp-basiertes Anwesenheits-Management für Teams. Erstelle Trainings, Turni
 | `WAHA_API_KEY` | API-Key für WAHA | `your-api-key` |
 | `WAHA_SESSION` | WAHA Session-Name | `default` |
 | `GROUP_CHAT_ID` | WhatsApp Gruppen-ID für Ergebnis-Posts | `120363xxx@g.us` |
+| `DEV_MODE` | Zeigt Gruppen-Tab im Footer (zum ID-Nachschlagen) | `false` |
 
 ---
 

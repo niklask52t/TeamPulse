@@ -61,7 +61,13 @@ app.post('/api/webhooks/waha', (req, res, next) => {
 
 // Alle anderen API-Routen benötigen Login
 app.use('/api', requireAuth);
-// WhatsApp groups from WAHA
+
+// Frontend config
+app.get('/api/config', (req, res) => {
+    res.json({ devMode: process.env.DEV_MODE === 'true' });
+});
+
+// WhatsApp groups from WAHA (only useful in dev mode)
 app.get('/api/groups', async (req, res, next) => {
     try {
         const groups = await getGroups();

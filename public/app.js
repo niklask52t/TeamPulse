@@ -97,6 +97,12 @@ function showApp(username) {
     loadPolls();
     loadStats();
     renderChangelog();
+    apiFetch(`${API}/api/config`).then(r => r.json()).then(cfg => {
+        if (cfg.devMode) {
+            const btn = document.getElementById('groups-toggle-btn');
+            if (btn) btn.classList.remove('hidden');
+        }
+    }).catch(() => {});
     const savedTab = localStorage.getItem('activeTab') || 'events';
     activateTab(savedTab);
 }
