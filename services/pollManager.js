@@ -116,41 +116,29 @@ async function sendPoll(pollId) {
 }
 
 function processResponse(phone, text) {
-    const normalizedPhone = phone.replace('@c.us', '').replace(/^\+/, '').replace(/\D/g, '');
-    const contact = db.prepare(`
+    const normalizedPhone = phone.replace(/@c\.us|@lid|@s\.whatsapp\.net/g, '').replace(/^\+/, '').replace(/\D/g, '');
+
+    // Try to find existing contact by phone digits
+    let contactRow = db.prepare(`
         SELECT * FROM contacts WHERE REPLACE(REPLACE(REPLACE(phone, '+', ''), ' ', ''), '-', '') = ?
     `).get(normalizedPhone);
 
-    if (!contact) {
+    if (!contactRow) {
         // Auto-create contact for group members who voted but aren't in DB yet
         try {
-            const insertResult = db.prepare(
+            db.prepare(
                 'INSERT OR IGNORE INTO contacts (name, phone) VALUES (?, ?)'
-            ).run(phone.replace('@c.us', ''), '+' + normalizedPhone);
-            if (insertResult.changes > 0) {
-                console.log(`[INFO] Auto-created contact for ${normalizedPhone}`);
-            }
+            ).run('+' + normalizedPhone, '+' + normalizedPhone);
+            console.log(`[INFO] Auto-created contact for ${normalizedPhone}`);
         } catch { /* ignore */ }
+        contactRow = db.prepare(`
+            SELECT * FROM contacts WHERE REPLACE(REPLACE(REPLACE(phone, '+', ''), ' ', ''), '-', '') = ?
+        `).get(normalizedPhone);
     }
-
-    const contactRow = db.prepare(`
-        SELECT * FROM contacts WHERE REPLACE(REPLACE(REPLACE(phone, '+', ''), ' ', ''), '-', '') = ?
-    `).get(normalizedPhone);
 
     if (!contactRow) return null;
 
-    // Find the most recent ACTIVE poll (voted via group poll → match by deadline proximity)
-    const activePoll = db.prepare(`
-        SELECT pr.id as response_id, p.id as poll_id, p.event_date, e.title as event_title
-        FROM poll_responses pr
-        JOIN polls p ON pr.poll_id = p.id
-        JOIN events e ON p.event_id = e.id
-        WHERE pr.contact_id = ? AND p.status = 'active'
-        ORDER BY p.deadline ASC LIMIT 1
-    `).get(contactRow.id);
-
-    if (!activePoll) return null;
-
+    // Parse vote from text
     const lower = text.toLowerCase().trim();
     let response = null;
 
@@ -172,7 +160,17 @@ function processResponse(phone, text) {
 
     if (!response) return null;
 
-    // Upsert: insert response row if not exists, then update
+    // Find any active poll (don't require existing poll_response row)
+    const activePoll = db.prepare(`
+        SELECT p.id as poll_id, p.event_date, e.title as event_title
+        FROM polls p JOIN events e ON p.event_id = e.id
+        WHERE p.status = 'active'
+        ORDER BY p.deadline ASC LIMIT 1
+    `).get();
+
+    if (!activePoll) return null;
+
+    // Ensure response row exists, then update
     db.prepare(`
         INSERT OR IGNORE INTO poll_responses (poll_id, contact_id) VALUES (?, ?)
     `).run(activePoll.poll_id, contactRow.id);

@@ -172,7 +172,7 @@ router.post('/webhook', (req, res) => {
     // Native WhatsApp poll vote
     if (event === 'poll.vote' && payload) {
         // Log full payload for debugging (WAHA varies by version)
-        console.log(`[WEBHOOK] poll.vote full payload: ${JSON.stringify(payload).slice(0, 500)}`);
+        console.log(`[WEBHOOK] poll.vote full payload: ${JSON.stringify(payload).slice(0, 2000)}`);
 
         // Try all known WAHA payload shapes for voter phone
         const phone = senderPhone || fromPhone
