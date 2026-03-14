@@ -268,7 +268,8 @@ async function postGroupResults(pollId) {
     try {
         const pending = responses.filter(r => !r.response).length;
         const imageBuffer = generateResultChart(poll.title, poll.event_date, yes.length, no.length, maybe.length, pending);
-        await waha.sendResultImage(GROUP_CHAT_ID, imageBuffer, `📊 Abstimmung: ${poll.title} – ${poll.event_date}`);
+        const fmtDate = (d) => { const [y,m,dd] = d.split('-'); return `${dd}.${m}.${y}`; };
+        await waha.sendResultImage(GROUP_CHAT_ID, imageBuffer, `📊 Abstimmung: ${poll.title} – ${fmtDate(poll.event_date)}`);
     } catch (err) {
         console.error('[ERROR] sendResultImage:', err.message);
     }

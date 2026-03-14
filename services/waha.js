@@ -11,6 +11,13 @@ const getHeaders = {
     ...(WAHA_API_KEY && { 'X-Api-Key': WAHA_API_KEY }),
 };
 
+// Format YYYY-MM-DD → DD.MM.YYYY for human-readable WhatsApp messages
+function fmtDate(dateStr) {
+    if (!dateStr || !dateStr.includes('-')) return dateStr || '';
+    const [y, m, d] = dateStr.split('-');
+    return `${d}.${m}.${y}`;
+}
+
 async function sendMessage(chatId, text) {
     const url = `${WAHA_API_URL}/api/sendText`;
     const res = await fetch(url, {
@@ -27,7 +34,7 @@ async function sendMessage(chatId, text) {
 
 async function sendPollMessage(chatId, eventTitle, eventDate, eventTime, meetingTime) {
     const url = `${WAHA_API_URL}/api/sendPoll`;
-    let name = `${eventTitle} – ${eventDate} um ${eventTime} Uhr`;
+    let name = `${eventTitle} – ${fmtDate(eventDate)} um ${eventTime} Uhr`;
     if (meetingTime) name += ` (Treffen: ${meetingTime} Uhr)`;
     const res = await fetch(url, {
         method: 'POST',
@@ -53,7 +60,7 @@ async function sendPollMessage(chatId, eventTitle, eventDate, eventTime, meeting
 async function sendReminder(chatId, eventTitle, eventDate, eventTime, deadlineTime, meetingTime) {
     let text =
         `⏰ *Erinnerung: ${eventTitle}*\n` +
-        `📅 ${eventDate} um ${eventTime} Uhr\n`;
+        `📅 ${fmtDate(eventDate)} um ${eventTime} Uhr\n`;
     if (meetingTime) text += `🤝 Treffen: ${meetingTime} Uhr\n`;
     text += `\nDie Abstimmung endet um ${deadlineTime} Uhr!\n` +
         `Falls noch nicht abgestimmt, jetzt in der Umfrage antworten.`;
@@ -99,7 +106,7 @@ async function sendEventReminder(chatId, eventTitle, eventTime, meetingTime) {
 }
 
 async function postResultsToGroup(groupId, eventTitle, eventDate, eventTime, yesNames, noNames, maybeNames, meetingTime) {
-    const lines = [`📊 *Ergebnis: ${eventTitle}*`, `📅 ${eventDate} um ${eventTime} Uhr`];
+    const lines = [`📊 *Ergebnis: ${eventTitle}*`, `📅 ${fmtDate(eventDate)} um ${eventTime} Uhr`];
     if (meetingTime) lines.push(`🤝 Treffen: ${meetingTime} Uhr`);
     lines.push('');
 
@@ -124,14 +131,14 @@ async function postResultsToGroup(groupId, eventTitle, eventDate, eventTime, yes
 
 async function sendMaybeFollowUp(chatId, eventTitle, eventDate) {
     const text =
-        `🤷 Du hast mit *Vielleicht* abgestimmt für *${eventTitle}* am ${eventDate}.\n\n` +
+        `🤷 Du hast mit *Vielleicht* abgestimmt für *${eventTitle}* am ${fmtDate(eventDate)}.\n\n` +
         `Optional: Schreib innerhalb von *5 Minuten* kurz warum (z.B. "Komme evtl. zu spät", "Weiß noch nicht") — oder ignoriere diese Nachricht.`;
     return sendMessage(chatId, text);
 }
 
 async function sendNoFollowUp(chatId, eventTitle, eventDate) {
     const text =
-        `❌ Du hast für *${eventTitle}* am ${eventDate} abgesagt.\n\n` +
+        `❌ Du hast für *${eventTitle}* am ${fmtDate(eventDate)} abgesagt.\n\n` +
         `Optional: Schreib innerhalb von *5 Minuten* kurz den Grund (z.B. "Krank", "Keine Zeit") — oder ignoriere diese Nachricht.`;
     return sendMessage(chatId, text);
 }

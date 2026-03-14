@@ -33,7 +33,9 @@ function generateResultChart(title, date, yes, no, maybe, pending) {
 
     ctx.fillStyle = '#94a3b8';
     ctx.font = '14px sans-serif';
-    ctx.fillText(date, W / 2, 60);
+    // Format YYYY-MM-DD → DD.MM.YYYY
+    const displayDate = date && date.includes('-') ? date.split('-').reverse().join('.') : date;
+    ctx.fillText(displayDate, W / 2, 60);
 
     const data = [
         { label: 'Ja ✅',      value: yes,     color: '#22c55e', dimColor: '#16532d' },
