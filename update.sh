@@ -32,6 +32,10 @@ do_update() {
     echo "Dependencies installieren..."
     sudo -u "$APP_USER" bash -c "cd $APP_DIR && npm install --omit=dev"
 
+    echo "Script aktualisieren..."
+    cp "$APP_DIR/update.sh" /usr/local/bin/teampulse-update
+    chmod +x /usr/local/bin/teampulse-update
+
     echo "Service neustarten..."
     systemctl restart "$SERVICE"
 
@@ -75,6 +79,10 @@ do_reset() {
 
     echo "Dependencies installieren..."
     sudo -u "$APP_USER" bash -c "cd $APP_DIR && rm -rf node_modules && npm install --omit=dev"
+
+    echo "Script aktualisieren..."
+    cp "$APP_DIR/update.sh" /usr/local/bin/teampulse-update
+    chmod +x /usr/local/bin/teampulse-update
 
     echo "Service starten (DB wird neu erstellt mit admin/admin)..."
     systemctl start "$SERVICE"
