@@ -8,6 +8,7 @@ const authRouter = require('./routes/auth');
 const contactsRouter = require('./routes/contacts');
 const eventsRouter = require('./routes/events');
 const pollsRouter = require('./routes/polls');
+const statsRouter = require('./routes/stats');
 const { startScheduler } = require('./services/scheduler');
 
 const app = express();
@@ -62,6 +63,7 @@ app.use('/api', requireAuth);
 app.use('/api/contacts', contactsRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/polls', pollsRouter);
+app.use('/api/stats', statsRouter);
 
 // Statische Dateien
 app.use(express.static(path.join(__dirname, 'public')));

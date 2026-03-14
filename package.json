@@ -11,12 +11,13 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^0.1.96",
     "bcrypt": "^6.0.0",
-    "libsql": "^0.5.22",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
+    "libsql": "^0.5.22",
     "node-cron": "^4.2.1"
   },
   "devDependencies": {

@@ -22,18 +22,21 @@ TeamPulse/
 ├── routes/
 │   ├── auth.js        # Login, logout, password change
 │   ├── events.js      # CRUD for events (validation, no past dates)
-│   └── polls.js       # Poll management, manual actions, WAHA webhook
+│   ├── polls.js       # Poll management, manual actions, WAHA webhook
+│   └── stats.js       # Participation stats per contact
 ├── services/
-│   ├── waha.js        # WAHA API client (sendPoll, sendText, sendReminder, sendMaybeFollowUp, getGroupParticipants, getAllContacts)
+│   ├── waha.js        # WAHA API client (sendPoll, sendText, sendReminder, sendReminderWithButtons, sendResultImage, sendMaybeFollowUp, getGroupParticipants, getAllContacts)
 │   ├── scheduler.js   # Cron: send/close/archive polls, reminders, group posts
-│   ├── pollManager.js # Poll lifecycle (create, send, processResponse, processReasonMessage, close)
+│   ├── pollManager.js # Poll lifecycle (create, send, processResponse, processReasonMessage, close, extendDeadline)
+│   ├── chartGenerator.js  # PNG bar chart via @napi-rs/canvas
 │   └── timeUtils.js   # Europe/Berlin timezone helpers
 ├── public/            # Frontend static files (load order matters)
-│   ├── index.html     # SPA with tabs: Events, Umfragen + footer with Wiki/Changelog
+│   ├── index.html     # SPA with tabs: Events, Umfragen, Statistiken + footer with Wiki/Changelog
 │   ├── style.css
 │   ├── changelog.js   # CHANGELOG data + renderChangelog()
 │   ├── events.js      # Events tab: loadEvents, showEventForm, editEvent, saveEvent, deleteEvent
-│   ├── polls.js       # Polls tab: loadPolls, renderPollDetail, buildActionButtons, pollAction
+│   ├── polls.js       # Polls tab: loadPolls, renderPollDetail, buildActionButtons, pollAction, showExtendForm
+│   ├── stats.js       # Stats tab: loadStats() — member response rate table
 │   └── app.js         # Core: auth, nav, utils, init — must load LAST
 ├── update.sh          # Production update/reset script
 └── .env.example
@@ -78,9 +81,10 @@ TeamPulse/
 
 ## Manual Actions (poll detail)
 - Send poll: once only (pending → active), syncs group members first
-- Send reminder: multiple times (active only) — shows exact deadline time
+- Send reminder: multiple times (active only) — uses WAHA sendButtons with Ja/Nein/Vielleicht tap buttons; auto-falls back to plain text if unsupported
+- Extend deadline: adjustable via form (any minutes, resets reminder_sent=0 so another reminder can fire)
 - Close poll: manual close (active → closed)
-- Post group results: multiple times (active/closed) — does NOT close the poll
+- Post group results: multiple times (active/closed) — sends text + PNG chart image; does NOT close the poll
 - Send event reminder: multiple times (active/closed)
 - Delete: always available
 
@@ -94,9 +98,16 @@ TeamPulse/
 - WAHA runs as separate Docker container
 - Native WhatsApp polls via POST /api/sendPoll — sent to GROUP_CHAT_ID (not individuals)
 - Webhook at `/api/webhooks/waha` — req.url rewritten to `/webhook` before pollsRouter handles it
-- Handles both `message` (text reply) and `poll.vote` (native poll) events
+- Handles `message` (text reply), `poll.vote` (native poll), and `buttons_response` events
 - Group messages: `payload.sender` = voter JID; private messages: `payload.from` = sender JID
 - Poll options: "Ja ✅", "Nein ❌", "Vielleicht 🤷" — matched by emoji-stripped exact match first, then keyword includes
+- `sendReminderWithButtons` sends interactive buttons; falls back to `sendReminder` on error
+- `sendResultImage` sends a PNG chart (base64) via POST /api/sendImage
+
+## Stats
+- `GET /api/stats` returns per-contact totals from closed polls: yes/no/maybe/no_response + response_rate %
+- Only closed polls count (open/pending polls don't penalize members)
+- Frontend: Stats tab with sortable table + color-coded bar charts per member
 
 ## DB Schema Notes
 - `poll_responses.reason TEXT` — stores optional reason from 'maybe' voters

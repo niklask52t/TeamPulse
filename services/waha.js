@@ -57,6 +57,58 @@ async function sendReminder(chatId, eventTitle, eventDate, eventTime, deadlineTi
     return sendMessage(chatId, text);
 }
 
+// Send reminder with tap buttons (Ja/Nein/Vielleicht).
+// Falls back to plain text if WAHA returns an error.
+async function sendReminderWithButtons(chatId, eventTitle, eventDate, eventTime, deadlineTime) {
+    const url = `${WAHA_API_URL}/api/sendButtons`;
+    const body = `⏰ *Erinnerung: ${eventTitle}*\n📅 ${eventDate} um ${eventTime} Uhr\n\nAbstimmung endet um ${deadlineTime} Uhr!`;
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+                session: WAHA_SESSION,
+                chatId,
+                body,
+                buttons: [
+                    { id: 'yes',   body: 'Ja ✅' },
+                    { id: 'no',    body: 'Nein ❌' },
+                    { id: 'maybe', body: 'Vielleicht 🤷' },
+                ],
+            }),
+        });
+        if (!res.ok) throw new Error(`status ${res.status}`);
+        return res.json();
+    } catch {
+        // Fallback to plain text reminder
+        return sendReminder(chatId, eventTitle, eventDate, eventTime, deadlineTime);
+    }
+}
+
+// Send a PNG image buffer as a WhatsApp image message with optional caption
+async function sendResultImage(chatId, imageBuffer, caption) {
+    const url = `${WAHA_API_URL}/api/sendImage`;
+    const res = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+            session: WAHA_SESSION,
+            chatId,
+            file: {
+                mimetype: 'image/png',
+                filename: 'ergebnis.png',
+                data: imageBuffer.toString('base64'),
+            },
+            caption: caption || '',
+        }),
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`WAHA sendImage failed (${res.status}): ${body}`);
+    }
+    return res.json();
+}
+
 async function sendEventReminder(chatId, eventTitle, eventTime) {
     const text =
         `🏃 *${eventTitle} beginnt in 1 Stunde!*\n` +
@@ -123,6 +175,8 @@ module.exports = {
     sendMessage,
     sendPollMessage,
     sendReminder,
+    sendReminderWithButtons,
+    sendResultImage,
     sendEventReminder,
     sendMaybeFollowUp,
     postResultsToGroup,

@@ -2,6 +2,16 @@
 
 const CHANGELOG = [
     {
+        version: '1.6.0',
+        date: '2026-03-14',
+        changes: [
+            { type: 'feature', text: 'Erinnerungen mit Tap-Buttons (Ja/Nein/Vielleicht) — Fallback auf Text wenn WAHA kein sendButtons unterstützt' },
+            { type: 'feature', text: 'Ergebnis-Post sendet zusätzlich Chart-Bild in die Gruppe (PNG via @napi-rs/canvas)' },
+            { type: 'feature', text: 'Abstimmungsfrist verlängern — direkt im Poll-Detail (beliebige Minuten)' },
+            { type: 'feature', text: 'Statistiken-Tab: Antwortquote & Ja/Nein/Vielleicht/Offen pro Mitglied' },
+        ]
+    },
+    {
         version: '1.5.0',
         date: '2026-03-14',
         changes: [

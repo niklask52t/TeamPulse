@@ -20,6 +20,7 @@
     --text-muted: #6e7681;
     --red: #f85149;
     --yellow: #e3b341;
+    --danger: #f85149;
 }
 
 body {
@@ -767,4 +768,109 @@ main {
     main {
         margin-top: 1rem;
     }
+
+    .stats-table th,
+    .stats-table td {
+        padding: 0.5rem 0.4rem;
+        font-size: 0.8rem;
+    }
+}
+
+/* ===== STATS ===== */
+
+.stats-summary {
+    display: flex;
+    gap: 2rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.stats-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.stats-table thead th {
+    background: var(--bg-secondary);
+    padding: 0.65rem 0.75rem;
+    text-align: left;
+    color: var(--text-secondary);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.stats-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+}
+
+.stats-table tbody tr:last-child { border-bottom: none; }
+
+.stats-table tbody tr:hover { background: var(--bg-secondary); }
+
+.stats-table td {
+    padding: 0.6rem 0.75rem;
+    color: var(--text-primary);
+}
+
+.stats-name { font-weight: 500; }
+
+.stats-num {
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.95rem;
+}
+
+.stats-rate { min-width: 130px; }
+
+.stat-bar-wrap {
+    height: 4px;
+    background: var(--bg-tertiary);
+    border-radius: 2px;
+    margin-top: 4px;
+    overflow: hidden;
+}
+
+.stat-bar {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.4s ease;
+}
+
+/* ===== EXTEND FORM ===== */
+
+.extend-form {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    padding: 0.6rem 0.75rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.extend-form input[type="number"] {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-primary);
+    padding: 0.2rem 0.4rem;
+    font-size: 0.85rem;
 }

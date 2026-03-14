@@ -10,10 +10,13 @@ WhatsApp-basiertes Anwesenheits-Management für Teams. Erstelle Trainings, Turni
 - **Gruppen-Umfrage**: Umfrage wird als native WhatsApp-Poll in die Gruppe geschickt (Tap-to-Vote)
 - **Antwort-Sammlung**: Übersichtliche Darstellung aller Zu-/Absagen, gruppiert nach Status — inkl. Begründungen für "Vielleicht"-Stimmen
 - **"Vielleicht"-Follow-up**: Wer mit "Vielleicht" abstimmt, bekommt automatisch eine Privatnachricht zur optionalen Begründung
-- **Gruppen-Posting**: Gesammelte Ergebnisse können beliebig oft manuell oder zeitgesteuert in die Gruppe gepostet werden
+- **Gruppen-Posting**: Ergebnis-Text + **Chart-Bild** (PNG) in die Gruppe — mehrfach möglich, schließt die Umfrage nicht
+- **Erinnerungen mit Tap-Buttons**: Erinnerungen werden als WhatsApp-Buttons (Ja/Nein/Vielleicht) verschickt, Fallback auf Text wenn nicht unterstützt
+- **Frist verlängern**: Abstimmungsdeadline direkt im Dashboard um beliebige Minuten verschieben
+- **Statistiken-Tab**: Antwortquote & Ja/Nein/Vielleicht/Offen pro Mitglied aus allen abgeschlossenen Umfragen
 - **Umfrage schließen**: Manuell oder automatisch wenn die Abstimmungsfrist abläuft
 - **Erinnerungen**:
-  - Automatisch wenn Frist in 60 Min. abläuft (zeigt genaue Uhrzeit)
+  - Automatisch wenn Frist in 60 Min. abläuft (zeigt genaue Uhrzeit, mit Tap-Buttons)
   - 1 Stunde vor Event-Beginn an alle Zusager
 
 ## Tech Stack

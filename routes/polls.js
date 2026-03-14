@@ -76,6 +76,20 @@ router.post('/:id/post-group', async (req, res) => {
     }
 });
 
+// PUT extend deadline
+router.put('/:id/extend', (req, res) => {
+    const minutes = Number(req.body.minutes);
+    if (!minutes || minutes < 1) {
+        return res.status(400).json({ error: 'Minuten müssen > 0 sein' });
+    }
+    try {
+        const newDeadline = pollManager.extendDeadline(Number(req.params.id), minutes);
+        res.json({ deadline: newDeadline });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
 // POST manually close poll
 router.post('/:id/close', (req, res) => {
     try {
