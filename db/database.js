@@ -13,6 +13,7 @@ db.exec(schema);
 
 // Migrations for existing databases
 try { db.exec('ALTER TABLE polls ADD COLUMN archived INTEGER DEFAULT 0'); } catch { /* already exists */ }
+try { db.exec('ALTER TABLE poll_responses ADD COLUMN reason TEXT'); } catch { /* already exists */ }
 
 // Seed default admin user if no users exist
 const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;

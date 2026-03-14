@@ -573,6 +573,48 @@ main {
     letter-spacing: 0.02em;
 }
 
+/* ===== RESPONSE GROUPS ===== */
+.response-groups {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.response-group {
+    background: var(--bg-primary);
+    border-radius: 8px;
+    padding: 0.6rem 0.85rem;
+}
+
+.response-group-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin-bottom: 0.3rem;
+}
+
+.response-names {
+    font-size: 0.88rem;
+    color: var(--text-primary);
+    opacity: 0.9;
+    line-height: 1.6;
+}
+
+.response-names--maybe {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.response-maybe-item {
+    display: block;
+}
+
+.response-reason {
+    color: var(--text-secondary);
+    font-size: 0.83rem;
+}
+
 /* ===== DATE CARDS ===== */
 .date-card {
     display: flex;

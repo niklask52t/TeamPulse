@@ -111,21 +111,29 @@ router.delete('/:id', (req, res) => {
 router.post('/webhook', (req, res) => {
     const { event, payload } = req.body;
 
-    // Text message response (legacy / individual)
+    // Text message
     if (event === 'message' && payload) {
-        const phone = payload.from || payload.sender;
+        const isGroup = (payload.from || '').endsWith('@g.us');
+        // For group messages, sender is the person; for private, from is the person
+        const phone = isGroup ? (payload.sender || payload.from) : payload.from;
         const text = payload.body;
         if (phone && text) {
             const result = pollManager.processResponse(phone, text);
             if (result) {
                 console.log(`Text response from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
+            } else if (!isGroup) {
+                // Private message that didn't match a vote → try to save as a 'Vielleicht' reason
+                const reasonResult = pollManager.processReasonMessage(phone, text);
+                if (reasonResult) {
+                    console.log(`Reason saved from ${reasonResult.contactName} (poll ${reasonResult.pollId})`);
+                }
             }
         }
     }
 
     // Native WhatsApp poll vote (group or individual)
     if (event === 'poll.vote' && payload) {
-        // For group polls: sender is in payload.from (the voter's JID), not the group
+        // For group polls: sender is the voter's JID
         const phone = payload.sender || payload.from;
         const selectedOptions = payload.poll?.selectedOptions || payload.poll?.options || [];
         if (phone && selectedOptions.length > 0) {

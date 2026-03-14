@@ -6,13 +6,15 @@ WhatsApp-basiertes Anwesenheits-Management für Teams. Erstelle Trainings, Turni
 
 - **Login-System**: Geschütztes Dashboard mit Passwort-Pflichtänderung beim ersten Login
 - **Event-Management**: Wiederkehrende Trainings und einmalige Events (Turniere, Sondertermine) erstellen und verwalten
-- **Kontaktverwaltung**: Telefonnummern der Teammitglieder anlegen und gruppieren
-- **WhatsApp-Umfragen**: Automatische Zu-/Absage-Umfragen per WhatsApp über WAHA
-- **Antwort-Sammlung**: Übersichtliche Darstellung aller Zu- und Absagen im Dashboard
-- **Gruppen-Posting**: Gesammelte Ergebnisse werden zu einem konfigurierbaren Zeitpunkt in eine WhatsApp-Gruppe gepostet
+- **Keine manuelle Kontaktverwaltung**: Teilnehmer werden automatisch aus der WhatsApp-Gruppe synchronisiert
+- **Gruppen-Umfrage**: Umfrage wird als native WhatsApp-Poll in die Gruppe geschickt (Tap-to-Vote)
+- **Antwort-Sammlung**: Übersichtliche Darstellung aller Zu-/Absagen, gruppiert nach Status — inkl. Begründungen für "Vielleicht"-Stimmen
+- **"Vielleicht"-Follow-up**: Wer mit "Vielleicht" abstimmt, bekommt automatisch eine Privatnachricht zur optionalen Begründung
+- **Gruppen-Posting**: Gesammelte Ergebnisse können beliebig oft manuell oder zeitgesteuert in die Gruppe gepostet werden
+- **Umfrage schließen**: Manuell oder automatisch wenn die Abstimmungsfrist abläuft
 - **Erinnerungen**:
-  - 60 Minuten vor Ablauf der Abstimmungsfrist
-  - 1 Stunde vor Event-Beginn
+  - Automatisch wenn Frist in 60 Min. abläuft (zeigt genaue Uhrzeit)
+  - 1 Stunde vor Event-Beginn an alle Zusager
 
 ## Tech Stack
 

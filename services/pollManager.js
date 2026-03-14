@@ -138,9 +138,10 @@ function processResponse(phone, text) {
 
     // Find the most recent ACTIVE poll (voted via group poll → match by deadline proximity)
     const activePoll = db.prepare(`
-        SELECT pr.id as response_id, p.id as poll_id
+        SELECT pr.id as response_id, p.id as poll_id, p.event_date, e.title as event_title
         FROM poll_responses pr
         JOIN polls p ON pr.poll_id = p.id
+        JOIN events e ON p.event_id = e.id
         WHERE pr.contact_id = ? AND p.status = 'active'
         ORDER BY p.deadline ASC LIMIT 1
     `).get(contactRow.id);
@@ -178,7 +179,39 @@ function processResponse(phone, text) {
         WHERE poll_id = ? AND contact_id = ?
     `).run(response, activePoll.poll_id, contactRow.id);
 
+    // Send follow-up asking for reason when voting "Vielleicht"
+    if (response === 'maybe') {
+        const chatId = contactRow.phone.replace('+', '') + '@c.us';
+        waha.sendMaybeFollowUp(chatId, activePoll.event_title, activePoll.event_date)
+            .catch(e => console.error('[ERROR] sendMaybeFollowUp:', e.message));
+    }
+
     return { contactName: contactRow.name, response, pollId: activePoll.poll_id };
+}
+
+// Save a reason text from a contact who previously voted 'maybe'
+function processReasonMessage(phone, text) {
+    const normalizedPhone = phone.replace('@c.us', '').replace(/^\+/, '').replace(/\D/g, '');
+    const contact = db.prepare(`
+        SELECT * FROM contacts WHERE REPLACE(REPLACE(REPLACE(phone, '+', ''), ' ', ''), '-', '') = ?
+    `).get(normalizedPhone);
+    if (!contact) return null;
+
+    // Find most recent maybe response without a reason on a non-archived poll
+    const maybeResponse = db.prepare(`
+        SELECT pr.id, p.id as poll_id
+        FROM poll_responses pr
+        JOIN polls p ON pr.poll_id = p.id
+        WHERE pr.contact_id = ? AND pr.response = 'maybe' AND pr.reason IS NULL
+        AND p.archived = 0
+        ORDER BY p.id DESC LIMIT 1
+    `).get(contact.id);
+
+    if (!maybeResponse) return null;
+
+    db.prepare('UPDATE poll_responses SET reason = ? WHERE id = ?').run(text.trim(), maybeResponse.id);
+    console.log(`[INFO] Reason saved for ${contact.name}: "${text.trim()}" (poll ${maybeResponse.poll_id})`);
+    return { pollId: maybeResponse.poll_id, contactName: contact.name };
 }
 
 async function sendDeadlineReminder(pollId) {
@@ -274,6 +307,7 @@ module.exports = {
     createPollForEvent,
     sendPoll,
     processResponse,
+    processReasonMessage,
     sendDeadlineReminder,
     postGroupResults,
     closePoll,
