@@ -2,9 +2,32 @@ const WAHA_API_URL = process.env.WAHA_API_URL || 'http://localhost:3000';
 const WAHA_API_KEY = process.env.WAHA_API_KEY || '';
 const WAHA_SESSION = process.env.WAHA_SESSION || 'default';
 
-// Capability cache — null = untested, true/false = known
-let capButtons = null;
-let capImage   = null;
+// Capability flags — set once at startup via detectCapabilities()
+let capButtons = false;
+let capImage   = false;
+
+// Engines known to support interactive buttons and file/image sending
+const ENGINES_WITH_BUTTONS = ['WEBJS', 'VENOM'];
+const ENGINES_WITH_IMAGE   = ['WEBJS', 'VENOM', 'NOWEB'];
+
+async function detectCapabilities() {
+    try {
+        const res = await fetch(`${WAHA_API_URL}/api/sessions/${WAHA_SESSION}`, { headers: getHeaders });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        // Engine field location varies by WAHA version
+        const engine = (
+            data.engine?.engine || data.config?.engine || data.engine || ''
+        ).toUpperCase().trim();
+
+        capButtons = ENGINES_WITH_BUTTONS.includes(engine);
+        capImage   = ENGINES_WITH_IMAGE.includes(engine);
+
+        console.log(`[WAHA] Engine: ${engine || '(unknown)'} | buttons: ${capButtons} | image: ${capImage}`);
+    } catch (err) {
+        console.warn(`[WAHA] detectCapabilities failed: ${err.message} — defaulting buttons=false image=false`);
+    }
+}
 
 const headers = {
     'Content-Type': 'application/json',
@@ -61,11 +84,9 @@ async function sendReminder(chatId, eventTitle, eventDate, eventTime, deadlineTi
     return sendMessage(chatId, text);
 }
 
-// Send poll to group: buttons if supported, native WA poll otherwise.
-// Result is cached after first attempt — no repeated probing.
+// Send poll to group: buttons (WEBJS/VENOM) or native WA poll (NOWEB).
 async function sendPollButtons(chatId, eventTitle, eventDate, eventTime) {
-    if (capButtons === false) {
-        console.log('[INFO] sendPollButtons: buttons not supported → using native poll');
+    if (!capButtons) {
         return sendPollMessage(chatId, eventTitle, eventDate, eventTime);
     }
 
@@ -73,113 +94,85 @@ async function sendPollButtons(chatId, eventTitle, eventDate, eventTime) {
         `🗳️ *${eventTitle}*\n` +
         `📅 ${eventDate} um ${eventTime} Uhr\n\n` +
         `Kannst du dabei sein?`;
-    try {
-        const res = await fetch(`${WAHA_API_URL}/api/sendButtons`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-                session: WAHA_SESSION,
-                chatId,
-                body,
-                buttons: [
-                    { id: 'yes',   body: 'Ja ✅' },
-                    { id: 'no',    body: 'Nein ❌' },
-                    { id: 'maybe', body: 'Vielleicht 🤷' },
-                ],
-            }),
-        });
-        if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-        capButtons = true;
-        console.log('[INFO] sendPollButtons: buttons supported ✓');
-        return res.json();
-    } catch (err) {
-        capButtons = false;
-        console.log(`[INFO] sendPollButtons: buttons not supported (${err.message}) → switching to native poll`);
-        return sendPollMessage(chatId, eventTitle, eventDate, eventTime);
+    const res = await fetch(`${WAHA_API_URL}/api/sendButtons`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+            session: WAHA_SESSION,
+            chatId,
+            body,
+            buttons: [
+                { id: 'yes',   body: 'Ja ✅' },
+                { id: 'no',    body: 'Nein ❌' },
+                { id: 'maybe', body: 'Vielleicht 🤷' },
+            ],
+        }),
+    });
+    if (!res.ok) {
+        const b = await res.text();
+        throw new Error(`WAHA sendButtons failed (${res.status}): ${b}`);
     }
+    return res.json();
 }
 
-// Send reminder with buttons if supported, plain text otherwise (uses same capButtons cache).
+// Send reminder: buttons (WEBJS/VENOM) or plain text (NOWEB).
 async function sendReminderWithButtons(chatId, eventTitle, eventDate, eventTime, deadlineTime) {
-    if (capButtons === false) {
+    if (!capButtons) {
         return sendReminder(chatId, eventTitle, eventDate, eventTime, deadlineTime);
     }
 
     const body = `⏰ *Erinnerung: ${eventTitle}*\n📅 ${eventDate} um ${eventTime} Uhr\n\nAbstimmung endet um ${deadlineTime} Uhr!`;
-    try {
-        const res = await fetch(`${WAHA_API_URL}/api/sendButtons`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-                session: WAHA_SESSION,
-                chatId,
-                body,
-                buttons: [
-                    { id: 'yes',   body: 'Ja ✅' },
-                    { id: 'no',    body: 'Nein ❌' },
-                    { id: 'maybe', body: 'Vielleicht 🤷' },
-                ],
-            }),
-        });
-        if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-        capButtons = true;
-        return res.json();
-    } catch (err) {
-        capButtons = false;
-        console.log(`[INFO] sendReminderWithButtons: not supported (${err.message}) → plain text`);
-        return sendReminder(chatId, eventTitle, eventDate, eventTime, deadlineTime);
+    const res = await fetch(`${WAHA_API_URL}/api/sendButtons`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+            session: WAHA_SESSION,
+            chatId,
+            body,
+            buttons: [
+                { id: 'yes',   body: 'Ja ✅' },
+                { id: 'no',    body: 'Nein ❌' },
+                { id: 'maybe', body: 'Vielleicht 🤷' },
+            ],
+        }),
+    });
+    if (!res.ok) {
+        const b = await res.text();
+        throw new Error(`WAHA sendButtons failed (${res.status}): ${b}`);
     }
+    return res.json();
 }
 
-// Send result chart image. Tries multipart then JSON base64.
-// Result is cached — if WAHA doesn't support it, skips silently forever.
+// Send result chart image — only called when capImage=true (WEBJS/VENOM/NOWEB).
 async function sendResultImage(chatId, imageBuffer, caption) {
-    if (capImage === false) {
-        console.log('[INFO] sendResultImage: not supported by this WAHA instance, skipping');
-        return null;
-    }
+    if (!capImage) return null;
 
-    // Attempt 1: multipart/form-data
-    try {
-        const form = new FormData();
-        form.append('session', WAHA_SESSION);
-        form.append('chatId', chatId);
-        form.append('caption', caption || '');
-        form.append('file', new Blob([imageBuffer], { type: 'image/png' }), 'ergebnis.png');
-        const res = await fetch(`${WAHA_API_URL}/api/sendFile`, {
-            method: 'POST',
-            headers: WAHA_API_KEY ? { 'X-Api-Key': WAHA_API_KEY } : {},
-            body: form,
-        });
-        if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-        capImage = true;
-        console.log('[INFO] sendResultImage: supported ✓ (multipart)');
-        return res.json();
-    } catch (err1) {
-        console.log('[INFO] sendResultImage multipart failed:', err1.message, '— trying JSON base64');
-    }
+    // Try multipart/form-data first, then JSON base64
+    const apiKey = WAHA_API_KEY ? { 'X-Api-Key': WAHA_API_KEY } : {};
+    const form = new FormData();
+    form.append('session', WAHA_SESSION);
+    form.append('chatId', chatId);
+    form.append('caption', caption || '');
+    form.append('file', new Blob([imageBuffer], { type: 'image/png' }), 'ergebnis.png');
+    const r1 = await fetch(`${WAHA_API_URL}/api/sendFile`, { method: 'POST', headers: apiKey, body: form });
+    if (r1.ok) return r1.json();
 
-    // Attempt 2: JSON with base64
-    try {
-        const res = await fetch(`${WAHA_API_URL}/api/sendFile`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-                session: WAHA_SESSION,
-                chatId,
-                file: { mimetype: 'image/png', filename: 'ergebnis.png', data: imageBuffer.toString('base64') },
-                caption: caption || '',
-            }),
-        });
-        if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-        capImage = true;
-        console.log('[INFO] sendResultImage: supported ✓ (JSON base64)');
-        return res.json();
-    } catch (err2) {
-        capImage = false;
-        console.log(`[INFO] sendResultImage: not supported by this WAHA instance (${err2.message}) — chart will be text-only`);
-        return null;
+    // JSON base64 fallback
+    const r2 = await fetch(`${WAHA_API_URL}/api/sendFile`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+            session: WAHA_SESSION,
+            chatId,
+            file: { mimetype: 'image/png', filename: 'ergebnis.png', data: imageBuffer.toString('base64') },
+            caption: caption || '',
+        }),
+    });
+    if (!r2.ok) {
+        const b = await r2.text();
+        throw new Error(`WAHA sendFile failed (${r2.status}): ${b}`);
     }
+    return r2.json();
 }
 
 async function sendEventReminder(chatId, eventTitle, eventTime) {
@@ -245,6 +238,7 @@ async function getAllContacts() {
 }
 
 module.exports = {
+    detectCapabilities,
     sendMessage,
     sendPollMessage,
     sendPollButtons,
