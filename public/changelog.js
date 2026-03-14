@@ -2,6 +2,15 @@
 
 const CHANGELOG = [
     {
+        version: '1.7.2',
+        date: '2026-03-14',
+        changes: [
+            { type: 'feature', text: 'Nur noch Button-Nachricht (kein native WA-Poll mehr) — Antworten via buttons_response' },
+            { type: 'feature', text: 'Archivierung auf 24h nach Event-Ende geändert (war 1h)' },
+            { type: 'delete', text: 'Manuelles Löschen von Umfragen entfernt — Löschung nur via Event-Löschung (CASCADE)' },
+        ]
+    },
+    {
         version: '1.7.1',
         date: '2026-03-14',
         changes: [
