@@ -57,6 +57,40 @@ async function sendReminder(chatId, eventTitle, eventDate, eventTime, deadlineTi
     return sendMessage(chatId, text);
 }
 
+// Send a button message to the GROUP alongside the native poll (fallback: plain text)
+async function sendPollButtons(chatId, eventTitle, eventDate, eventTime) {
+    const url = `${WAHA_API_URL}/api/sendButtons`;
+    const body =
+        `🗳️ *${eventTitle}*\n` +
+        `📅 ${eventDate} um ${eventTime} Uhr\n\n` +
+        `Kannst du dabei sein?`;
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+                session: WAHA_SESSION,
+                chatId,
+                body,
+                buttons: [
+                    { id: 'yes',   body: 'Ja ✅' },
+                    { id: 'no',    body: 'Nein ❌' },
+                    { id: 'maybe', body: 'Vielleicht 🤷' },
+                ],
+            }),
+        });
+        if (!res.ok) throw new Error(`status ${res.status}`);
+        return res.json();
+    } catch {
+        // Fallback: plain text with voting instructions
+        const text =
+            `🗳️ *${eventTitle}*\n` +
+            `📅 ${eventDate} um ${eventTime} Uhr\n\n` +
+            `Dabei? Antworte mit: *Ja*, *Nein* oder *Vielleicht*`;
+        return sendMessage(chatId, text);
+    }
+}
+
 // Send reminder with tap buttons (Ja/Nein/Vielleicht).
 // Falls back to plain text if WAHA returns an error.
 async function sendReminderWithButtons(chatId, eventTitle, eventDate, eventTime, deadlineTime) {
@@ -175,6 +209,7 @@ async function getAllContacts() {
 module.exports = {
     sendMessage,
     sendPollMessage,
+    sendPollButtons,
     sendReminder,
     sendReminderWithButtons,
     sendResultImage,

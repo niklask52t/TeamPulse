@@ -2,6 +2,17 @@
 
 const CHANGELOG = [
     {
+        version: '1.7.1',
+        date: '2026-03-14',
+        changes: [
+            { type: 'feature', text: 'Hauptumfrage sendet jetzt zusätzlich eine Button-Nachricht in die Gruppe (Ja/Nein/Vielleicht Tap-Buttons)' },
+            { type: 'feature', text: 'Button-Antworten (buttons_response) werden im Webhook erkannt und als Stimmabgabe verarbeitet' },
+            { type: 'feature', text: '"Erinnerung senden" → "⏰ Abstimmungs-Erinnerung" (an Nicht-Voter mit Frist-Hinweis)' },
+            { type: 'feature', text: '"Event-Erinnerung" → "🏃 Start-Erinnerung (Zusager)" (an Ja-Voter, Event beginnt in 1h)' },
+            { type: 'fix', text: 'sendResultImage: base64 als Data-URI (data:image/png;base64,...) für WAHA sendImage' },
+        ]
+    },
+    {
         version: '1.7.0',
         date: '2026-03-14',
         changes: [

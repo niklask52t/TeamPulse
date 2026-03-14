@@ -132,7 +132,7 @@ function buildActionButtons(poll) {
         btns.push(`<button class="btn btn-primary btn-sm" onclick="pollAction(${poll.id}, 'send', 'Umfrage in Gruppe senden?')">Jetzt Umfrage senden</button>`);
     }
     if (poll.status === 'active') {
-        btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'send-reminder', 'Erinnerung an alle ohne Antwort senden?')">Jetzt Erinnerung senden</button>`);
+        btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'send-reminder', 'Abstimmungs-Erinnerung an alle ohne Antwort senden?')">⏰ Abstimmungs-Erinnerung</button>`);
         btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'close', 'Umfrage jetzt manuell schließen?')">Umfrage schließen</button>`);
         btns.push(`<button class="btn btn-secondary btn-sm" onclick="showExtendForm(${poll.id})">Frist verlängern</button>`);
     }
@@ -140,8 +140,8 @@ function buildActionButtons(poll) {
         btns.push(`<button class="btn btn-secondary btn-sm" onclick="showExtendForm(${poll.id})">Frist verlängern</button>`);
     }
     if (poll.status === 'active' || poll.status === 'closed') {
-        btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'post-group', 'Ergebnis jetzt in Gruppe posten?')">Jetzt Ergebnis posten</button>`);
-        btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'send-event-reminder', 'Event-Erinnerung an alle Zusager senden?')">Jetzt Event-Erinnerung</button>`);
+        btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'post-group', 'Ergebnis jetzt in Gruppe posten?')">Ergebnis posten</button>`);
+        btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'send-event-reminder', 'Start-Erinnerung an alle Zusager senden?')">🏃 Start-Erinnerung (Zusager)</button>`);
     }
     btns.push(`<button class="btn btn-danger btn-sm" onclick="deletePoll(${poll.id})">Löschen</button>`);
 
