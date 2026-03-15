@@ -8,7 +8,9 @@ const FOOTER = '─────────────────\nPowered by 
 function fmtDate(dateStr) {
     if (!dateStr || !dateStr.includes('-')) return dateStr || '';
     const [y, m, d] = dateStr.split('-');
-    return `${d}.${m}.${y}`;
+    const dayNames = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+    const dow = new Date(dateStr + 'T12:00:00Z').getUTCDay();
+    return `${d}.${m}.${y} (${dayNames[dow]})`;
 }
 
 function buildDescription() {

@@ -11,11 +11,13 @@ const getHeaders = {
     ...(WAHA_API_KEY && { 'X-Api-Key': WAHA_API_KEY }),
 };
 
-// Format YYYY-MM-DD → DD.MM.YYYY for human-readable WhatsApp messages
+// Format YYYY-MM-DD → DD.MM.YYYY (Mo) for human-readable WhatsApp messages
 function fmtDate(dateStr) {
     if (!dateStr || !dateStr.includes('-')) return dateStr || '';
     const [y, m, d] = dateStr.split('-');
-    return `${d}.${m}.${y}`;
+    const dayNames = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+    const dow = new Date(dateStr + 'T12:00:00Z').getUTCDay();
+    return `${d}.${m}.${y} (${dayNames[dow]})`;
 }
 
 async function sendMessage(chatId, text) {
