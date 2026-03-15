@@ -112,10 +112,10 @@ async function renderPollDetail(id) {
             <span class="stat response-pending">⏳ ${pending.length}</span>
         </div>
         <div class="response-groups">
-            ${renderReasonGroup('✅ Zusagen', yes, 'yes')}
-            ${renderReasonGroup('❌ Absagen', no, 'no')}
-            ${renderReasonGroup('🤷 Vielleicht', maybe, 'maybe')}
-            ${renderResponseGroup('⏳ Noch ausstehend', pending, 'pending')}
+            ${renderReasonGroup('✅ Zusagen', yes, 'yes', poll.id, !poll.archived)}
+            ${renderReasonGroup('❌ Absagen', no, 'no', poll.id, !poll.archived)}
+            ${renderReasonGroup('🤷 Vielleicht', maybe, 'maybe', poll.id, !poll.archived)}
+            ${renderResponseGroup('⏳ Noch ausstehend', pending, 'pending', poll.id, !poll.archived)}
         </div>
     `;
     detail.classList.remove('hidden');
@@ -123,9 +123,14 @@ async function renderPollDetail(id) {
     if (chevron) chevron.innerHTML = 'Details &#x25B2;';
 }
 
-function renderResponseGroup(label, responses, type) {
+function renderResponseGroup(label, responses, type, pollId, editable) {
     if (responses.length === 0) return '';
-    const names = responses.map(r => esc(r.name)).join(', ');
+    const names = responses.map(r => {
+        if (editable) {
+            return `<span class="response-name-editable" onclick="showVotePicker(event, ${pollId}, ${r.contact_id}, '${esc(r.name)}')">${esc(r.name)}</span>`;
+        }
+        return esc(r.name);
+    }).join(', ');
     return `
         <div class="response-group">
             <div class="response-group-label response-${type}">${label} (${responses.length})</div>
@@ -133,14 +138,17 @@ function renderResponseGroup(label, responses, type) {
         </div>`;
 }
 
-function renderReasonGroup(label, responses, type) {
+function renderReasonGroup(label, responses, type, pollId, editable) {
     if (responses.length === 0) return '';
     const hasReasons = responses.some(r => r.reason);
-    if (!hasReasons) return renderResponseGroup(label, responses, type);
+    if (!hasReasons) return renderResponseGroup(label, responses, type, pollId, editable);
     const items = responses.map(r => {
         const reason = r.reason
             ? ` <span class="response-reason">– <em>${esc(r.reason)}</em></span>`
             : '';
+        if (editable) {
+            return `<span class="response-maybe-item"><span class="response-name-editable" onclick="showVotePicker(event, ${pollId}, ${r.contact_id}, '${esc(r.name)}')">${esc(r.name)}</span>${reason}</span>`;
+        }
         return `<span class="response-maybe-item">${esc(r.name)}${reason}</span>`;
     }).join('');
     return `
@@ -148,6 +156,42 @@ function renderReasonGroup(label, responses, type) {
             <div class="response-group-label response-${type}">${label} (${responses.length})</div>
             <div class="response-names response-names--maybe">${items}</div>
         </div>`;
+}
+
+function showVotePicker(evt, pollId, contactId, name) {
+    evt.stopPropagation();
+    // Remove any existing picker
+    document.querySelectorAll('.vote-picker').forEach(el => el.remove());
+    const picker = document.createElement('div');
+    picker.className = 'vote-picker';
+    picker.innerHTML = `
+        <span class="vote-picker-label">${name}:</span>
+        <button onclick="setVote(${pollId}, ${contactId}, 'yes')" title="Ja">✅</button>
+        <button onclick="setVote(${pollId}, ${contactId}, 'no')" title="Nein">❌</button>
+        <button onclick="setVote(${pollId}, ${contactId}, 'maybe')" title="Vielleicht">🤷</button>
+        <button onclick="setVote(${pollId}, ${contactId}, null)" title="Zurücksetzen">⏳</button>
+        <button onclick="this.parentElement.remove()" title="Abbrechen" class="vote-picker-close">✕</button>
+    `;
+    evt.target.after(picker);
+}
+
+async function setVote(pollId, contactId, response) {
+    try {
+        const res = await apiFetch(`${API}/api/polls/${pollId}/response`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contact_id: contactId, response }),
+        });
+        if (!res.ok) {
+            const data = await res.json();
+            alert('Fehler: ' + (data.error || 'Unbekannter Fehler'));
+            return;
+        }
+        document.querySelectorAll('.vote-picker').forEach(el => el.remove());
+        await renderPollDetail(pollId);
+    } catch (err) {
+        if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
+    }
 }
 
 function buildActionButtons(poll) {

@@ -551,6 +551,48 @@ main {
     font-size: 0.83rem;
 }
 
+/* ===== VOTE PICKER ===== */
+.response-name-editable {
+    cursor: pointer;
+    border-bottom: 1px dashed var(--text-muted);
+    transition: color 0.15s;
+}
+.response-name-editable:hover { color: var(--blue); }
+
+.vote-picker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.25rem 0.5rem;
+    margin: 0.25rem 0;
+    box-shadow: var(--shadow-sm);
+}
+.vote-picker-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-right: 0.25rem;
+}
+.vote-picker button {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.2rem 0.45rem;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.15s, border-color 0.15s;
+}
+.vote-picker button:hover {
+    background: var(--bg-secondary);
+    border-color: var(--blue);
+}
+.vote-picker-close {
+    color: var(--text-muted);
+    font-size: 0.75rem !important;
+}
+
 /* ===== ARCHIVE ===== */
 .archive-header {
     display: flex;

@@ -227,26 +227,41 @@ async function getGroups() {
     return Array.isArray(data) ? data : [];
 }
 
-// Update group description
+// Update group description — retries with delay to handle WAHA Store.GroupMetadata caching
 async function updateGroupDescription(groupId, description) {
-    // First, fetch the group to load its metadata into whatsapp-web.js Store
-    // (without this, Store.GroupMetadata.get() returns undefined and setDescription crashes)
-    try {
-        const preloadUrl = `${WAHA_API_URL}/api/${WAHA_SESSION}/groups/${groupId}`;
-        await fetch(preloadUrl, { headers: getHeaders });
-    } catch { /* ignore preload errors */ }
-
     const url = `${WAHA_API_URL}/api/${WAHA_SESSION}/groups/${groupId}/description`;
-    const res = await fetch(url, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify({ description }),
-    });
-    if (!res.ok) {
+    const maxAttempts = 3;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        // Preload group metadata into whatsapp-web.js Store before each attempt
+        try {
+            const preloadUrl = `${WAHA_API_URL}/api/${WAHA_SESSION}/groups/${groupId}`;
+            await fetch(preloadUrl, { headers: getHeaders });
+        } catch { /* ignore preload errors */ }
+
+        // Wait a bit after preload so WAHA's Store can cache the metadata
+        if (attempt > 1) {
+            await new Promise(r => setTimeout(r, attempt * 3000));
+        }
+
+        const res = await fetch(url, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({ description }),
+        });
+
+        if (res.ok) return res.json();
+
         const body = await res.text();
+        const isMetadataError = body.includes("Cannot read properties of undefined (reading 'get')");
+
+        if (isMetadataError && attempt < maxAttempts) {
+            console.warn(`[WARN] updateGroupDescription attempt ${attempt}/${maxAttempts} failed (Store not ready), retrying...`);
+            continue;
+        }
+
         throw new Error(`WAHA updateGroupDescription failed (${res.status}): ${body.slice(0, 300)}`);
     }
-    return res.json();
 }
 
 // Get a single contact by ID (can be @c.us or @lid) — tries multiple WAHA endpoint shapes

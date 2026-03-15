@@ -110,6 +110,33 @@ router.post('/:id/send-event-reminder', async (req, res) => {
     }
 });
 
+// PUT manually set a member's response (for recovering missed votes or corrections)
+router.put('/:id/response', (req, res) => {
+    const pollId = Number(req.params.id);
+    const { contact_id, response } = req.body;
+    const validResponses = ['yes', 'no', 'maybe', null];
+    if (!contact_id || !validResponses.includes(response)) {
+        return res.status(400).json({ error: 'contact_id und response (yes/no/maybe/null) erforderlich' });
+    }
+    const poll = db.prepare('SELECT * FROM polls WHERE id = ?').get(pollId);
+    if (!poll) return res.status(404).json({ error: 'Umfrage nicht gefunden' });
+
+    // Ensure response row exists
+    db.prepare('INSERT OR IGNORE INTO poll_responses (poll_id, contact_id) VALUES (?, ?)').run(pollId, contact_id);
+
+    if (response) {
+        db.prepare('UPDATE poll_responses SET response = ?, responded_at = datetime(\'now\') WHERE poll_id = ? AND contact_id = ?').run(response, pollId, contact_id);
+    } else {
+        db.prepare('UPDATE poll_responses SET response = NULL, responded_at = NULL, reason = NULL WHERE poll_id = ? AND contact_id = ?').run(pollId, contact_id);
+    }
+
+    // Trigger group description update
+    const { scheduleDescriptionUpdate } = require('../services/groupDescription');
+    scheduleDescriptionUpdate();
+
+    res.json({ success: true });
+});
+
 // WAHA webhook endpoint
 router.post('/webhook', async (req, res) => {
     const { event, payload } = req.body;
@@ -137,9 +164,13 @@ router.post('/webhook', async (req, res) => {
             const phone = fromPhone;
             const text = payload.body;
             if (phone && text) {
-                const reasonResult = pollManager.processReasonMessage(phone, text);
-                if (reasonResult) {
-                    console.log(`[REASON] Saved from ${reasonResult.contactName} (poll ${reasonResult.pollId})`);
+                try {
+                    const reasonResult = pollManager.processReasonMessage(phone, text);
+                    if (reasonResult) {
+                        console.log(`[REASON] Saved from ${reasonResult.contactName} (poll ${reasonResult.pollId})`);
+                    }
+                } catch (err) {
+                    console.error(`[ERROR] processReasonMessage failed for phone=${phone}:`, err.message);
                 }
             }
         }
@@ -173,11 +204,15 @@ router.post('/webhook', async (req, res) => {
 
         if (phone && selectedOptions.length > 0) {
             const optionName = selectedOptions[0]?.name || selectedOptions[0]?.value || selectedOptions[0] || '';
-            const result = await pollManager.processResponse(phone, optionName);
-            if (result) {
-                console.log(`[VOTE] poll.vote from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
-            } else {
-                console.log(`[VOTE] poll.vote unmatched — phone=${phone} option=${optionName}`);
+            try {
+                const result = await pollManager.processResponse(phone, optionName);
+                if (result) {
+                    console.log(`[VOTE] poll.vote from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
+                } else {
+                    console.log(`[VOTE] poll.vote unmatched — phone=${phone} option=${optionName}`);
+                }
+            } catch (err) {
+                console.error(`[ERROR] processResponse failed for phone=${phone} option=${optionName}:`, err.message, err.stack);
             }
         } else {
             console.log(`[VOTE] poll.vote missing data — phone=${phone} options=${JSON.stringify(selectedOptions)}`);

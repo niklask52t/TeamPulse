@@ -18,6 +18,9 @@ const CHANGELOG = [
             { type: 'improvement', text: 'Zeitvalidierung: Treffenszeit muss vor der Uhrzeit, Endzeit muss nach der Uhrzeit liegen' },
             { type: 'fix', text: 'Statistiken und Dashboard basieren jetzt ausschließlich auf abgeschlossenen Umfragen (nicht mehr auf aktiven)' },
             { type: 'fix', text: 'Tab-Wechsel lädt Daten jetzt immer neu — kein leerer Tab mehr nach Navigation' },
+            { type: 'fix', text: 'Webhook-Fehlerbehandlung: Stimmen werden jetzt auch nach Server-Neustart zuverlässig verarbeitet (try/catch für poll.vote-Handler)' },
+            { type: 'improvement', text: 'Gruppenbeschreibung: automatische Wiederholung bei WAHA-Fehler (Store-Cache-Problem nach Neustart)' },
+            { type: 'feature', text: 'Manuelle Stimmkorrektur: Klick auf Mitgliedername in Umfrage-Details → Stimme ändern (✅/❌/🤷/⏳)' },
         ]
     },
     {
