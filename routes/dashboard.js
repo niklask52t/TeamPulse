@@ -5,7 +5,7 @@ const db = require('../db/database');
 router.get('/', (req, res) => {
     // Next upcoming event
     const nextEvent = db.prepare(`
-        SELECT p.id as poll_id, p.event_date, p.deadline, p.status, e.title, e.event_time, e.end_time, e.meeting_time, e.type, e.auto_cancel, e.min_participants
+        SELECT p.id as poll_id, p.event_date, p.deadline, p.status, e.title, e.description, e.event_time, e.end_time, e.meeting_time, e.type, e.auto_cancel, e.min_participants
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.archived = 0 AND p.status IN ('pending', 'active')
         ORDER BY p.event_date ASC, e.event_time ASC LIMIT 1
@@ -13,7 +13,7 @@ router.get('/', (req, res) => {
 
     // Active polls with response counts
     const activePolls = db.prepare(`
-        SELECT p.id, p.event_date, p.deadline, p.status, e.title, e.event_time, e.auto_cancel, e.min_participants,
+        SELECT p.id, p.event_date, p.deadline, p.status, e.title, e.description, e.event_time, e.auto_cancel, e.min_participants,
             SUM(CASE WHEN pr.response = 'yes' THEN 1 ELSE 0 END) as yes_count,
             SUM(CASE WHEN pr.response = 'no' THEN 1 ELSE 0 END) as no_count,
             SUM(CASE WHEN pr.response = 'maybe' THEN 1 ELSE 0 END) as maybe_count,

@@ -11,6 +11,7 @@ const CHANGELOG = [
             { type: 'feature', text: 'Kommentare für Zusagen: nach jeder Abstimmung (auch Ja) können Teilnehmer privat einen Kommentar senden (z.B. "Komme 10 Min später")' },
             { type: 'feature', text: 'Poll-Hinweis: "Privat antworten für Kommentar" wird automatisch in jeder Umfrage angezeigt' },
             { type: 'feature', text: 'Ergebnis-Post zeigt jetzt auch Kommentare von Ja-Stimmern an' },
+            { type: 'feature', text: 'Event-Beschreibung: optionales Freitextfeld pro Event — wird in Umfragen, Erinnerungen, Ergebnis-Posts, Gruppenbeschreibung und Dashboard angezeigt' },
         ]
     },
     {

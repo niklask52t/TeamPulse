@@ -94,7 +94,7 @@ async function checkAndClosePolls() {
     const waha = require('./waha');
 
     const pollsToClose = db.prepare(`
-        SELECT p.id, p.event_date, e.title, e.event_time, e.end_time, e.meeting_time, e.auto_cancel, e.min_participants
+        SELECT p.id, p.event_date, e.title, e.description, e.event_time, e.end_time, e.meeting_time, e.auto_cancel, e.min_participants
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.status = 'active' AND datetime(p.deadline) <= datetime('now')
     `).all();
@@ -112,7 +112,7 @@ async function checkAndClosePolls() {
                 try {
                     await waha.sendCancellationMessage(
                         GROUP_CHAT_ID, poll.title, poll.event_date,
-                        poll.event_time, poll.end_time, yesCount, poll.min_participants, poll.meeting_time
+                        poll.event_time, poll.end_time, yesCount, poll.min_participants, poll.meeting_time, poll.description
                     );
                     console.log(`[INFO] Auto-cancel sent for poll ${poll.id} (${yesCount}/${poll.min_participants})`);
                 } catch (err) {

@@ -6,7 +6,7 @@ const pollManager = require('../services/pollManager');
 // GET all polls with responses
 router.get('/', (req, res) => {
     const polls = db.prepare(`
-        SELECT p.*, e.title, e.type, e.event_time
+        SELECT p.*, e.title, e.description, e.type, e.event_time
         FROM polls p JOIN events e ON p.event_id = e.id
         ORDER BY p.event_date DESC
     `).all();
@@ -16,7 +16,7 @@ router.get('/', (req, res) => {
 // GET poll details with responses
 router.get('/:id', (req, res) => {
     const poll = db.prepare(`
-        SELECT p.*, e.title, e.type, e.event_time, e.recurring, e.auto_cancel, e.min_participants
+        SELECT p.*, e.title, e.description, e.type, e.event_time, e.recurring, e.auto_cancel, e.min_participants
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.id = ?
     `).get(Number(req.params.id));

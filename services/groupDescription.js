@@ -22,7 +22,7 @@ function buildDescription() {
 
     // 2. Find next upcoming poll (non-archived, closest event_date in future)
     const nextPoll = db.prepare(`
-        SELECT p.*, e.title, e.event_time, e.end_time, e.meeting_time
+        SELECT p.*, e.title, e.description, e.event_time, e.end_time, e.meeting_time
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.archived = 0 AND p.status IN ('pending', 'active', 'closed')
         ORDER BY p.event_date ASC, e.event_time ASC
@@ -39,6 +39,9 @@ function buildDescription() {
         dynamic += `🗓 ${fmtDate(nextPoll.event_date)} um ${timeStr} Uhr\n`;
         if (nextPoll.meeting_time) {
             dynamic += `🤝 Treffen: ${nextPoll.meeting_time} Uhr\n`;
+        }
+        if (nextPoll.description) {
+            dynamic += `📝 ${nextPoll.description}\n`;
         }
         dynamic += `📊 Status: ${statusLabels[nextPoll.status] || nextPoll.status}\n`;
         dynamic += '\n';

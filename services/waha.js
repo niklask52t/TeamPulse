@@ -32,12 +32,13 @@ async function sendMessage(chatId, text) {
     return res.json();
 }
 
-async function sendPollMessage(chatId, eventTitle, eventDate, eventTime, endTime, meetingTime) {
+async function sendPollMessage(chatId, eventTitle, eventDate, eventTime, endTime, meetingTime, description) {
     const url = `${WAHA_API_URL}/api/sendPoll`;
     let name = `${eventTitle} – ${fmtDate(eventDate)} um ${eventTime}`;
     if (endTime) name += ` - ${endTime}`;
     name += ' Uhr';
     if (meetingTime) name += ` (Treffen: ${meetingTime} Uhr)`;
+    if (description) name += `\n📝 ${description}`;
     name += '\n💬 Privat antworten für Kommentar';
     const res = await fetch(url, {
         method: 'POST',
@@ -60,13 +61,14 @@ async function sendPollMessage(chatId, eventTitle, eventDate, eventTime, endTime
 }
 
 // deadlineTime: formatted time string, e.g. "18:00 Uhr"
-async function sendReminder(chatId, eventTitle, eventDate, eventTime, endTime, deadlineTime, meetingTime) {
+async function sendReminder(chatId, eventTitle, eventDate, eventTime, endTime, deadlineTime, meetingTime, description) {
     let timeStr = eventTime;
     if (endTime) timeStr += ` - ${endTime}`;
     let text =
         `⏰ *Erinnerung: ${eventTitle}*\n` +
         `📅 ${fmtDate(eventDate)} um ${timeStr} Uhr\n`;
     if (meetingTime) text += `🤝 Treffen: ${meetingTime} Uhr\n`;
+    if (description) text += `📝 ${description}\n`;
     text += `\nDie Abstimmung endet um ${deadlineTime} Uhr!\n` +
         `Falls noch nicht abgestimmt, jetzt in der Umfrage antworten.`;
     return sendMessage(chatId, text);
@@ -101,23 +103,25 @@ async function sendResultImage(chatId, imageBuffer, caption) {
     return r2.json();
 }
 
-async function sendEventReminder(chatId, eventTitle, eventTime, endTime, meetingTime) {
+async function sendEventReminder(chatId, eventTitle, eventTime, endTime, meetingTime, description) {
     let timeStr = eventTime;
     if (endTime) timeStr += ` - ${endTime}`;
     let text =
         `🏃 *${eventTitle} beginnt in 1 Stunde!*\n` +
         `⏰ ${timeStr} Uhr\n`;
     if (meetingTime) text += `🤝 Treffen: ${meetingTime} Uhr\n`;
+    if (description) text += `📝 ${description}\n`;
     text += `\nBis gleich!`;
     return sendMessage(chatId, text);
 }
 
 // yesData/noData/maybeData: arrays of { name, reason? }
-async function postResultsToGroup(groupId, eventTitle, eventDate, eventTime, endTime, yesData, noData, maybeData, meetingTime, cancelInfo) {
+async function postResultsToGroup(groupId, eventTitle, eventDate, eventTime, endTime, yesData, noData, maybeData, meetingTime, cancelInfo, description) {
     let timeStr = eventTime;
     if (endTime) timeStr += ` - ${endTime}`;
     const lines = [`📊 *Ergebnis: ${eventTitle}*`, `📅 ${fmtDate(eventDate)} um ${timeStr} Uhr`];
     if (meetingTime) lines.push(`🤝 Treffen: ${meetingTime} Uhr`);
+    if (description) lines.push(`📝 ${description}`);
 
     if (cancelInfo) {
         lines.push('');
@@ -146,13 +150,14 @@ async function postResultsToGroup(groupId, eventTitle, eventDate, eventTime, end
     return sendMessage(groupId, lines.join('\n'));
 }
 
-async function sendCancellationMessage(chatId, eventTitle, eventDate, eventTime, endTime, yesCount, minRequired, meetingTime) {
+async function sendCancellationMessage(chatId, eventTitle, eventDate, eventTime, endTime, yesCount, minRequired, meetingTime, description) {
     let timeStr = eventTime;
     if (endTime) timeStr += ` - ${endTime}`;
     let text =
         `❌ *ABGESAGT: ${eventTitle}*\n` +
         `📅 ${fmtDate(eventDate)} um ${timeStr} Uhr\n`;
     if (meetingTime) text += `🤝 Treffen: ${meetingTime} Uhr\n`;
+    if (description) text += `📝 ${description}\n`;
     text += `\nZu wenige Zusagen (${yesCount}/${minRequired}).`;
     return sendMessage(chatId, text);
 }

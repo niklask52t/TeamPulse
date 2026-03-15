@@ -30,6 +30,7 @@ async function loadPolls() {
             <div class="card-info">
                 <h3>${esc(p.title)} <span class="badge badge-${p.status}">${statusLabels[p.status]}</span></h3>
                 <p>${p.event_time} Uhr | Frist: ${fmtDeadline(p.deadline)}</p>
+                ${p.description ? `<p style="color:var(--text-secondary);font-size:0.85rem;margin-top:0.25rem">📝 ${esc(p.description)}</p>` : ''}
             </div>
             <div class="card-actions">
                 <span class="poll-chevron" id="poll-chevron-${p.id}">Details &#x25BC;</span>
@@ -98,9 +99,12 @@ async function renderPollDetail(id) {
         ? `<div class="poll-auto-cancel-info ${yes.length < poll.min_participants ? 'poll-auto-cancel-info--danger' : 'poll-auto-cancel-info--ok'}">Auto-Absage bei &lt; ${poll.min_participants} Zusagen (aktuell: ${yes.length})</div>`
         : '';
 
+    const descHtml = poll.description ? `<p style="color:var(--text-secondary);margin:0.5rem 0">📝 ${esc(poll.description)}</p>` : '';
+
     detail.innerHTML = `
         <div class="poll-actions">${actions}</div>
         ${autoCancelHtml}
+        ${descHtml}
         <div class="stats">
             <span class="stat response-yes">✅ ${yes.length}</span>
             <span class="stat response-no">❌ ${no.length}</span>

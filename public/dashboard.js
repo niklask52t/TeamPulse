@@ -47,6 +47,7 @@ function renderDashboard(data) {
         const typeLabels = { training: 'Training', tournament: 'Turnier', other: 'Sonstiges' };
         const endStr = nextEvent.end_time ? ` - ${nextEvent.end_time}` : '';
         const meetStr = nextEvent.meeting_time ? `<p>Treffen: ${nextEvent.meeting_time} Uhr</p>` : '';
+        const descStr = nextEvent.description ? `<p style="color:var(--text-secondary);font-size:0.9rem">📝 ${esc(nextEvent.description)}</p>` : '';
         const cancelStr = nextEvent.auto_cancel ? `<p class="dashboard-auto-cancel">Auto-Absage bei &lt; ${nextEvent.min_participants} Zusagen</p>` : '';
         nextEventHtml = `
             <div class="dashboard-next-event">
@@ -61,6 +62,7 @@ function renderDashboard(data) {
                         <div>
                             <p>${nextEvent.event_time}${endStr} Uhr</p>
                             ${meetStr}
+                            ${descStr}
                             ${cancelStr}
                         </div>
                     </div>
@@ -88,6 +90,7 @@ function renderDashboard(data) {
                         ${cancelBadge}
                     </div>
                     <p class="dashboard-poll-date">${fmtDateFancy(p.event_date)} ${p.event_time} Uhr</p>
+                    ${p.description ? `<p style="color:var(--text-secondary);font-size:0.8rem;margin:0.2rem 0 0">📝 ${esc(p.description)}</p>` : ''}
                     <div class="dashboard-poll-progress">
                         <div class="dashboard-poll-bar" style="width:${pct}%"></div>
                     </div>

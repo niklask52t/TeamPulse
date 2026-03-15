@@ -18,12 +18,14 @@ async function loadEvents() {
                 ? `Versand: ${e.poll_send_at.replace('T', ' ')}`
                 : `Versand: ${fmtHours(e.poll_send_minutes_before || 1440)} vor Event`;
             const cancelInfo = e.auto_cancel ? ` | Auto-Absage: min. ${e.min_participants}` : '';
+            const descInfo = e.description ? `<p style="color:var(--text-secondary);font-size:0.85rem;margin-top:0.25rem">📝 ${esc(e.description)}</p>` : '';
             return `
             <div class="card" id="event-card-${e.id}">
                 ${dateDisplay}
                 <div class="card-info">
                     <h3>${esc(e.title)} <span class="badge badge-${e.type}">${typeLabels[e.type]}</span> ${recurring}</h3>
                     <p>${e.event_time}${endStr} Uhr${e.meeting_time ? ' | Treffen: ' + e.meeting_time + ' Uhr' : ''} | ${sendInfo} | Frist: ${fmtHours(e.poll_deadline_minutes)} vor Event${cancelInfo}</p>
+                    ${descInfo}
                 </div>
                 <div class="card-actions">
                     <button class="btn btn-secondary btn-sm" onclick="editEvent(${e.id})">Bearbeiten</button>
@@ -58,6 +60,7 @@ function showEventForm() {
     document.getElementById('send-mode-before').checked = true;
     document.getElementById('event-send-date').value = '';
     document.getElementById('event-send-time').value = '';
+    document.getElementById('event-description').value = '';
     document.getElementById('event-auto-cancel').checked = false;
     document.getElementById('event-min-participants').value = '8';
     toggleAutoCancel();
@@ -138,6 +141,7 @@ async function editEvent(id) {
         document.getElementById('event-send-time').value = '';
     }
     document.getElementById('event-deadline').value = e.poll_deadline_minutes / 60;
+    document.getElementById('event-description').value = e.description || '';
     document.getElementById('event-auto-cancel').checked = !!e.auto_cancel;
     document.getElementById('event-min-participants').value = e.min_participants || 8;
     toggleAutoCancel();
@@ -168,6 +172,7 @@ async function saveEvent(e) {
         recurrence_day: Number(document.getElementById('event-recurrence-day').value),
         event_date: document.getElementById('event-date').value || null,
         poll_deadline_minutes: Math.round(Number(document.getElementById('event-deadline').value) * 60),
+        description: document.getElementById('event-description').value || null,
         auto_cancel: document.getElementById('event-auto-cancel').checked,
         min_participants: Number(document.getElementById('event-min-participants').value) || 0,
     };

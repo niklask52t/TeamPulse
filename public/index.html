@@ -171,6 +171,10 @@
                             <input type="number" id="event-deadline" value="1" min="0.25" step="0.25" required>
                         </div>
                         <div class="form-group">
+                            <label>Beschreibung (optional)</label>
+                            <textarea id="event-description" rows="2" placeholder="z.B. Treffpunkt Halle 3, bitte Trikot mitbringen..." style="width:100%;resize:vertical;font-family:inherit;padding:0.5rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-main);color:var(--text-primary)"></textarea>
+                        </div>
+                        <div class="form-group">
                             <label>
                                 <input type="checkbox" id="event-auto-cancel" onchange="toggleAutoCancel()">
                                 Automatische Absage bei zu wenig Zusagen
@@ -319,6 +323,7 @@
                         <p><strong>Treffenszeit:</strong> Optional — wann sich das Team trifft (z.B. 18:30). Wird in allen Nachrichten zusätzlich angezeigt.</p>
                         <p><strong>Umfrage senden:</strong> Entweder "X Stunden vor Event" (Standard: 24h) oder ein festes Datum+Uhrzeit. Bei wiederkehrenden Events ist nur "Stunden vorher" verfügbar.</p>
                         <p><strong>Abstimmungsfrist:</strong> Stunden vor Event-Beginn, wann die Abstimmung schließt UND das Ergebnis automatisch gepostet wird. Standard: 1h.</p>
+                        <p><strong>Beschreibung:</strong> Optionales Freitextfeld — wird in WhatsApp-Umfragen, Erinnerungen, Ergebnis-Posts, Gruppenbeschreibung und im Dashboard angezeigt.</p>
                         <p><strong>Automatische Absage:</strong> Optional — wenn aktiviert, wird bei zu wenigen Zusagen automatisch eine Absage in die Gruppe gesendet. Mindest-Zusagen konfigurierbar.</p>
                         <p><strong>Ausnahmen (nur wiederkehrend):</strong> Einzelne Termine können ausgesetzt werden (z.B. Feiertage). Die Umfrage wird für dieses Datum nicht erstellt/gesendet.</p>
                     </div>

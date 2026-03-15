@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS contacts (
 CREATE TABLE IF NOT EXISTS events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
+    description TEXT,
     type TEXT NOT NULL CHECK(type IN ('training', 'tournament', 'other')),
     event_date TEXT NOT NULL,
     event_time TEXT NOT NULL,
