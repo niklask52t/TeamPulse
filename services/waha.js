@@ -202,7 +202,8 @@ async function sendAdminVoteNotification(chatId, eventTitle, eventDate, newRespo
 async function sendTooLateNotification(chatId, eventTitle, eventDate) {
     const text =
         `⏰ Die Abstimmung für *${eventTitle}* am ${fmtDate(eventDate)} ist bereits beendet.\n\n` +
-        `Deine Stimme konnte leider nicht mehr gezählt werden. Wende dich bei Fragen an den Admin.`;
+        `Deine Stimme konnte leider nicht mehr gezählt werden.\n` +
+        `Falls du doch anwesend warst, wende dich an *Niklas Kronig* — er kann deine Stimme nachträglich anpassen.`;
     return sendMessage(chatId, text);
 }
 
