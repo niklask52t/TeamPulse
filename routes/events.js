@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
 const pollManager = require('../services/pollManager');
-const { berlinToday, TZ } = require('../services/timeUtils');
+const { berlinToday, parseBerlinDateTime, TZ } = require('../services/timeUtils');
 
 // GET all events
 router.get('/', (req, res) => {
@@ -73,7 +73,15 @@ router.post('/', (req, res) => {
         try {
             const todayStr = berlinToday();
             const todayDow = new Date(new Date().toLocaleString('sv-SE', { timeZone: TZ })).getDay();
-            const daysAhead = (recurrence_day - todayDow + 7) % 7 || 7;
+            let daysAhead = (recurrence_day - todayDow + 7) % 7;
+            // If same weekday (daysAhead=0), use today only if event hasn't passed yet
+            if (daysAhead === 0) {
+                const eventUtc = parseBerlinDateTime(todayStr, event_time);
+                if (!isNaN(eventUtc.getTime()) && new Date() >= eventUtc) {
+                    // Event already passed today, schedule for next week
+                    daysAhead = 7;
+                }
+            }
             const d = new Date(todayStr + 'T12:00:00Z');
             d.setUTCDate(d.getUTCDate() + daysAhead);
             const nextDate = d.toISOString().split('T')[0];
