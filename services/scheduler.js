@@ -139,19 +139,30 @@ async function generateRecurringPolls() {
     for (const event of events) {
         const todayStr = berlinDateStr();
         const todayDow = berlinDayOfWeek();
-        const daysAhead = (event.recurrence_day - todayDow + 7) % 7 || 7;
-        const dateStr = addDays(todayStr, daysAhead);
+        const now = new Date();
 
-        const existing = db.prepare(`
-            SELECT id FROM polls WHERE event_id = ? AND event_date = ?
-        `).get(event.id, dateStr);
+        // Generate polls for today (if same weekday and event not passed) AND next occurrence
+        const daysToday = (event.recurrence_day - todayDow + 7) % 7;
+        const candidates = daysToday === 0
+            ? [addDays(todayStr, 0), addDays(todayStr, 7)]  // today + next week
+            : [addDays(todayStr, daysToday)];                // next occurrence only
 
-        if (!existing) {
-            try {
-                const pollId = pollManager.createPollForEvent(event.id, dateStr, event.poll_deadline_minutes, event.poll_send_minutes_before);
-                console.log(`Created recurring poll ${pollId} for ${event.title} on ${dateStr}`);
-            } catch (err) {
-                console.error(`[ERROR] createPollForEvent recurring ${event.id}:`, err.message);
+        for (const dateStr of candidates) {
+            // Skip if event time already passed
+            const eventUtc = parseBerlinDateTime(dateStr, event.event_time);
+            if (!isNaN(eventUtc.getTime()) && now >= eventUtc) continue;
+
+            const existing = db.prepare(`
+                SELECT id FROM polls WHERE event_id = ? AND event_date = ?
+            `).get(event.id, dateStr);
+
+            if (!existing) {
+                try {
+                    const pollId = pollManager.createPollForEvent(event.id, dateStr, event.poll_deadline_minutes, event.poll_send_minutes_before);
+                    console.log(`Created recurring poll ${pollId} for ${event.title} on ${dateStr}`);
+                } catch (err) {
+                    console.error(`[ERROR] createPollForEvent recurring ${event.id}:`, err.message);
+                }
             }
         }
     }

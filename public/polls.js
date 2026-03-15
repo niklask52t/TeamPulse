@@ -38,7 +38,10 @@ async function loadPolls() {
         <div id="poll-detail-${p.id}" class="poll-detail hidden"></div>
     `;
 
-    let html = activeNonPending.map(renderPollCard).join('') || '<p style="color:var(--text-secondary)">Noch keine Umfragen vorhanden.</p>';
+    let html = activeNonPending.map(renderPollCard).join('');
+    if (activeNonPending.length === 0 && activePending.length === 0) {
+        html = '<p style="color:var(--text-secondary)">Noch keine Umfragen vorhanden.</p>';
+    }
 
     if (activePending.length > 0) {
         html += `
