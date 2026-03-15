@@ -180,19 +180,49 @@ async function getGroups() {
     return Array.isArray(data) ? data : [];
 }
 
-// Update group description
+// Update group description — tries multiple WAHA endpoint shapes
 async function updateGroupDescription(groupId, description) {
-    const url = `${WAHA_API_URL}/api/${WAHA_SESSION}/groups/${groupId}/description`;
-    const res = await fetch(url, {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify({ description }),
-    });
-    if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`WAHA updateGroupDescription failed (${res.status}): ${body}`);
+    const endpoints = [
+        // WAHA Plus / newer versions: PUT with chatId in body
+        {
+            url: `${WAHA_API_URL}/api/${WAHA_SESSION}/groups/description`,
+            method: 'PUT',
+            body: { chatId: groupId, description },
+        },
+        // Path-based endpoint
+        {
+            url: `${WAHA_API_URL}/api/${WAHA_SESSION}/groups/${groupId}/description`,
+            method: 'PUT',
+            body: { description },
+        },
+        // Some versions use settings sub-path
+        {
+            url: `${WAHA_API_URL}/api/${WAHA_SESSION}/groups/${groupId}/settings`,
+            method: 'PUT',
+            body: { description },
+        },
+    ];
+
+    let lastError = '';
+    for (const ep of endpoints) {
+        try {
+            const res = await fetch(ep.url, {
+                method: ep.method,
+                headers,
+                body: JSON.stringify(ep.body),
+            });
+            if (res.ok) {
+                return await res.json();
+            }
+            const body = await res.text();
+            lastError = `${ep.url} (${res.status}): ${body.slice(0, 200)}`;
+            // 404 = endpoint doesn't exist, try next; 500 = internal error, also try next
+            console.log(`[WARN] updateGroupDescription attempt failed: ${lastError}`);
+        } catch (err) {
+            lastError = `${ep.url}: ${err.message}`;
+        }
     }
-    return res.json();
+    throw new Error(`WAHA updateGroupDescription all attempts failed. Last: ${lastError}`);
 }
 
 // Get a single contact by ID (can be @c.us or @lid) — tries multiple WAHA endpoint shapes
