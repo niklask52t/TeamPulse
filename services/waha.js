@@ -190,6 +190,15 @@ async function sendNoFollowUp(chatId, eventTitle, eventDate) {
     return sendMessage(chatId, text);
 }
 
+async function sendAdminVoteNotification(chatId, eventTitle, eventDate, newResponse) {
+    const labels = { yes: 'Zusagen ✅', no: 'Absagen ❌', maybe: 'Vielleicht 🤷' };
+    const label = labels[newResponse] || newResponse;
+    const text =
+        `ℹ️ Deine Stimme für *${eventTitle}* am ${fmtDate(eventDate)} wurde vom Admin zu *${label}* geändert.\n\n` +
+        `Optional: Schreib innerhalb von *5 Minuten* einen Kommentar — oder ignoriere diese Nachricht.`;
+    return sendMessage(chatId, text);
+}
+
 // Get all participants of a group
 async function getGroupParticipants(groupId) {
     const url = `${WAHA_API_URL}/api/${WAHA_SESSION}/groups/${encodeURIComponent(groupId)}/participants/v2`;
@@ -304,6 +313,7 @@ module.exports = {
     sendEventReminder,
     sendMaybeFollowUp,
     sendNoFollowUp,
+    sendAdminVoteNotification,
     postResultsToGroup,
     sendCancellationMessage,
     getGroupParticipants,

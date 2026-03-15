@@ -111,15 +111,20 @@ router.post('/:id/send-event-reminder', async (req, res) => {
 });
 
 // PUT manually set a member's response (for recovering missed votes or corrections)
-router.put('/:id/response', (req, res) => {
+router.put('/:id/response', async (req, res) => {
     const pollId = Number(req.params.id);
     const { contact_id, response } = req.body;
     const validResponses = ['yes', 'no', 'maybe', null];
     if (!contact_id || !validResponses.includes(response)) {
         return res.status(400).json({ error: 'contact_id und response (yes/no/maybe/null) erforderlich' });
     }
-    const poll = db.prepare('SELECT * FROM polls WHERE id = ?').get(pollId);
+    const poll = db.prepare(`
+        SELECT p.*, e.title, e.event_time FROM polls p JOIN events e ON p.event_id = e.id WHERE p.id = ?
+    `).get(pollId);
     if (!poll) return res.status(404).json({ error: 'Umfrage nicht gefunden' });
+
+    const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(contact_id);
+    if (!contact) return res.status(404).json({ error: 'Kontakt nicht gefunden' });
 
     // Ensure response row exists
     db.prepare('INSERT OR IGNORE INTO poll_responses (poll_id, contact_id) VALUES (?, ?)').run(pollId, contact_id);
@@ -128,6 +133,14 @@ router.put('/:id/response', (req, res) => {
         db.prepare('UPDATE poll_responses SET response = ?, responded_at = datetime(\'now\') WHERE poll_id = ? AND contact_id = ?').run(response, pollId, contact_id);
     } else {
         db.prepare('UPDATE poll_responses SET response = NULL, responded_at = NULL, reason = NULL WHERE poll_id = ? AND contact_id = ?').run(pollId, contact_id);
+    }
+
+    // Send private notification to the member
+    if (response && contact.phone) {
+        const waha = require('../services/waha');
+        const chatId = contact.phone.replace('+', '') + '@c.us';
+        waha.sendAdminVoteNotification(chatId, poll.title, poll.event_date, response)
+            .catch(err => console.error(`[ERROR] sendAdminVoteNotification to ${contact.name}:`, err.message));
     }
 
     // Trigger group description update
