@@ -78,15 +78,26 @@ function buildDescription() {
     return result;
 }
 
-// Debounce: avoid spamming WAHA when multiple votes come in quickly
-let updateTimer = null;
+// Debounce timers for different contexts
+let voteTimer = null;
+let blockTimer = null;
 
+// 15s debounce for votes/poll changes
 function scheduleDescriptionUpdate() {
-    if (updateTimer) clearTimeout(updateTimer);
-    updateTimer = setTimeout(() => {
-        updateTimer = null;
+    if (voteTimer) clearTimeout(voteTimer);
+    voteTimer = setTimeout(() => {
+        voteTimer = null;
         updateGroupDescription();
-    }, 60000);
+    }, 15000);
+}
+
+// 120s debounce for text block changes
+function scheduleBlockDescriptionUpdate() {
+    if (blockTimer) clearTimeout(blockTimer);
+    blockTimer = setTimeout(() => {
+        blockTimer = null;
+        updateGroupDescription();
+    }, 120000);
 }
 
 async function updateGroupDescription() {
@@ -103,4 +114,4 @@ async function updateGroupDescription() {
     }
 }
 
-module.exports = { buildDescription, updateGroupDescription, scheduleDescriptionUpdate };
+module.exports = { buildDescription, updateGroupDescription, scheduleDescriptionUpdate, scheduleBlockDescriptionUpdate };

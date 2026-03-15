@@ -136,7 +136,7 @@ async function triggerDescriptionUpdate() {
             alert('Fehler: ' + (err.error || 'Unbekannter Fehler'));
             return;
         }
-        alert('Gruppenbeschreibung aktualisiert!');
+        alert('WhatsApp-Gruppenbeschreibung aktualisiert!');
     } catch (err) {
         if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
     }

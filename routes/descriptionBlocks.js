@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
-const { buildDescription, updateGroupDescription } = require('../services/groupDescription');
+const { buildDescription, updateGroupDescription, scheduleBlockDescriptionUpdate } = require('../services/groupDescription');
 
 // GET all blocks
 router.get('/', (req, res) => {
@@ -24,7 +24,7 @@ router.post('/', (req, res) => {
         'INSERT INTO group_description_blocks (content, position, sort_order) VALUES (?, ?, ?)'
     ).run(content, position, sort_order || 0);
     const block = db.prepare('SELECT * FROM group_description_blocks WHERE id = ?').get(result.lastInsertRowid);
-    updateGroupDescription().catch(err => console.error('[ERROR] desc update:', err.message));
+    scheduleBlockDescriptionUpdate();
     res.status(201).json(block);
 });
 
@@ -39,7 +39,7 @@ router.put('/:id', (req, res) => {
     ).run(content, position, sort_order || 0, req.params.id);
     if (result.changes === 0) return res.status(404).json({ error: 'Block nicht gefunden' });
     const block = db.prepare('SELECT * FROM group_description_blocks WHERE id = ?').get(req.params.id);
-    updateGroupDescription().catch(err => console.error('[ERROR] desc update:', err.message));
+    scheduleBlockDescriptionUpdate();
     res.json(block);
 });
 
@@ -47,7 +47,7 @@ router.put('/:id', (req, res) => {
 router.delete('/:id', (req, res) => {
     const result = db.prepare('DELETE FROM group_description_blocks WHERE id = ?').run(req.params.id);
     if (result.changes === 0) return res.status(404).json({ error: 'Block nicht gefunden' });
-    updateGroupDescription().catch(err => console.error('[ERROR] desc update:', err.message));
+    scheduleBlockDescriptionUpdate();
     res.json({ success: true });
 });
 
