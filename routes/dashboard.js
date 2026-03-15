@@ -31,16 +31,21 @@ router.get('/', (req, res) => {
     const totalMembers = db.prepare('SELECT COUNT(*) as cnt FROM contacts').get().cnt;
     const totalClosedPolls = db.prepare("SELECT COUNT(*) as cnt FROM polls WHERE status = 'closed'").get().cnt;
 
-    const avgRow = db.prepare(`
+    // Match stats.js logic: average of per-member response rates across closed polls
+    const memberRates = db.prepare(`
         SELECT
-            CASE WHEN COUNT(pr.id) > 0
-                THEN ROUND(100.0 * SUM(CASE WHEN pr.response IS NOT NULL THEN 1 ELSE 0 END) / COUNT(pr.id))
-                ELSE 0 END as avg_rate
-        FROM poll_responses pr
-        JOIN polls p ON pr.poll_id = p.id
-        WHERE p.status = 'closed'
-    `).get();
-    const avgAttendanceRate = avgRow?.avg_rate || 0;
+            c.id,
+            COUNT(pr.id) as total_polls,
+            SUM(CASE WHEN pr.response IS NOT NULL THEN 1 ELSE 0 END) as responded
+        FROM contacts c
+        LEFT JOIN poll_responses pr ON c.id = pr.contact_id
+        LEFT JOIN polls p ON pr.poll_id = p.id AND p.status = 'closed'
+        GROUP BY c.id
+    `).all();
+    const ratesWithPolls = memberRates.filter(m => m.total_polls > 0);
+    const avgAttendanceRate = ratesWithPolls.length > 0
+        ? Math.round(ratesWithPolls.reduce((sum, m) => sum + (m.responded / m.total_polls * 100), 0) / ratesWithPolls.length)
+        : 0;
 
     // Trend: last 10 closed polls
     const responseTrend = db.prepare(`
