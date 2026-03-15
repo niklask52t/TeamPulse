@@ -67,12 +67,12 @@ async function sendReminder(chatId, eventTitle, eventDate, eventTime, endTime, d
     let timeStr = eventTime;
     if (endTime) timeStr += ` - ${endTime}`;
     let text =
-        `⏰ *Erinnerung: ${eventTitle}*\n` +
+        `🗳️ *Du hast noch nicht abgestimmt!*\n\n` +
+        `*${eventTitle}*\n` +
         `📅 ${fmtDate(eventDate)} um ${timeStr} Uhr\n`;
     if (meetingTime) text += `🤝 Treffen: ${meetingTime} Uhr\n`;
     if (description) text += `📝 ${description}\n`;
-    text += `\nDie Abstimmung endet um ${deadlineTime} Uhr!\n` +
-        `Falls noch nicht abgestimmt, jetzt in der Umfrage antworten.`;
+    text += `\n⏰ Abstimmung endet um *${deadlineTime} Uhr* — bitte jetzt in der Gruppe abstimmen.`;
     return sendMessage(chatId, text);
 }
 
