@@ -2,6 +2,18 @@
 
 const CHANGELOG = [
     {
+        version: '2.0.0',
+        date: '2026-03-15',
+        changes: [
+            { type: 'feature', text: 'Dashboard-Übersicht: neuer Start-Tab mit Key-Metrics, nächstes Event mit Countdown, aktive Umfragen mit Fortschrittsbalken, Antwort-Trend der letzten 10 Umfragen' },
+            { type: 'feature', text: 'Automatische Absage: optionale Mindest-Zusagen pro Event — bei zu wenigen Zusagen wird automatisch eine Absage-Nachricht in die Gruppe gesendet' },
+            { type: 'feature', text: 'Wiederkehrende Ausnahmen: einzelne Termine bei wiederkehrenden Events aussetzen (z.B. Feiertage), mit optionalem Grund' },
+            { type: 'feature', text: 'Kommentare für Zusagen: nach jeder Abstimmung (auch Ja) können Teilnehmer privat einen Kommentar senden (z.B. "Komme 10 Min später")' },
+            { type: 'feature', text: 'Poll-Hinweis: "Privat antworten für Kommentar" wird automatisch in jeder Umfrage angezeigt' },
+            { type: 'feature', text: 'Ergebnis-Post zeigt jetzt auch Kommentare von Ja-Stimmern an' },
+        ]
+    },
+    {
         version: '1.10.0',
         date: '2026-03-15',
         changes: [

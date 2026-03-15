@@ -60,7 +60,8 @@
             <img src="logo.png" alt="TeamPulse" class="header-logo">
             <h1>TeamPulse</h1>
             <nav>
-                <button class="nav-btn active" data-tab="events">Events</button>
+                <button class="nav-btn active" data-tab="dashboard">Dashboard</button>
+                <button class="nav-btn" data-tab="events">Events</button>
                 <button class="nav-btn" data-tab="polls">Umfragen</button>
                 <button class="nav-btn" data-tab="stats">Statistiken</button>
                 <button class="nav-btn" data-tab="description">Beschreibung</button>
@@ -73,8 +74,17 @@
         </header>
 
         <main>
+            <!-- Dashboard Tab -->
+            <section id="dashboard" class="tab active">
+                <div class="section-header">
+                    <h2>Dashboard</h2>
+                    <button class="btn btn-secondary" onclick="loadDashboard()">&#x21BB; Aktualisieren</button>
+                </div>
+                <div id="dashboard-content"></div>
+            </section>
+
             <!-- Events Tab -->
-            <section id="events" class="tab active">
+            <section id="events" class="tab">
                 <div class="section-header">
                     <h2>Events</h2>
                     <button class="btn btn-primary" onclick="showEventForm()">+ Neues Event</button>
@@ -159,6 +169,18 @@
                         <div class="form-group">
                             <label>Abstimmungsfrist &amp; Ergebnis-Post (Stunden vor Event) *</label>
                             <input type="number" id="event-deadline" value="1" min="0.25" step="0.25" required>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="event-auto-cancel" onchange="toggleAutoCancel()">
+                                Automatische Absage bei zu wenig Zusagen
+                            </label>
+                        </div>
+                        <div id="auto-cancel-fields" class="hidden">
+                            <div class="form-group">
+                                <label>Mindest-Zusagen *</label>
+                                <input type="number" id="event-min-participants" value="8" min="1">
+                            </div>
                         </div>
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary">Speichern</button>
@@ -286,6 +308,8 @@
                         <p><strong>Treffenszeit:</strong> Optional — wann sich das Team trifft (z.B. 18:30). Wird in allen Nachrichten zusätzlich angezeigt.</p>
                         <p><strong>Umfrage senden:</strong> Entweder "X Stunden vor Event" (Standard: 24h) oder ein festes Datum+Uhrzeit. Bei wiederkehrenden Events ist nur "Stunden vorher" verfügbar.</p>
                         <p><strong>Abstimmungsfrist:</strong> Stunden vor Event-Beginn, wann die Abstimmung schließt UND das Ergebnis automatisch gepostet wird. Standard: 1h.</p>
+                        <p><strong>Automatische Absage:</strong> Optional — wenn aktiviert, wird bei zu wenigen Zusagen automatisch eine Absage in die Gruppe gesendet. Mindest-Zusagen konfigurierbar.</p>
+                        <p><strong>Ausnahmen (nur wiederkehrend):</strong> Einzelne Termine können ausgesetzt werden (z.B. Feiertage). Die Umfrage wird für dieses Datum nicht erstellt/gesendet.</p>
                     </div>
                     <div class="wiki-section">
                         <h3>Umfragen-Lebenszyklus</h3>
@@ -301,8 +325,9 @@
                     <div class="wiki-section">
                         <h3>Abstimmen &amp; Antworten</h3>
                         <p>Teilnehmer stimmen direkt in WhatsApp über die native Umfrage ab: <strong>Ja / Nein / Vielleicht</strong>.</p>
-                        <p><strong>Bei "Nein" oder "Vielleicht":</strong> Der Voter bekommt eine private Nachricht und kann innerhalb von <strong>5 Minuten</strong> optional einen Grund angeben. Die nächste Nachricht im Chat wird als Begründung gespeichert.</p>
-                        <p><strong>Ergebnisse:</strong> Im Dashboard werden alle Antworten mit Namen angezeigt — gruppiert nach Zusagen, Absagen (mit Grund), Vielleicht (mit Grund) und Ausstehend.</p>
+                        <p><strong>Bei "Nein" oder "Vielleicht":</strong> Der Voter bekommt eine private Nachricht und kann innerhalb von <strong>5 Minuten</strong> optional einen Grund angeben.</p>
+                        <p><strong>Kommentare:</strong> Auch Ja-Stimmer können innerhalb von 5 Minuten privat einen Kommentar senden (z.B. "Komme 10 Min später"). In der Umfrage steht ein Hinweis dazu.</p>
+                        <p><strong>Ergebnisse:</strong> Alle Antworten werden mit Namen und Kommentaren/Gründen angezeigt — gruppiert nach Zusagen, Absagen, Vielleicht und Ausstehend.</p>
                         <p>Antworten werden alle 15 Sekunden automatisch aktualisiert, wenn ein Poll-Detail geöffnet ist.</p>
                     </div>
                     <div class="wiki-section">
@@ -390,8 +415,9 @@
         </div>
     </div>
 
-    <!-- Load order: changelog → events → polls → stats → description → app (app defines globals + calls checkAuth) -->
+    <!-- Load order: changelog → dashboard → events → polls → stats → description → app (app defines globals + calls checkAuth) -->
     <script src="changelog.js"></script>
+    <script src="dashboard.js"></script>
     <script src="events.js"></script>
     <script src="polls.js"></script>
     <script src="stats.js"></script>

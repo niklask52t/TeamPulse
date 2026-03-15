@@ -93,6 +93,7 @@ function showApp(username) {
     document.getElementById('app').classList.remove('hidden');
     document.getElementById('current-user').textContent = username;
     startClock();
+    loadDashboard();
     loadEvents();
     loadPolls();
     loadStats();
@@ -104,7 +105,7 @@ function showApp(username) {
             if (btn) btn.classList.remove('hidden');
         }
     }).catch(() => {});
-    const savedTab = localStorage.getItem('activeTab') || 'events';
+    const savedTab = localStorage.getItem('activeTab') || 'dashboard';
     activateTab(savedTab);
 }
 
@@ -180,7 +181,8 @@ async function apiFetch(url, options) {
 // ===== NAVIGATION =====
 
 function activateTab(tabId) {
-    if (['wiki', 'changelog', 'contacts'].includes(tabId)) tabId = 'events';
+    if (['wiki', 'changelog', 'contacts'].includes(tabId)) tabId = 'dashboard';
+    if (tabId === 'dashboard') loadDashboard();
     if (tabId === 'stats') loadStats();
     if (!checkDirtyAndClose()) return;
     hideAllForms();

@@ -17,12 +17,13 @@ async function loadEvents() {
             const sendInfo = e.poll_send_at
                 ? `Versand: ${e.poll_send_at.replace('T', ' ')}`
                 : `Versand: ${fmtHours(e.poll_send_minutes_before || 1440)} vor Event`;
+            const cancelInfo = e.auto_cancel ? ` | Auto-Absage: min. ${e.min_participants}` : '';
             return `
             <div class="card" id="event-card-${e.id}">
                 ${dateDisplay}
                 <div class="card-info">
                     <h3>${esc(e.title)} <span class="badge badge-${e.type}">${typeLabels[e.type]}</span> ${recurring}</h3>
-                    <p>${e.event_time}${endStr} Uhr${e.meeting_time ? ' | Treffen: ' + e.meeting_time + ' Uhr' : ''} | ${sendInfo} | Frist: ${fmtHours(e.poll_deadline_minutes)} vor Event</p>
+                    <p>${e.event_time}${endStr} Uhr${e.meeting_time ? ' | Treffen: ' + e.meeting_time + ' Uhr' : ''} | ${sendInfo} | Frist: ${fmtHours(e.poll_deadline_minutes)} vor Event${cancelInfo}</p>
                 </div>
                 <div class="card-actions">
                     <button class="btn btn-secondary btn-sm" onclick="editEvent(${e.id})">Bearbeiten</button>
@@ -57,8 +58,12 @@ function showEventForm() {
     document.getElementById('send-mode-before').checked = true;
     document.getElementById('event-send-date').value = '';
     document.getElementById('event-send-time').value = '';
+    document.getElementById('event-auto-cancel').checked = false;
+    document.getElementById('event-min-participants').value = '8';
+    toggleAutoCancel();
     toggleSendMode();
     toggleRecurring();
+    hideExceptionsSection();
     attachFormListeners('event-form-el');
     document.getElementById('event-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -66,6 +71,7 @@ function showEventForm() {
 function hideEventForm() {
     document.getElementById('event-form').classList.add('hidden');
     document.querySelectorAll('[id^="event-card-"]').forEach(el => el.classList.remove('hidden'));
+    hideExceptionsSection();
     clearDirty();
 }
 
@@ -83,6 +89,9 @@ function toggleRecurring() {
             toggleSendMode();
         }
     }
+    // Show/hide exceptions section
+    const excSection = document.getElementById('event-exceptions-section');
+    if (excSection) excSection.classList.toggle('hidden', !checked);
 }
 
 function toggleSendMode() {
@@ -92,6 +101,11 @@ function toggleSendMode() {
     document.getElementById('event-send-before').required = !isFixed;
     document.getElementById('event-send-date').required = isFixed;
     document.getElementById('event-send-time').required = isFixed;
+}
+
+function toggleAutoCancel() {
+    const checked = document.getElementById('event-auto-cancel').checked;
+    document.getElementById('auto-cancel-fields').classList.toggle('hidden', !checked);
 }
 
 async function editEvent(id) {
@@ -124,8 +138,17 @@ async function editEvent(id) {
         document.getElementById('event-send-time').value = '';
     }
     document.getElementById('event-deadline').value = e.poll_deadline_minutes / 60;
+    document.getElementById('event-auto-cancel').checked = !!e.auto_cancel;
+    document.getElementById('event-min-participants').value = e.min_participants || 8;
+    toggleAutoCancel();
     toggleSendMode();
     toggleRecurring();
+    // Load exceptions for recurring events
+    if (e.recurring) {
+        loadEventExceptions(e.id);
+    } else {
+        hideExceptionsSection();
+    }
     attachFormListeners('event-form-el');
     document.getElementById(`event-card-${id}`)?.classList.add('hidden');
     document.getElementById('event-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -145,6 +168,8 @@ async function saveEvent(e) {
         recurrence_day: Number(document.getElementById('event-recurrence-day').value),
         event_date: document.getElementById('event-date').value || null,
         poll_deadline_minutes: Math.round(Number(document.getElementById('event-deadline').value) * 60),
+        auto_cancel: document.getElementById('event-auto-cancel').checked,
+        min_participants: Number(document.getElementById('event-min-participants').value) || 0,
     };
 
     if (isFixed) {
@@ -193,5 +218,92 @@ async function deleteEvent(id) {
         loadPolls();
     } catch (err) {
         if (err.message !== 'Nicht angemeldet') alert('Fehler beim Löschen: ' + err.message);
+    }
+}
+
+// ===== EVENT EXCEPTIONS =====
+
+function hideExceptionsSection() {
+    const section = document.getElementById('event-exceptions-section');
+    if (section) section.remove();
+}
+
+async function loadEventExceptions(eventId) {
+    hideExceptionsSection();
+    const form = document.getElementById('event-form');
+    if (!form) return;
+
+    const section = document.createElement('div');
+    section.id = 'event-exceptions-section';
+    section.className = 'exceptions-section';
+    section.innerHTML = `
+        <h4>Ausnahmen (Termine aussetzen)</h4>
+        <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;align-items:end">
+            <div class="form-group" style="margin:0;flex:1">
+                <label>Datum</label>
+                <input type="date" id="exception-date" min="${todayStr()}">
+            </div>
+            <div class="form-group" style="margin:0;flex:1">
+                <label>Grund (optional)</label>
+                <input type="text" id="exception-reason" placeholder="z.B. Feiertag">
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addException(${eventId})">Aussetzen</button>
+        </div>
+        <div id="exceptions-list"></div>
+    `;
+    form.querySelector('.form-actions').before(section);
+
+    try {
+        const res = await apiFetch(`${API}/api/events/${eventId}/exceptions`);
+        const exceptions = await res.json();
+        const list = document.getElementById('exceptions-list');
+        if (exceptions.length === 0) {
+            list.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Keine Ausnahmen.</p>';
+        } else {
+            list.innerHTML = exceptions.map(ex => {
+                const d = ex.exception_date.split('-');
+                const dateStr = `${d[2]}.${d[1]}.${d[0]}`;
+                return `<div class="exception-item">
+                    <span>${dateStr}${ex.reason ? ' — ' + esc(ex.reason) : ''}</span>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="removeException(${eventId}, ${ex.id})">Entfernen</button>
+                </div>`;
+            }).join('');
+        }
+    } catch { /* ignore */ }
+}
+
+async function addException(eventId) {
+    const date = document.getElementById('exception-date').value;
+    const reason = document.getElementById('exception-reason').value;
+    if (!date) { alert('Datum ist erforderlich'); return; }
+    try {
+        const res = await apiFetch(`${API}/api/events/${eventId}/exceptions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ exception_date: date, reason: reason || null }),
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            alert('Fehler: ' + (err.error || 'Unbekannter Fehler'));
+            return;
+        }
+        loadEventExceptions(eventId);
+        loadPolls();
+    } catch (err) {
+        if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
+    }
+}
+
+async function removeException(eventId, exceptionId) {
+    try {
+        const res = await apiFetch(`${API}/api/events/${eventId}/exceptions/${exceptionId}`, { method: 'DELETE' });
+        if (!res.ok) {
+            const err = await res.json();
+            alert('Fehler: ' + (err.error || 'Unbekannter Fehler'));
+            return;
+        }
+        loadEventExceptions(eventId);
+    } catch (err) {
+        if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
     }
 }

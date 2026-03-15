@@ -42,13 +42,23 @@ function startScheduler() {
 async function checkAndSendPolls() {
     const nowISO = new Date().toISOString();
     const pending = db.prepare(`
-        SELECT p.id FROM polls p
+        SELECT p.id, p.event_id, p.event_date FROM polls p
         WHERE p.status = 'pending' AND p.sent_at IS NULL
         AND datetime(p.deadline) > datetime(?)
         AND (p.send_after IS NULL OR datetime(p.send_after) <= datetime(?))
     `).all(nowISO, nowISO);
 
     for (const poll of pending) {
+        // Skip if date is an exception
+        const exception = db.prepare(
+            'SELECT id FROM event_exceptions WHERE event_id = ? AND exception_date = ?'
+        ).get(poll.event_id, poll.event_date);
+        if (exception) {
+            db.prepare('DELETE FROM poll_responses WHERE poll_id = ?').run(poll.id);
+            db.prepare('DELETE FROM polls WHERE id = ?').run(poll.id);
+            console.log(`Poll ${poll.id} deleted (excepted date ${poll.event_date})`);
+            continue;
+        }
         try {
             await pollManager.sendPoll(poll.id);
             console.log(`Poll ${poll.id} sent`);
@@ -78,28 +88,62 @@ async function checkDeadlineReminders() {
     }
 }
 
-// Close active polls whose deadline has passed
+// Close active polls whose deadline has passed, check auto-cancel
 async function checkAndClosePolls() {
-    const result = db.prepare(`
-        UPDATE polls SET status = 'closed'
-        WHERE status = 'active' AND datetime(deadline) <= datetime('now')
-    `).run();
-    if (result.changes > 0) {
-        console.log(`${result.changes} poll(s) closed (deadline passed)`);
-        scheduleDescriptionUpdate();
+    const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
+    const waha = require('./waha');
+
+    const pollsToClose = db.prepare(`
+        SELECT p.id, p.event_date, e.title, e.event_time, e.end_time, e.meeting_time, e.auto_cancel, e.min_participants
+        FROM polls p JOIN events e ON p.event_id = e.id
+        WHERE p.status = 'active' AND datetime(p.deadline) <= datetime('now')
+    `).all();
+
+    for (const poll of pollsToClose) {
+        pollManager.closePoll(poll.id);
+        console.log(`Poll ${poll.id} closed (deadline passed)`);
+
+        // Check auto-cancel
+        if (poll.auto_cancel && poll.min_participants > 0 && GROUP_CHAT_ID) {
+            const yesCount = db.prepare(
+                "SELECT COUNT(*) as cnt FROM poll_responses WHERE poll_id = ? AND response = 'yes'"
+            ).get(poll.id).cnt;
+            if (yesCount < poll.min_participants) {
+                try {
+                    await waha.sendCancellationMessage(
+                        GROUP_CHAT_ID, poll.title, poll.event_date,
+                        poll.event_time, poll.end_time, yesCount, poll.min_participants, poll.meeting_time
+                    );
+                    console.log(`[INFO] Auto-cancel sent for poll ${poll.id} (${yesCount}/${poll.min_participants})`);
+                } catch (err) {
+                    console.error(`[ERROR] sendCancellationMessage ${poll.id}:`, err.message);
+                }
+            }
+        }
     }
+    if (pollsToClose.length > 0) scheduleDescriptionUpdate();
 }
 
 // Post group results immediately for closed polls
 async function checkGroupPosts() {
     const polls = db.prepare(`
-        SELECT p.id FROM polls p
+        SELECT p.id, e.auto_cancel, e.min_participants
+        FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.status = 'closed' AND p.group_posted = 0 AND p.archived = 0
     `).all();
 
     for (const poll of polls) {
         try {
-            await pollManager.postGroupResults(poll.id);
+            let cancelInfo = null;
+            if (poll.auto_cancel && poll.min_participants > 0) {
+                const yesCount = db.prepare(
+                    "SELECT COUNT(*) as cnt FROM poll_responses WHERE poll_id = ? AND response = 'yes'"
+                ).get(poll.id).cnt;
+                if (yesCount < poll.min_participants) {
+                    cancelInfo = { yesCount, min: poll.min_participants };
+                }
+            }
+            await pollManager.postGroupResults(poll.id, cancelInfo);
             console.log(`Group results posted for poll ${poll.id}`);
         } catch (err) {
             console.error(`[ERROR] postGroupResults ${poll.id}:`, err.message);
@@ -153,6 +197,12 @@ async function generateRecurringPolls() {
             // Skip if event time already passed
             const eventUtc = parseBerlinDateTime(dateStr, event.event_time);
             if (!isNaN(eventUtc.getTime()) && now >= eventUtc) continue;
+
+            // Skip if date is an exception
+            const exception = db.prepare(
+                'SELECT id FROM event_exceptions WHERE event_id = ? AND exception_date = ?'
+            ).get(event.id, dateStr);
+            if (exception) continue;
 
             const existing = db.prepare(`
                 SELECT id FROM polls WHERE event_id = ? AND event_date = ?

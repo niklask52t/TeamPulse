@@ -277,7 +277,7 @@ function processReasonMessage(phone, text) {
         SELECT pr.id, p.id as poll_id, pr.response
         FROM poll_responses pr
         JOIN polls p ON pr.poll_id = p.id
-        WHERE pr.contact_id = ? AND pr.response IN ('maybe', 'no') AND pr.reason IS NULL
+        WHERE pr.contact_id = ? AND pr.response IN ('yes', 'maybe', 'no') AND pr.reason IS NULL
         AND p.archived = 0
         AND pr.responded_at >= datetime('now', '-5 minutes')
         ORDER BY p.id DESC LIMIT 1
@@ -323,9 +323,9 @@ async function sendDeadlineReminder(pollId) {
 }
 
 // Post results to group WITHOUT closing the poll or changing status
-async function postGroupResults(pollId) {
+async function postGroupResults(pollId, cancelInfo) {
     const poll = db.prepare(`
-        SELECT p.*, e.title, e.event_time, e.end_time, e.meeting_time
+        SELECT p.*, e.title, e.event_time, e.end_time, e.meeting_time, e.auto_cancel, e.min_participants
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.id = ?
     `).get(pollId);
@@ -339,11 +339,11 @@ async function postGroupResults(pollId) {
         WHERE pr.poll_id = ?
     `).all(pollId);
 
-    const yes = responses.filter(r => r.response === 'yes').map(r => r.name);
-    const no = responses.filter(r => r.response === 'no').map(r => r.name);
-    const maybe = responses.filter(r => r.response === 'maybe').map(r => r.name);
+    const yes = responses.filter(r => r.response === 'yes').map(r => ({ name: r.name, reason: r.reason }));
+    const no = responses.filter(r => r.response === 'no').map(r => ({ name: r.name, reason: r.reason }));
+    const maybe = responses.filter(r => r.response === 'maybe').map(r => ({ name: r.name, reason: r.reason }));
 
-    await waha.postResultsToGroup(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, yes, no, maybe, poll.meeting_time);
+    await waha.postResultsToGroup(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, yes, no, maybe, poll.meeting_time, cancelInfo);
 
     // Send chart image to group
     try {

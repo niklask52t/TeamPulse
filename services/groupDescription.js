@@ -55,7 +55,7 @@ function buildDescription() {
         const maybe = responses.filter(r => r.response === 'maybe');
         const pending = responses.filter(r => !r.response);
 
-        dynamic += `✅ Zusagen (${yes.length}): ${yes.map(r => r.name).join(', ') || '—'}\n`;
+        dynamic += `✅ Zusagen (${yes.length}): ${yes.map(r => r.name + (r.reason ? ` (${r.reason})` : '')).join(', ') || '—'}\n`;
         dynamic += `❌ Absagen (${no.length}): ${no.map(r => r.name + (r.reason ? ` (${r.reason})` : '')).join(', ') || '—'}\n`;
         dynamic += `🤷 Vielleicht (${maybe.length}): ${maybe.map(r => r.name + (r.reason ? ` (${r.reason})` : '')).join(', ') || '—'}\n`;
         dynamic += `⏳ Ausstehend (${pending.length}): ${pending.map(r => r.name).join(', ') || '—'}`;

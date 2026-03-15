@@ -66,3 +66,13 @@ CREATE TABLE IF NOT EXISTS group_description_blocks (
     sort_order INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS event_exceptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id INTEGER NOT NULL,
+    exception_date TEXT NOT NULL,
+    reason TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
+    UNIQUE(event_id, exception_date)
+);

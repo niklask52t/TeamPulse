@@ -5,7 +5,7 @@ WhatsApp-based attendance management dashboard. Users create events (recurring t
 
 ## Tech Stack
 - **Backend**: Node.js 24 LTS + Express 5 (CommonJS)
-- **Frontend**: Vanilla HTML/CSS/JS served as static files from `public/` — split into six files
+- **Frontend**: Vanilla HTML/CSS/JS served as static files from `public/` — split into seven files
 - **Database**: SQLite via libsql (better-sqlite3 compatible API), schema in `db/schema.sql`
 - **Auth**: bcrypt + express-session, default user admin/admin, force password change on first login
 - **Scheduler**: node-cron for timed messages (every minute)
@@ -33,10 +33,11 @@ TeamPulse/
 │   ├── chartGenerator.js  # PNG bar chart via @napi-rs/canvas
 │   └── timeUtils.js   # Europe/Berlin timezone helpers
 ├── public/            # Frontend static files (load order matters)
-│   ├── index.html     # SPA with tabs: Events, Umfragen, Statistiken, Beschreibung + footer
+│   ├── index.html     # SPA with tabs: Dashboard, Events, Umfragen, Statistiken, Beschreibung + footer
 │   ├── style.css
 │   ├── changelog.js   # CHANGELOG data + renderChangelog()
-│   ├── events.js      # Events tab: loadEvents, showEventForm, editEvent, saveEvent, deleteEvent
+│   ├── dashboard.js   # Dashboard tab: loadDashboard() — overview with countdown, active polls, trend
+│   ├── events.js      # Events tab: loadEvents, showEventForm, editEvent, saveEvent, deleteEvent, exceptions
 │   ├── polls.js       # Polls tab: loadPolls, renderPollDetail, buildActionButtons, pollAction, showExtendForm
 │   ├── stats.js       # Stats tab: loadStats() — member response rate table
 │   ├── description.js # Description tab: CRUD for static text blocks, preview, manual update
@@ -54,7 +55,7 @@ TeamPulse/
 - Use `const` by default, `let` when reassignment needed
 - No TypeScript, keep it simple
 - Express error handler logs all errors to console (visible in journalctl)
-- **Frontend script load order**: changelog.js → events.js → polls.js → stats.js → description.js → app.js
+- **Frontend script load order**: changelog.js → dashboard.js → events.js → polls.js → stats.js → description.js → app.js
   All files contribute to global scope (no ES modules) — app.js defines shared globals (API, apiFetch, esc, fmtDateFancy, etc.) and calls checkAuth() last
 - Poll details auto-refresh every 15s via `openPollDetails` Set + `setInterval` in polls.js
 - Footer is a sticky thin bar at the bottom; wiki/changelog/groups expand as panels above the bar
@@ -150,8 +151,34 @@ TeamPulse/
 - `events.poll_send_minutes_before INTEGER DEFAULT 1440` — when to send the poll (minutes before event)
 - `events.poll_send_at TEXT` — alternative fixed send date/time (e.g. "2026-03-20T10:00"), mutually exclusive with poll_send_minutes_before
 - `polls.send_after TEXT` — ISO timestamp: earliest time the poll should be sent
-- `poll_responses.reason TEXT` — stores optional reason from 'maybe' and 'no' voters
+- `events.auto_cancel INTEGER DEFAULT 0` — if 1, send cancellation when yes < min_participants at deadline
+- `events.min_participants INTEGER DEFAULT 0` — minimum yes count for auto-cancel
+- `poll_responses.reason TEXT` — stores optional reason/comment from all voters (yes, maybe, no)
 - `polls.archived INTEGER DEFAULT 0` — added via migration
 - `contacts.lid TEXT` — WhatsApp Linked ID for poll.vote matching
 - `group_description_blocks` — static text blocks for group description (content, position, sort_order)
+- `event_exceptions` — dates to skip for recurring events (event_id, exception_date, reason), UNIQUE(event_id, exception_date)
 - Run migrations in `db/database.js` with try/catch for existing columns
+
+## Dashboard
+- Default landing tab with key metrics at a glance
+- Shows: next event with live countdown, active polls with progress bars, quick stats (events/members/response rate/closed), response trend (last 10 closed polls)
+- `GET /api/dashboard` returns all data in one call
+
+## Auto-Cancel
+- Optional per-event setting: `auto_cancel` flag + `min_participants` count
+- When poll deadline passes and yes_count < min_participants, sends cancellation message to group
+- Results post includes cancellation notice
+- Shown in event card, poll detail, and dashboard active polls
+
+## Recurring Event Exceptions
+- `event_exceptions` table stores dates to skip for recurring events
+- `GET/POST/DELETE /api/events/:id/exceptions` for CRUD
+- Scheduler skips excepted dates when generating polls and sending
+- UI: exception management in event edit form (date picker + optional reason)
+
+## Yes-Vote Comments
+- After any vote (including yes), private messages within 5 minutes are saved as comments
+- No follow-up message sent for yes votes (only for no/maybe)
+- Poll text includes hint: "Privat antworten für Kommentar"
+- Comments shown in poll detail, group description, and results post

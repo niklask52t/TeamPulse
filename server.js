@@ -10,6 +10,7 @@ const eventsRouter = require('./routes/events');
 const pollsRouter = require('./routes/polls');
 const statsRouter = require('./routes/stats');
 const descBlocksRouter = require('./routes/descriptionBlocks');
+const dashboardRouter = require('./routes/dashboard');
 const { startScheduler } = require('./services/scheduler');
 const { getGroups } = require('./services/waha');
 
@@ -88,6 +89,7 @@ app.use('/api/events', eventsRouter);
 app.use('/api/polls', pollsRouter);
 app.use('/api/stats', statsRouter);
 app.use('/api/description-blocks', descBlocksRouter);
+app.use('/api/dashboard', dashboardRouter);
 
 // Statische Dateien
 app.use(express.static(path.join(__dirname, 'public')));

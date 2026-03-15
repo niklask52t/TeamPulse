@@ -94,9 +94,13 @@ async function renderPollDetail(id) {
     const pending = poll.responses.filter(r => !r.response);
 
     const actions = buildActionButtons(poll);
+    const autoCancelHtml = poll.auto_cancel && poll.min_participants > 0
+        ? `<div class="poll-auto-cancel-info ${yes.length < poll.min_participants ? 'poll-auto-cancel-info--danger' : 'poll-auto-cancel-info--ok'}">Auto-Absage bei &lt; ${poll.min_participants} Zusagen (aktuell: ${yes.length})</div>`
+        : '';
 
     detail.innerHTML = `
         <div class="poll-actions">${actions}</div>
+        ${autoCancelHtml}
         <div class="stats">
             <span class="stat response-yes">✅ ${yes.length}</span>
             <span class="stat response-no">❌ ${no.length}</span>
@@ -104,7 +108,7 @@ async function renderPollDetail(id) {
             <span class="stat response-pending">⏳ ${pending.length}</span>
         </div>
         <div class="response-groups">
-            ${renderResponseGroup('✅ Zusagen', yes, 'yes')}
+            ${renderReasonGroup('✅ Zusagen', yes, 'yes')}
             ${renderReasonGroup('❌ Absagen', no, 'no')}
             ${renderReasonGroup('🤷 Vielleicht', maybe, 'maybe')}
             ${renderResponseGroup('⏳ Noch ausstehend', pending, 'pending')}

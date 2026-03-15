@@ -21,7 +21,7 @@ router.get('/:id', (req, res) => {
 
 // POST create event
 router.post('/', (req, res) => {
-    const { title, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_minutes_before, poll_send_at, poll_deadline_minutes } = req.body;
+    const { title, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_minutes_before, poll_send_at, poll_deadline_minutes, auto_cancel, min_participants } = req.body;
 
     if (!title || !type || !event_time) {
         return res.status(400).json({ error: 'Titel, Typ und Uhrzeit sind erforderlich' });
@@ -46,8 +46,8 @@ router.post('/', (req, res) => {
     const sendMin = poll_send_at ? 1440 : (poll_send_minutes_before || 1440);
 
     const result = db.prepare(`
-        INSERT INTO events (title, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_at, poll_send_minutes_before, poll_deadline_minutes, group_post_minutes_before)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO events (title, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_at, poll_send_minutes_before, poll_deadline_minutes, group_post_minutes_before, auto_cancel, min_participants)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
         title, type,
         event_date || '',
@@ -59,7 +59,9 @@ router.post('/', (req, res) => {
         poll_send_at || null,
         sendMin,
         deadlineMin,
-        deadlineMin
+        deadlineMin,
+        auto_cancel ? 1 : 0,
+        min_participants || 0
     );
 
     const event = db.prepare('SELECT * FROM events WHERE id = ?').get(result.lastInsertRowid);
@@ -104,7 +106,7 @@ router.post('/', (req, res) => {
 
 // PUT update event
 router.put('/:id', (req, res) => {
-    const { title, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_minutes_before, poll_send_at, poll_deadline_minutes, active } = req.body;
+    const { title, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_minutes_before, poll_send_at, poll_deadline_minutes, active, auto_cancel, min_participants } = req.body;
 
     if (!title || !type || !event_time) {
         return res.status(400).json({ error: 'Titel, Typ und Uhrzeit sind erforderlich' });
@@ -119,19 +121,59 @@ router.put('/:id', (req, res) => {
 
     const result = db.prepare(`
         UPDATE events SET title = ?, type = ?, event_date = ?, event_time = ?, end_time = ?, meeting_time = ?,
-        recurring = ?, recurrence_day = ?, poll_send_at = ?, poll_send_minutes_before = ?, poll_deadline_minutes = ?, group_post_minutes_before = ?, active = ?
+        recurring = ?, recurrence_day = ?, poll_send_at = ?, poll_send_minutes_before = ?, poll_deadline_minutes = ?, group_post_minutes_before = ?, active = ?,
+        auto_cancel = ?, min_participants = ?
         WHERE id = ?
     `).run(
         title, type, event_date || '', event_time, end_time || null, meeting_time || null,
         recurring ? 1 : 0, recurrence_day ?? null,
         poll_send_at || null, sendMin, deadlineMin, deadlineMin,
         active !== undefined ? (active ? 1 : 0) : 1,
+        auto_cancel ? 1 : 0, min_participants || 0,
         req.params.id
     );
 
     if (result.changes === 0) return res.status(404).json({ error: 'Event nicht gefunden' });
     const event = db.prepare('SELECT * FROM events WHERE id = ?').get(req.params.id);
     res.json(event);
+});
+
+// GET exceptions for an event
+router.get('/:id/exceptions', (req, res) => {
+    const exceptions = db.prepare(
+        'SELECT * FROM event_exceptions WHERE event_id = ? ORDER BY exception_date ASC'
+    ).all(req.params.id);
+    res.json(exceptions);
+});
+
+// POST add exception
+router.post('/:id/exceptions', (req, res) => {
+    const { exception_date, reason } = req.body;
+    if (!exception_date) return res.status(400).json({ error: 'Datum ist erforderlich' });
+    try {
+        const result = db.prepare(
+            'INSERT INTO event_exceptions (event_id, exception_date, reason) VALUES (?, ?, ?)'
+        ).run(req.params.id, exception_date, reason || null);
+        // Delete any existing pending poll for this date
+        db.prepare(
+            "DELETE FROM polls WHERE event_id = ? AND event_date = ? AND status = 'pending'"
+        ).run(req.params.id, exception_date);
+        res.status(201).json({ id: result.lastInsertRowid });
+    } catch (err) {
+        if (err.message?.includes('UNIQUE')) {
+            return res.status(400).json({ error: 'Ausnahme für dieses Datum existiert bereits' });
+        }
+        throw err;
+    }
+});
+
+// DELETE exception
+router.delete('/:id/exceptions/:exceptionId', (req, res) => {
+    const result = db.prepare(
+        'DELETE FROM event_exceptions WHERE id = ? AND event_id = ?'
+    ).run(req.params.exceptionId, req.params.id);
+    if (result.changes === 0) return res.status(404).json({ error: 'Ausnahme nicht gefunden' });
+    res.json({ success: true });
 });
 
 // DELETE event (explicit cascade for compatibility with older DBs)

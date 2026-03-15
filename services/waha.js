@@ -38,6 +38,7 @@ async function sendPollMessage(chatId, eventTitle, eventDate, eventTime, endTime
     if (endTime) name += ` - ${endTime}`;
     name += ' Uhr';
     if (meetingTime) name += ` (Treffen: ${meetingTime} Uhr)`;
+    name += '\n💬 Privat antworten für Kommentar';
     const res = await fetch(url, {
         method: 'POST',
         headers,
@@ -111,30 +112,49 @@ async function sendEventReminder(chatId, eventTitle, eventTime, endTime, meeting
     return sendMessage(chatId, text);
 }
 
-async function postResultsToGroup(groupId, eventTitle, eventDate, eventTime, endTime, yesNames, noNames, maybeNames, meetingTime) {
+// yesData/noData/maybeData: arrays of { name, reason? }
+async function postResultsToGroup(groupId, eventTitle, eventDate, eventTime, endTime, yesData, noData, maybeData, meetingTime, cancelInfo) {
     let timeStr = eventTime;
     if (endTime) timeStr += ` - ${endTime}`;
     const lines = [`📊 *Ergebnis: ${eventTitle}*`, `📅 ${fmtDate(eventDate)} um ${timeStr} Uhr`];
     if (meetingTime) lines.push(`🤝 Treffen: ${meetingTime} Uhr`);
+
+    if (cancelInfo) {
+        lines.push('');
+        lines.push(`❌ *ABGESAGT — zu wenige Zusagen (${cancelInfo.yesCount}/${cancelInfo.min})*`);
+    }
     lines.push('');
 
-    lines.push(`✅ *Zusagen (${yesNames.length}):*`);
-    lines.push(yesNames.length ? yesNames.join(', ') : '—');
+    const fmtEntry = (r) => r.reason ? `${r.name} (${r.reason})` : r.name;
+
+    lines.push(`✅ *Zusagen (${yesData.length}):*`);
+    lines.push(yesData.length ? yesData.map(fmtEntry).join(', ') : '—');
     lines.push('');
 
-    lines.push(`❌ *Absagen (${noNames.length}):*`);
-    lines.push(noNames.length ? noNames.join(', ') : '—');
+    lines.push(`❌ *Absagen (${noData.length}):*`);
+    lines.push(noData.length ? noData.map(fmtEntry).join(', ') : '—');
     lines.push('');
 
-    if (maybeNames.length) {
-        lines.push(`🤷 *Vielleicht (${maybeNames.length}):*`);
-        lines.push(maybeNames.join(', '));
+    if (maybeData.length) {
+        lines.push(`🤷 *Vielleicht (${maybeData.length}):*`);
+        lines.push(maybeData.map(fmtEntry).join(', '));
         lines.push('');
     }
 
-    lines.push(`Total: ${yesNames.length + noNames.length + maybeNames.length} Antworten`);
+    lines.push(`Total: ${yesData.length + noData.length + maybeData.length} Antworten`);
 
     return sendMessage(groupId, lines.join('\n'));
+}
+
+async function sendCancellationMessage(chatId, eventTitle, eventDate, eventTime, endTime, yesCount, minRequired, meetingTime) {
+    let timeStr = eventTime;
+    if (endTime) timeStr += ` - ${endTime}`;
+    let text =
+        `❌ *ABGESAGT: ${eventTitle}*\n` +
+        `📅 ${fmtDate(eventDate)} um ${timeStr} Uhr\n`;
+    if (meetingTime) text += `🤝 Treffen: ${meetingTime} Uhr\n`;
+    text += `\nZu wenige Zusagen (${yesCount}/${minRequired}).`;
+    return sendMessage(chatId, text);
 }
 
 async function sendMaybeFollowUp(chatId, eventTitle, eventDate) {
@@ -251,6 +271,7 @@ module.exports = {
     sendMaybeFollowUp,
     sendNoFollowUp,
     postResultsToGroup,
+    sendCancellationMessage,
     getGroupParticipants,
     getAllContacts,
     getGroups,
