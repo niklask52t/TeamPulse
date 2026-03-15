@@ -138,7 +138,7 @@ TeamPulse/
 - `services/groupDescription.js` builds description from: static blocks (above) + next event status + static blocks (below) + footer
 - Footer: "Powered by TeamPulse by Niklas Kronig" + contact note
 - Updated via `PUT /api/{session}/groups/{groupId}/description` (WAHA)
-- **Debounced** (60s) to avoid rate-limiting on rapid votes
+- **Debounced** — 15s for votes/poll changes, 120s for text block CRUD; "In WhatsApp aktualisieren" button for immediate push
 - Triggered by: vote, reason, poll send/close, deadline extend, archive, new recurring poll
 - Static blocks stored in `group_description_blocks` table (content, position: above/below, sort_order)
 - Bot must be group admin to update description
