@@ -56,3 +56,11 @@ CREATE TABLE IF NOT EXISTS poll_responses (
     FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE,
     UNIQUE(poll_id, contact_id)
 );
+
+CREATE TABLE IF NOT EXISTS group_description_blocks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    content TEXT NOT NULL,
+    position TEXT NOT NULL CHECK(position IN ('above', 'below')),
+    sort_order INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);

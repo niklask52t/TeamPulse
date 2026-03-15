@@ -3,6 +3,7 @@ const waha = require('./waha');
 const { parseBerlinDateTime, TZ } = require('./timeUtils');
 const { generateResultChart } = require('./chartGenerator');
 
+const { scheduleDescriptionUpdate } = require('./groupDescription');
 const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
 
 // Sync group participants from WAHA into the local contacts table
@@ -140,6 +141,7 @@ async function sendPoll(pollId) {
     db.prepare('UPDATE poll_responses SET message_sent = 1 WHERE poll_id = ?').run(pollId);
     db.prepare("UPDATE polls SET status = 'active', sent_at = datetime('now') WHERE id = ?").run(pollId);
     console.log(`[INFO] Poll ${pollId} sent to group ${GROUP_CHAT_ID}`);
+    scheduleDescriptionUpdate();
 }
 
 async function processResponse(phone, text) {
@@ -250,6 +252,7 @@ async function processResponse(phone, text) {
             .catch(e => console.error('[ERROR] sendNoFollowUp:', e.message));
     }
 
+    scheduleDescriptionUpdate();
     return { contactName: contactRow.name, response, pollId: activePoll.poll_id };
 }
 
@@ -276,6 +279,7 @@ function processReasonMessage(phone, text) {
 
     db.prepare('UPDATE poll_responses SET reason = ? WHERE id = ?').run(text.trim(), pendingReason.id);
     console.log(`[INFO] Reason saved for ${contact.name} (${pendingReason.response}): "${text.trim()}" (poll ${pendingReason.poll_id})`);
+    scheduleDescriptionUpdate();
     return { pollId: pendingReason.poll_id, contactName: contact.name };
 }
 
@@ -345,11 +349,13 @@ async function postGroupResults(pollId) {
 
     // Only mark as posted (don't change status — use closePoll() for that)
     db.prepare('UPDATE polls SET group_posted = 1 WHERE id = ?').run(pollId);
+    scheduleDescriptionUpdate();
 }
 
 // Explicitly close a poll (deadline passed or manual action)
 function closePoll(pollId) {
     db.prepare("UPDATE polls SET status = 'closed' WHERE id = ? AND status = 'active'").run(pollId);
+    scheduleDescriptionUpdate();
 }
 
 // Extend the deadline of an active or pending poll by N minutes
@@ -362,6 +368,7 @@ function extendDeadline(pollId, minutes) {
     const newDeadline = new Date(current.getTime() + minutes * 60 * 1000);
     db.prepare('UPDATE polls SET deadline = ?, reminder_sent = 0 WHERE id = ?')
         .run(newDeadline.toISOString(), pollId);
+    scheduleDescriptionUpdate();
     return newDeadline.toISOString();
 }
 

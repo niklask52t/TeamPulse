@@ -180,6 +180,21 @@ async function getGroups() {
     return Array.isArray(data) ? data : [];
 }
 
+// Update group description
+async function updateGroupDescription(groupId, description) {
+    const url = `${WAHA_API_URL}/api/${WAHA_SESSION}/groups/${encodeURIComponent(groupId)}/description`;
+    const res = await fetch(url, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ description }),
+    });
+    if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`WAHA updateGroupDescription failed (${res.status}): ${body}`);
+    }
+    return res.json();
+}
+
 // Get a single contact by ID (can be @c.us or @lid) — tries multiple WAHA endpoint shapes
 async function getContactById(contactId) {
     // Try WAHA Plus endpoint first
@@ -225,4 +240,5 @@ module.exports = {
     getAllContacts,
     getGroups,
     getContactById,
+    updateGroupDescription,
 };

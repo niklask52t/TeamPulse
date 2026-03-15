@@ -96,6 +96,7 @@ function showApp(username) {
     loadEvents();
     loadPolls();
     loadStats();
+    loadDescriptionBlocks();
     renderChangelog();
     apiFetch(`${API}/api/config`).then(r => r.json()).then(cfg => {
         if (cfg.devMode) {
@@ -195,6 +196,7 @@ function activateTab(tabId) {
 
 function hideAllForms() {
     hideEventForm();
+    if (typeof hideDescBlockForm === 'function') hideDescBlockForm();
 }
 
 document.querySelectorAll('.nav-btn').forEach(btn => {
