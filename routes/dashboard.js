@@ -31,15 +31,18 @@ router.get('/', (req, res) => {
     const totalMembers = db.prepare('SELECT COUNT(*) as cnt FROM contacts').get().cnt;
     const totalClosedPolls = db.prepare("SELECT COUNT(*) as cnt FROM polls WHERE status = 'closed'").get().cnt;
 
-    // Match stats.js logic: average of per-member response rates across closed polls
+    // Match stats.js logic: average of per-member response rates across active+closed polls
     const memberRates = db.prepare(`
         SELECT
             c.id,
             COUNT(pr.id) as total_polls,
             SUM(CASE WHEN pr.response IS NOT NULL THEN 1 ELSE 0 END) as responded
         FROM contacts c
-        LEFT JOIN poll_responses pr ON c.id = pr.contact_id
-        LEFT JOIN polls p ON pr.poll_id = p.id AND p.status = 'closed'
+        LEFT JOIN (
+            SELECT pr2.* FROM poll_responses pr2
+            JOIN polls p ON pr2.poll_id = p.id
+            WHERE p.status IN ('active', 'closed')
+        ) pr ON c.id = pr.contact_id
         GROUP BY c.id
     `).all();
     const ratesWithPolls = memberRates.filter(m => m.total_polls > 0);

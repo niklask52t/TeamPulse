@@ -15,8 +15,11 @@ router.get('/', (req, res) => {
             SUM(CASE WHEN pr.response = 'maybe' THEN 1 ELSE 0 END) as maybe_count,
             SUM(CASE WHEN pr.response IS NULL   THEN 1 ELSE 0 END) as no_response_count
         FROM contacts c
-        LEFT JOIN poll_responses pr ON c.id = pr.contact_id
-        LEFT JOIN polls p ON pr.poll_id = p.id AND p.status = 'closed'
+        LEFT JOIN (
+            SELECT pr2.* FROM poll_responses pr2
+            JOIN polls p ON pr2.poll_id = p.id
+            WHERE p.status IN ('active', 'closed')
+        ) pr ON c.id = pr.contact_id
         GROUP BY c.id
         ORDER BY c.name
     `).all();
