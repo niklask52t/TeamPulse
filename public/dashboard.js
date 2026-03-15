@@ -108,18 +108,24 @@ function renderDashboard(data) {
     // Response trend
     let trendHtml = '';
     if (responseTrend.length > 0) {
-        trendHtml = '<h3 class="dashboard-section-title">Letzte Umfragen</h3><div class="dashboard-trend">';
+        trendHtml = '<h3 class="dashboard-section-title">Letzte Umfragen</h3>';
+        trendHtml += '<div class="dashboard-trend-legend"><span class="dashboard-trend-legend-item"><span class="dashboard-trend-legend-dot" style="background:var(--green)"></span>Zusagen</span><span class="dashboard-trend-legend-item"><span class="dashboard-trend-legend-dot" style="background:var(--text-secondary);opacity:0.4"></span>Sonstige Antworten</span></div>';
+        trendHtml += '<div class="dashboard-trend">';
         for (const t of responseTrend) {
             const rate = t.total > 0 ? Math.round(t.responded / t.total * 100) : 0;
             const yesRate = t.total > 0 ? Math.round(t.yes_count / t.total * 100) : 0;
             const color = rate >= 80 ? 'var(--green)' : rate >= 50 ? '#f59e0b' : 'var(--danger)';
+            const [y, m, d] = t.event_date.split('-');
+            const dateLabel = `${d}.${m}.`;
             trendHtml += `
-                <div class="dashboard-trend-item" title="${esc(t.title)} — ${t.event_date}">
+                <div class="dashboard-trend-item" title="${esc(t.title)} — ${d}.${m}.${y}\n✅ ${t.yes_count} Zusagen | ${t.responded}/${t.total} Antworten (${rate}%)">
                     <div class="dashboard-trend-bar-wrap">
                         <div class="dashboard-trend-bar" style="height:${rate}%;background:${color}"></div>
                         <div class="dashboard-trend-bar-yes" style="height:${yesRate}%;background:var(--green)"></div>
                     </div>
-                    <span class="dashboard-trend-label">${rate}%</span>
+                    <span class="dashboard-trend-pct">${rate}%</span>
+                    <span class="dashboard-trend-date">${dateLabel}</span>
+                    <span class="dashboard-trend-title">${esc(t.title)}</span>
                 </div>`;
         }
         trendHtml += '</div>';

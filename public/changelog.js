@@ -26,6 +26,7 @@ const CHANGELOG = [
             { type: 'improvement', text: 'Manuelle Stimmkorrektur jetzt auch bei archivierten Umfragen möglich — Statistiken werden korrekt aktualisiert' },
             { type: 'improvement', text: 'Ergebnis-Post zeigt jetzt auch nicht abgestimmte Mitglieder (⏳) und Total als Verhältnis (z.B. 3/5)' },
             { type: 'improvement', text: 'Abstimmungs-Erinnerung PN klar formuliert: "Du hast noch nicht abgestimmt!" statt allgemeiner Erinnerung' },
+            { type: 'improvement', text: 'Dashboard Trend-Chart: Datumsangaben und Event-Titel unter den Balken, Legende für Zusagen vs. sonstige Antworten, detaillierter Tooltip' },
         ]
     },
     {
