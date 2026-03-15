@@ -129,8 +129,8 @@ async function sendEventReminder(chatId, eventTitle, eventTime, endTime, meeting
     return sendMessage(chatId, text);
 }
 
-// yesData/noData/maybeData: arrays of { name, reason? }
-async function postResultsToGroup(groupId, eventTitle, eventDate, eventTime, endTime, yesData, noData, maybeData, meetingTime, cancelInfo, description) {
+// yesData/noData/maybeData/pendingData: arrays of { name, reason? }
+async function postResultsToGroup(groupId, eventTitle, eventDate, eventTime, endTime, yesData, noData, maybeData, pendingData, meetingTime, cancelInfo, description) {
     let timeStr = eventTime;
     if (endTime) timeStr += ` - ${endTime}`;
     const lines = [`📊 *Ergebnis: ${eventTitle}*`, `📅 ${fmtDate(eventDate)} um ${timeStr} Uhr`];
@@ -159,7 +159,15 @@ async function postResultsToGroup(groupId, eventTitle, eventDate, eventTime, end
         lines.push('');
     }
 
-    lines.push(`Total: ${yesData.length + noData.length + maybeData.length} Antworten`);
+    if (pendingData && pendingData.length) {
+        lines.push(`⏳ *Nicht abgestimmt (${pendingData.length}):*`);
+        lines.push(pendingData.map(r => r.name).join(', '));
+        lines.push('');
+    }
+
+    const total = yesData.length + noData.length + maybeData.length;
+    const all = total + (pendingData ? pendingData.length : 0);
+    lines.push(`Total: ${total}/${all} Antworten`);
 
     return sendMessage(groupId, lines.join('\n'));
 }

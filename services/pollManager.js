@@ -371,13 +371,13 @@ async function postGroupResults(pollId, cancelInfo) {
     const yes = responses.filter(r => r.response === 'yes').map(r => ({ name: r.name, reason: r.reason }));
     const no = responses.filter(r => r.response === 'no').map(r => ({ name: r.name, reason: r.reason }));
     const maybe = responses.filter(r => r.response === 'maybe').map(r => ({ name: r.name, reason: r.reason }));
+    const pending = responses.filter(r => !r.response).map(r => ({ name: r.name }));
 
-    await waha.postResultsToGroup(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, yes, no, maybe, poll.meeting_time, cancelInfo, poll.description);
+    await waha.postResultsToGroup(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, yes, no, maybe, pending, poll.meeting_time, cancelInfo, poll.description);
 
     // Send chart image to group
     try {
-        const pending = responses.filter(r => !r.response).length;
-        const imageBuffer = generateResultChart(poll.title, poll.event_date, yes.length, no.length, maybe.length, pending);
+        const imageBuffer = generateResultChart(poll.title, poll.event_date, yes.length, no.length, maybe.length, pending.length);
         const fmtDate = (d) => { const [y,m,dd] = d.split('-'); return `${dd}.${m}.${y}`; };
         await waha.sendResultImage(GROUP_CHAT_ID, imageBuffer, `📊 Abstimmung: ${poll.title} – ${fmtDate(poll.event_date)}`);
     } catch (err) {
