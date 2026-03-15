@@ -182,7 +182,7 @@ async function getGroups() {
 
 // Update group description
 async function updateGroupDescription(groupId, description) {
-    const url = `${WAHA_API_URL}/api/${WAHA_SESSION}/groups/${encodeURIComponent(groupId)}/description`;
+    const url = `${WAHA_API_URL}/api/${WAHA_SESSION}/groups/${groupId}/description`;
     const res = await fetch(url, {
         method: 'PUT',
         headers,
