@@ -8,7 +8,7 @@ const CHANGELOG = [
             { type: 'feature', text: 'Automatische WhatsApp-Gruppenbeschreibung: zeigt nächstes Event, Status aller Mitglieder (Zusagen, Absagen mit Grund, Vielleicht mit Grund, Ausstehend) — wird bei jeder Änderung automatisch aktualisiert' },
             { type: 'feature', text: 'Neuer Tab "Beschreibung": statische Textblöcke erstellen (oberhalb/unterhalb vom Event-Status), Vorschau mit Zeichenzähler, manuelles Aktualisieren' },
             { type: 'feature', text: 'Footer in Gruppenbeschreibung: "Powered by TeamPulse by Niklas Kronig"' },
-            { type: 'feature', text: '5-Sekunden-Debounce verhindert Rate-Limiting bei schnellen Abstimmungen' },
+            { type: 'feature', text: '60-Sekunden-Debounce verhindert Rate-Limiting bei schnellen Abstimmungen' },
             { type: 'fix', text: 'Wiederkehrende Events am gleichen Wochentag erstellen jetzt Poll für heute statt nächste Woche' },
             { type: 'fix', text: '"Noch keine Umfragen vorhanden" wird nicht mehr angezeigt wenn ausstehende Polls existieren' },
             { type: 'fix', text: 'LID-Auflösung: unbekannte WhatsApp Linked IDs werden jetzt per WAHA-API aufgelöst und gecacht' },
