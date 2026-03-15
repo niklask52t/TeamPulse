@@ -15,6 +15,8 @@ WhatsApp-basiertes Anwesenheits-Management für Teams. Erstelle Trainings, Turni
 - **Abstimmungsfrist = Ergebnis-Post**: Ein Feld — Umfrage schließt und Ergebnis wird sofort gepostet (Standard: 1h vor Event)
 - **Gruppen-Posting**: Ergebnis-Text + Chart in die Gruppe — auch manuell mehrfach möglich
 - **Frist verlängern**: Abstimmungsdeadline direkt im Dashboard verschieben
+- **Automatische Gruppenbeschreibung**: WhatsApp-Gruppenbeschreibung wird bei jeder Änderung automatisch aktualisiert — zeigt nächstes Event, Status aller Mitglieder (Zusagen, Absagen mit Grund, Vielleicht, Ausstehend) + statische Textblöcke
+- **Beschreibungs-Tab**: Statische Textblöcke erstellen (oberhalb/unterhalb), Vorschau, manuelles Aktualisieren
 - **Statistiken-Tab**: Antwortquote & Ja/Nein/Vielleicht/Offen pro Mitglied aus allen abgeschlossenen Umfragen
 - **Gruppen-Übersicht** (DEV_MODE): Footer-Tab zeigt alle WhatsApp-Gruppen mit ID und Kopieren-Button — zum einfachen Nachschlagen der `GROUP_CHAT_ID`
 - **Erinnerungen**:

@@ -312,6 +312,20 @@
                         <p>Nur <strong>geschlossene</strong> Umfragen fließen ein — offene oder ausstehende Umfragen zählen nicht gegen die Quote.</p>
                     </div>
                     <div class="wiki-section">
+                        <h3>Gruppenbeschreibung</h3>
+                        <p>Im Tab <strong>Beschreibung</strong> wird die WhatsApp-Gruppenbeschreibung verwaltet. Sie wird <strong>automatisch</strong> bei jeder Änderung aktualisiert (Abstimmung, Schließung, neues Event etc.).</p>
+                        <p><strong>Aufbau:</strong></p>
+                        <ol>
+                            <li>Statische Textblöcke (Position: "Oberhalb")</li>
+                            <li>Dynamischer Event-Status: nächstes Event mit allen Zu-/Absagen, Begründungen und ausstehenden Antworten</li>
+                            <li>Statische Textblöcke (Position: "Unterhalb")</li>
+                            <li>Footer: "Powered by TeamPulse by Niklas Kronig"</li>
+                        </ol>
+                        <p><strong>Textblöcke:</strong> Erstelle beliebig viele Blöcke mit Position (oberhalb/unterhalb) und Reihenfolge. Niedrigere Reihenfolge = weiter oben.</p>
+                        <p><strong>Vorschau:</strong> Zeigt die aktuelle Beschreibung mit Zeichenzähler (max. 2048 Zeichen).</p>
+                        <p><strong>Voraussetzung:</strong> Der WAHA-Bot muss <strong>Gruppen-Admin</strong> sein, damit die Beschreibung aktualisiert werden kann.</p>
+                    </div>
+                    <div class="wiki-section">
                         <h3>Konfiguration (.env)</h3>
                         <p><code>WAHA_API_URL</code> — URL der WAHA-Instanz (z.B. http://172.16.80.27:3000)</p>
                         <p><code>WAHA_API_KEY</code> — API-Key für WAHA-Authentifizierung</p>

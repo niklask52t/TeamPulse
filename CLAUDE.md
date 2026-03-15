@@ -5,7 +5,7 @@ WhatsApp-based attendance management dashboard. Users create events (recurring t
 
 ## Tech Stack
 - **Backend**: Node.js 24 LTS + Express 5 (CommonJS)
-- **Frontend**: Vanilla HTML/CSS/JS served as static files from `public/` — split into five files
+- **Frontend**: Vanilla HTML/CSS/JS served as static files from `public/` — split into six files
 - **Database**: SQLite via libsql (better-sqlite3 compatible API), schema in `db/schema.sql`
 - **Auth**: bcrypt + express-session, default user admin/admin, force password change on first login
 - **Scheduler**: node-cron for timed messages (every minute)
@@ -23,20 +23,23 @@ TeamPulse/
 │   ├── auth.js        # Login, logout, password change
 │   ├── events.js      # CRUD for events (validation, no past dates)
 │   ├── polls.js       # Poll management, manual actions, WAHA webhook
-│   └── stats.js       # Participation stats per contact
+│   ├── stats.js       # Participation stats per contact
+│   └── descriptionBlocks.js  # CRUD for group description static text blocks
 ├── services/
-│   ├── waha.js        # WAHA API client (sendPollMessage, sendMessage, sendReminder, sendResultImage, sendMaybeFollowUp, postResultsToGroup, getGroupParticipants, getAllContacts, getGroups)
+│   ├── waha.js        # WAHA API client (sendPollMessage, sendMessage, sendReminder, sendResultImage, sendMaybeFollowUp, postResultsToGroup, getGroupParticipants, getAllContacts, getGroups, updateGroupDescription)
 │   ├── scheduler.js   # Cron: send/close/archive polls, reminders, group posts
 │   ├── pollManager.js # Poll lifecycle (create, send, processResponse, processReasonMessage, close, extendDeadline)
+│   ├── groupDescription.js  # Build & update WhatsApp group description (debounced)
 │   ├── chartGenerator.js  # PNG bar chart via @napi-rs/canvas
 │   └── timeUtils.js   # Europe/Berlin timezone helpers
 ├── public/            # Frontend static files (load order matters)
-│   ├── index.html     # SPA with tabs: Events, Umfragen, Statistiken + footer with Wiki/Changelog/Gruppen
+│   ├── index.html     # SPA with tabs: Events, Umfragen, Statistiken, Beschreibung + footer
 │   ├── style.css
 │   ├── changelog.js   # CHANGELOG data + renderChangelog()
 │   ├── events.js      # Events tab: loadEvents, showEventForm, editEvent, saveEvent, deleteEvent
 │   ├── polls.js       # Polls tab: loadPolls, renderPollDetail, buildActionButtons, pollAction, showExtendForm
 │   ├── stats.js       # Stats tab: loadStats() — member response rate table
+│   ├── description.js # Description tab: CRUD for static text blocks, preview, manual update
 │   └── app.js         # Core: auth, nav, utils, groups, init — must load LAST
 ├── update.sh          # Production update/reset script
 └── .env.example
@@ -51,7 +54,7 @@ TeamPulse/
 - Use `const` by default, `let` when reassignment needed
 - No TypeScript, keep it simple
 - Express error handler logs all errors to console (visible in journalctl)
-- **Frontend script load order**: changelog.js → events.js → polls.js → app.js
+- **Frontend script load order**: changelog.js → events.js → polls.js → stats.js → description.js → app.js
   All files contribute to global scope (no ES modules) — app.js defines shared globals (API, apiFetch, esc, fmtDateFancy, etc.) and calls checkAuth() last
 - Poll details auto-refresh every 15s via `openPollDetails` Set + `setInterval` in polls.js
 - Footer is a sticky thin bar at the bottom; wiki/changelog/groups expand as panels above the bar
@@ -131,10 +134,22 @@ TeamPulse/
 - Only closed polls count (open/pending polls don't penalize members)
 - Frontend: Stats tab with sortable table + color-coded bar charts per member
 
+## Group Description Auto-Update
+- `services/groupDescription.js` builds description from: static blocks (above) + next event status + static blocks (below) + footer
+- Footer: "Powered by TeamPulse by Niklas Kronig" + contact note
+- Updated via `PUT /api/{session}/groups/{groupId}/description` (WAHA)
+- **Debounced** (5s) to avoid rate-limiting on rapid votes
+- Triggered by: vote, reason, poll send/close, deadline extend, archive, new recurring poll
+- Static blocks stored in `group_description_blocks` table (content, position: above/below, sort_order)
+- Bot must be group admin to update description
+- WhatsApp description limit: 2048 characters (auto-truncated)
+
 ## DB Schema Notes
 - `events.meeting_time TEXT` — optional meeting/gathering time (separate from event_time)
 - `events.poll_send_minutes_before INTEGER DEFAULT 1440` — when to send the poll (minutes before event)
 - `polls.send_after TEXT` — ISO timestamp: earliest time the poll should be sent
 - `poll_responses.reason TEXT` — stores optional reason from 'maybe' and 'no' voters
 - `polls.archived INTEGER DEFAULT 0` — added via migration
+- `contacts.lid TEXT` — WhatsApp Linked ID for poll.vote matching
+- `group_description_blocks` — static text blocks for group description (content, position, sort_order)
 - Run migrations in `db/database.js` with try/catch for existing columns
