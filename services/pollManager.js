@@ -291,7 +291,7 @@ function processReasonMessage(phone, text) {
     return { pollId: pendingReason.poll_id, contactName: contact.name };
 }
 
-async function sendDeadlineReminder(pollId) {
+async function sendDeadlineReminder(pollId, isSecond) {
     const poll = db.prepare(`
         SELECT p.*, e.title, e.description, e.event_time, e.end_time, e.meeting_time
         FROM polls p JOIN events e ON p.event_id = e.id
@@ -319,7 +319,11 @@ async function sendDeadlineReminder(pollId) {
         }
     }
 
-    db.prepare('UPDATE polls SET reminder_sent = 1 WHERE id = ?').run(pollId);
+    if (isSecond) {
+        db.prepare('UPDATE polls SET reminder_2_sent = 1 WHERE id = ?').run(pollId);
+    } else {
+        db.prepare('UPDATE polls SET reminder_sent = 1 WHERE id = ?').run(pollId);
+    }
 }
 
 // Post results to group WITHOUT closing the poll or changing status
@@ -374,7 +378,7 @@ function extendDeadline(pollId, minutes) {
 
     const current = new Date(poll.deadline);
     const newDeadline = new Date(current.getTime() + minutes * 60 * 1000);
-    db.prepare('UPDATE polls SET deadline = ?, reminder_sent = 0 WHERE id = ?')
+    db.prepare('UPDATE polls SET deadline = ?, reminder_sent = 0, reminder_2_sent = 0 WHERE id = ?')
         .run(newDeadline.toISOString(), pollId);
     scheduleDescriptionUpdate();
     return newDeadline.toISOString();
@@ -382,7 +386,7 @@ function extendDeadline(pollId, minutes) {
 
 async function sendEventReminders(pollId) {
     const poll = db.prepare(`
-        SELECT p.*, e.title, e.description, e.event_time, e.end_time, e.meeting_time
+        SELECT p.*, e.title, e.description, e.event_time, e.end_time, e.meeting_time, e.event_reminder_minutes
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.id = ?
     `).get(pollId);
@@ -394,10 +398,11 @@ async function sendEventReminders(pollId) {
         WHERE pr.poll_id = ? AND pr.response = 'yes'
     `).all(pollId);
 
+    const minutes = poll.event_reminder_minutes ?? 60;
     for (const r of yesResponses) {
         try {
             const chatId = r.phone.replace('+', '') + '@c.us';
-            await waha.sendEventReminder(chatId, poll.title, poll.event_time, poll.end_time, poll.meeting_time, poll.description);
+            await waha.sendEventReminder(chatId, poll.title, poll.event_time, poll.end_time, poll.meeting_time, poll.description, minutes);
         } catch (err) {
             console.error(`Failed to send event reminder to ${r.name}:`, err.message);
         }

@@ -23,6 +23,10 @@ try { db.exec('ALTER TABLE events ADD COLUMN poll_send_at TEXT'); } catch { /* a
 try { db.exec('ALTER TABLE events ADD COLUMN description TEXT'); } catch { /* already exists */ }
 try { db.exec('ALTER TABLE events ADD COLUMN auto_cancel INTEGER DEFAULT 0'); } catch { /* already exists */ }
 try { db.exec('ALTER TABLE events ADD COLUMN min_participants INTEGER DEFAULT 0'); } catch { /* already exists */ }
+try { db.exec('ALTER TABLE events ADD COLUMN event_reminder_minutes INTEGER DEFAULT 60'); } catch { /* already exists */ }
+try { db.exec('ALTER TABLE events ADD COLUMN deadline_reminder_1_minutes INTEGER DEFAULT 120'); } catch { /* already exists */ }
+try { db.exec('ALTER TABLE events ADD COLUMN deadline_reminder_2_minutes INTEGER DEFAULT 15'); } catch { /* already exists */ }
+try { db.exec('ALTER TABLE polls ADD COLUMN reminder_2_sent INTEGER DEFAULT 0'); } catch { /* already exists */ }
 
 // Seed default admin user if no users exist
 const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;

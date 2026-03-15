@@ -12,6 +12,8 @@ const CHANGELOG = [
             { type: 'feature', text: 'Poll-Hinweis: "Privat antworten für Kommentar" wird automatisch in jeder Umfrage angezeigt' },
             { type: 'feature', text: 'Ergebnis-Post zeigt jetzt auch Kommentare von Ja-Stimmern an' },
             { type: 'feature', text: 'Event-Beschreibung: optionales Freitextfeld pro Event — wird in Umfragen, Erinnerungen, Ergebnis-Posts, Gruppenbeschreibung und Dashboard angezeigt' },
+            { type: 'feature', text: 'Konfigurierbare Erinnerungen: Start-Erinnerung (Standard 60 Min vor Event), zwei Abstimmungs-Erinnerungen (Standard 120 und 15 Min vor Frist) — alles pro Event einstellbar' },
+            { type: 'improvement', text: 'Start-Erinnerung zeigt Event-Namen und dynamische Zeitangabe statt "in 1 Stunde"' },
         ]
     },
     {

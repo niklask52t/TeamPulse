@@ -103,11 +103,23 @@ async function sendResultImage(chatId, imageBuffer, caption) {
     return r2.json();
 }
 
-async function sendEventReminder(chatId, eventTitle, eventTime, endTime, meetingTime, description) {
+async function sendEventReminder(chatId, eventTitle, eventTime, endTime, meetingTime, description, minutesBefore) {
+    const mins = minutesBefore || 60;
+    let timeLabel;
+    if (mins >= 60 && mins % 60 === 0) {
+        const h = mins / 60;
+        timeLabel = h === 1 ? '1 Stunde' : `${h} Stunden`;
+    } else if (mins >= 60) {
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        timeLabel = `${h}h ${m}min`;
+    } else {
+        timeLabel = `${mins} Minuten`;
+    }
     let timeStr = eventTime;
     if (endTime) timeStr += ` - ${endTime}`;
     let text =
-        `🏃 *${eventTitle} beginnt in 1 Stunde!*\n` +
+        `🏃 *${eventTitle} beginnt in ${timeLabel}!*\n` +
         `⏰ ${timeStr} Uhr\n`;
     if (meetingTime) text += `🤝 Treffen: ${meetingTime} Uhr\n`;
     if (description) text += `📝 ${description}\n`;

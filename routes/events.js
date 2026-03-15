@@ -21,7 +21,7 @@ router.get('/:id', (req, res) => {
 
 // POST create event
 router.post('/', (req, res) => {
-    const { title, description, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_minutes_before, poll_send_at, poll_deadline_minutes, auto_cancel, min_participants } = req.body;
+    const { title, description, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_minutes_before, poll_send_at, poll_deadline_minutes, auto_cancel, min_participants, event_reminder_minutes, deadline_reminder_1_minutes, deadline_reminder_2_minutes } = req.body;
 
     if (!title || !type || !event_time) {
         return res.status(400).json({ error: 'Titel, Typ und Uhrzeit sind erforderlich' });
@@ -46,8 +46,8 @@ router.post('/', (req, res) => {
     const sendMin = poll_send_at ? 1440 : (poll_send_minutes_before || 1440);
 
     const result = db.prepare(`
-        INSERT INTO events (title, description, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_at, poll_send_minutes_before, poll_deadline_minutes, group_post_minutes_before, auto_cancel, min_participants)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO events (title, description, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_at, poll_send_minutes_before, poll_deadline_minutes, group_post_minutes_before, auto_cancel, min_participants, event_reminder_minutes, deadline_reminder_1_minutes, deadline_reminder_2_minutes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
         title, description || null, type,
         event_date || '',
@@ -61,7 +61,10 @@ router.post('/', (req, res) => {
         deadlineMin,
         deadlineMin,
         auto_cancel ? 1 : 0,
-        min_participants || 0
+        min_participants || 0,
+        event_reminder_minutes ?? 60,
+        deadline_reminder_1_minutes ?? 120,
+        deadline_reminder_2_minutes ?? 15
     );
 
     const event = db.prepare('SELECT * FROM events WHERE id = ?').get(result.lastInsertRowid);
@@ -106,7 +109,7 @@ router.post('/', (req, res) => {
 
 // PUT update event
 router.put('/:id', (req, res) => {
-    const { title, description, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_minutes_before, poll_send_at, poll_deadline_minutes, active, auto_cancel, min_participants } = req.body;
+    const { title, description, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_minutes_before, poll_send_at, poll_deadline_minutes, active, auto_cancel, min_participants, event_reminder_minutes, deadline_reminder_1_minutes, deadline_reminder_2_minutes } = req.body;
 
     if (!title || !type || !event_time) {
         return res.status(400).json({ error: 'Titel, Typ und Uhrzeit sind erforderlich' });
@@ -122,7 +125,7 @@ router.put('/:id', (req, res) => {
     const result = db.prepare(`
         UPDATE events SET title = ?, description = ?, type = ?, event_date = ?, event_time = ?, end_time = ?, meeting_time = ?,
         recurring = ?, recurrence_day = ?, poll_send_at = ?, poll_send_minutes_before = ?, poll_deadline_minutes = ?, group_post_minutes_before = ?, active = ?,
-        auto_cancel = ?, min_participants = ?
+        auto_cancel = ?, min_participants = ?, event_reminder_minutes = ?, deadline_reminder_1_minutes = ?, deadline_reminder_2_minutes = ?
         WHERE id = ?
     `).run(
         title, description || null, type, event_date || '', event_time, end_time || null, meeting_time || null,
@@ -130,6 +133,9 @@ router.put('/:id', (req, res) => {
         poll_send_at || null, sendMin, deadlineMin, deadlineMin,
         active !== undefined ? (active ? 1 : 0) : 1,
         auto_cancel ? 1 : 0, min_participants || 0,
+        event_reminder_minutes ?? 60,
+        deadline_reminder_1_minutes ?? 120,
+        deadline_reminder_2_minutes ?? 15,
         req.params.id
     );
 

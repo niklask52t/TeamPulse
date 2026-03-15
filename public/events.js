@@ -61,6 +61,9 @@ function showEventForm() {
     document.getElementById('event-send-date').value = '';
     document.getElementById('event-send-time').value = '';
     document.getElementById('event-description').value = '';
+    document.getElementById('event-event-reminder-min').value = '60';
+    document.getElementById('event-deadline-r1-min').value = '120';
+    document.getElementById('event-deadline-r2-min').value = '15';
     document.getElementById('event-auto-cancel').checked = false;
     document.getElementById('event-min-participants').value = '8';
     toggleAutoCancel();
@@ -142,6 +145,9 @@ async function editEvent(id) {
     }
     document.getElementById('event-deadline').value = e.poll_deadline_minutes / 60;
     document.getElementById('event-description').value = e.description || '';
+    document.getElementById('event-event-reminder-min').value = e.event_reminder_minutes ?? 60;
+    document.getElementById('event-deadline-r1-min').value = e.deadline_reminder_1_minutes ?? 120;
+    document.getElementById('event-deadline-r2-min').value = e.deadline_reminder_2_minutes ?? 15;
     document.getElementById('event-auto-cancel').checked = !!e.auto_cancel;
     document.getElementById('event-min-participants').value = e.min_participants || 8;
     toggleAutoCancel();
@@ -173,6 +179,9 @@ async function saveEvent(e) {
         event_date: document.getElementById('event-date').value || null,
         poll_deadline_minutes: Math.round(Number(document.getElementById('event-deadline').value) * 60),
         description: document.getElementById('event-description').value || null,
+        event_reminder_minutes: Number(document.getElementById('event-event-reminder-min').value) || 60,
+        deadline_reminder_1_minutes: Number(document.getElementById('event-deadline-r1-min').value) || 120,
+        deadline_reminder_2_minutes: Number(document.getElementById('event-deadline-r2-min').value) || 15,
         auto_cancel: document.getElementById('event-auto-cancel').checked,
         min_participants: Number(document.getElementById('event-min-participants').value) || 0,
     };

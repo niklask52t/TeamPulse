@@ -28,6 +28,9 @@ CREATE TABLE IF NOT EXISTS events (
     poll_send_minutes_before INTEGER DEFAULT 1440,
     poll_deadline_minutes INTEGER DEFAULT 60,
     group_post_minutes_before INTEGER DEFAULT 60,
+    event_reminder_minutes INTEGER DEFAULT 60,
+    deadline_reminder_1_minutes INTEGER DEFAULT 120,
+    deadline_reminder_2_minutes INTEGER DEFAULT 15,
     active INTEGER DEFAULT 1,
     created_at TEXT DEFAULT (datetime('now'))
 );
@@ -40,6 +43,7 @@ CREATE TABLE IF NOT EXISTS polls (
     send_after TEXT,
     deadline TEXT NOT NULL,
     reminder_sent INTEGER DEFAULT 0,
+    reminder_2_sent INTEGER DEFAULT 0,
     group_posted INTEGER DEFAULT 0,
     event_reminder_sent INTEGER DEFAULT 0,
     archived INTEGER DEFAULT 0,

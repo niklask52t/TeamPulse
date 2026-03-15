@@ -70,20 +70,38 @@ async function checkAndSendPolls() {
 
 async function checkDeadlineReminders() {
     const now = new Date();
-    const in60min = new Date(now.getTime() + 60 * 60 * 1000);
 
     const polls = db.prepare(`
-        SELECT id, deadline FROM polls
-        WHERE status = 'active' AND reminder_sent = 0
-        AND datetime(deadline) <= datetime(?) AND datetime(deadline) > datetime(?)
-    `).all(in60min.toISOString(), now.toISOString());
+        SELECT p.id, p.deadline, p.reminder_sent, p.reminder_2_sent,
+            e.deadline_reminder_1_minutes, e.deadline_reminder_2_minutes
+        FROM polls p JOIN events e ON p.event_id = e.id
+        WHERE p.status = 'active' AND (p.reminder_sent = 0 OR p.reminder_2_sent = 0)
+    `).all();
 
     for (const poll of polls) {
-        try {
-            await pollManager.sendDeadlineReminder(poll.id);
-            console.log(`Deadline reminder sent for poll ${poll.id}`);
-        } catch (err) {
-            console.error(`[ERROR] sendDeadlineReminder ${poll.id}:`, err.message);
+        const deadline = new Date(poll.deadline);
+        if (now >= deadline) continue;
+
+        const r1Min = poll.deadline_reminder_1_minutes ?? 120;
+        const r2Min = poll.deadline_reminder_2_minutes ?? 15;
+        const r1Time = new Date(deadline.getTime() - r1Min * 60 * 1000);
+        const r2Time = new Date(deadline.getTime() - r2Min * 60 * 1000);
+
+        if (!poll.reminder_sent && now >= r1Time) {
+            try {
+                await pollManager.sendDeadlineReminder(poll.id);
+                console.log(`Deadline reminder 1 sent for poll ${poll.id}`);
+            } catch (err) {
+                console.error(`[ERROR] sendDeadlineReminder 1 ${poll.id}:`, err.message);
+            }
+        }
+        if (!poll.reminder_2_sent && now >= r2Time) {
+            try {
+                await pollManager.sendDeadlineReminder(poll.id, true);
+                console.log(`Deadline reminder 2 sent for poll ${poll.id}`);
+            } catch (err) {
+                console.error(`[ERROR] sendDeadlineReminder 2 ${poll.id}:`, err.message);
+            }
         }
     }
 }
@@ -155,7 +173,7 @@ async function checkEventReminders() {
     const now = new Date();
 
     const polls = db.prepare(`
-        SELECT p.id, p.event_date, e.event_time
+        SELECT p.id, p.event_date, e.event_time, e.event_reminder_minutes
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.event_reminder_sent = 0 AND p.archived = 0
         AND p.status IN ('active', 'closed')
@@ -164,7 +182,8 @@ async function checkEventReminders() {
     for (const poll of polls) {
         const eventUtc = parseBerlinDateTime(poll.event_date, poll.event_time);
         if (isNaN(eventUtc.getTime())) continue;
-        const reminderTime = new Date(eventUtc.getTime() - 60 * 60 * 1000);
+        const minutes = poll.event_reminder_minutes ?? 60;
+        const reminderTime = new Date(eventUtc.getTime() - minutes * 60 * 1000);
 
         if (now >= reminderTime && now < eventUtc) {
             try {
