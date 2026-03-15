@@ -199,6 +199,13 @@ async function sendAdminVoteNotification(chatId, eventTitle, eventDate, newRespo
     return sendMessage(chatId, text);
 }
 
+async function sendTooLateNotification(chatId, eventTitle, eventDate) {
+    const text =
+        `⏰ Die Abstimmung für *${eventTitle}* am ${fmtDate(eventDate)} ist bereits beendet.\n\n` +
+        `Deine Stimme konnte leider nicht mehr gezählt werden. Wende dich bei Fragen an den Admin.`;
+    return sendMessage(chatId, text);
+}
+
 // Get all participants of a group
 async function getGroupParticipants(groupId) {
     const url = `${WAHA_API_URL}/api/${WAHA_SESSION}/groups/${encodeURIComponent(groupId)}/participants/v2`;
@@ -314,6 +321,7 @@ module.exports = {
     sendMaybeFollowUp,
     sendNoFollowUp,
     sendAdminVoteNotification,
+    sendTooLateNotification,
     postResultsToGroup,
     sendCancellationMessage,
     getGroupParticipants,

@@ -84,6 +84,7 @@ TeamPulse/
 - The voter has **5 minutes** to reply with a reason — after that, `processReasonMessage()` ignores the message (SQL: `responded_at >= datetime('now', '-5 minutes')`)
 - Only the next private message within the 5-minute window is saved as the reason
 - Reasons are displayed in the poll detail view alongside the member's name for both "no" and "maybe" responses
+- Votes after deadline: processResponse sends a "too late" PN (sendTooLateNotification) when no active poll exists but a closed one does
 
 ## DEV_MODE
 - `DEV_MODE=true` in `.env` enables the "Gruppen" footer tab (shows all WhatsApp groups with IDs from WAHA)
@@ -107,7 +108,7 @@ TeamPulse/
 - Close poll: manual close (active → closed)
 - Post group results: multiple times (active/closed) — sends text + PNG chart image; does NOT close the poll
 - Send event reminder: multiple times (active/closed)
-- Manual vote override: click member name → set response (✅/❌/🤷/⏳), sends PN notification
+- Manual vote override: click member name → set response (✅/❌/🤷/⏳), sends PN notification. Works on all polls including archived — stats update accordingly
 - Delete: always available
 
 ## Auth

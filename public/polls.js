@@ -112,10 +112,10 @@ async function renderPollDetail(id) {
             <span class="stat response-pending">⏳ ${pending.length}</span>
         </div>
         <div class="response-groups">
-            ${renderReasonGroup('✅ Zusagen', yes, 'yes', poll.id, !poll.archived)}
-            ${renderReasonGroup('❌ Absagen', no, 'no', poll.id, !poll.archived)}
-            ${renderReasonGroup('🤷 Vielleicht', maybe, 'maybe', poll.id, !poll.archived)}
-            ${renderResponseGroup('⏳ Noch ausstehend', pending, 'pending', poll.id, !poll.archived)}
+            ${renderReasonGroup('✅ Zusagen', yes, 'yes', poll.id, true)}
+            ${renderReasonGroup('❌ Absagen', no, 'no', poll.id, true)}
+            ${renderReasonGroup('🤷 Vielleicht', maybe, 'maybe', poll.id, true)}
+            ${renderResponseGroup('⏳ Noch ausstehend', pending, 'pending', poll.id, true)}
         </div>
     `;
     detail.classList.remove('hidden');

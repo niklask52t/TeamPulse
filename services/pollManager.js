@@ -245,7 +245,24 @@ async function processResponse(phone, text) {
         ORDER BY p.deadline ASC LIMIT 1
     `).get();
 
-    if (!activePoll) return null;
+    if (!activePoll) {
+        // Check if there's a recently closed poll — send "too late" notification
+        if (contactRow) {
+            const closedPoll = db.prepare(`
+                SELECT p.event_date, e.title as event_title
+                FROM polls p JOIN events e ON p.event_id = e.id
+                WHERE p.status = 'closed' AND p.archived = 0
+                ORDER BY p.deadline DESC LIMIT 1
+            `).get();
+            if (closedPoll && contactRow.phone) {
+                const chatId = contactRow.phone.replace('+', '') + '@c.us';
+                waha.sendTooLateNotification(chatId, closedPoll.event_title, closedPoll.event_date)
+                    .catch(e => console.error('[ERROR] sendTooLateNotification:', e.message));
+                console.log(`[VOTE] Too late vote from ${contactRow.name} for ${closedPoll.event_title} — notification sent`);
+            }
+        }
+        return null;
+    }
 
     // Ensure response row exists, then update
     db.prepare(`

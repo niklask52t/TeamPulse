@@ -26,6 +26,8 @@ WhatsApp-basiertes Anwesenheits-Management für Teams. Erstelle Trainings, Turni
 - **Erinnerungen** (konfigurierbar pro Event):
   - 2x Abstimmungs-Erinnerung: Standard 120 Min + 15 Min vor Fristablauf an alle Nicht-Voter (privat)
   - Start-Erinnerung: Standard 60 Min vor Event an alle Zusager (privat, mit Event-Name + dynamischer Zeitangabe)
+- **Zu-spät-Benachrichtigung**: Wer nach Fristablauf abstimmt, wird per PN informiert dass die Abstimmung beendet ist
+- **Manuelle Stimmkorrektur**: Admin kann Stimmen im Dashboard ändern (auch bei archivierten Umfragen) — Mitglied wird per PN benachrichtigt, Statistiken werden aktualisiert
 
 ## Tech Stack
 
