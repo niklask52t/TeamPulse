@@ -1269,6 +1269,10 @@ main {
     min-width: auto;
 }
 
+.dashboard-poll-date .date-card-day::after {
+    content: ' ';
+}
+
 .dashboard-poll-progress {
     height: 6px;
     background: var(--bg-tertiary);
