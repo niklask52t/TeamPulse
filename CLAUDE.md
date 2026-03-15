@@ -146,7 +146,9 @@ TeamPulse/
 
 ## DB Schema Notes
 - `events.meeting_time TEXT` — optional meeting/gathering time (separate from event_time)
+- `events.end_time TEXT` — optional event end time (e.g. "20:30"), displayed in polls/messages/description
 - `events.poll_send_minutes_before INTEGER DEFAULT 1440` — when to send the poll (minutes before event)
+- `events.poll_send_at TEXT` — alternative fixed send date/time (e.g. "2026-03-20T10:00"), mutually exclusive with poll_send_minutes_before
 - `polls.send_after TEXT` — ISO timestamp: earliest time the poll should be sent
 - `poll_responses.reason TEXT` — stores optional reason from 'maybe' and 'no' voters
 - `polls.archived INTEGER DEFAULT 0` — added via migration

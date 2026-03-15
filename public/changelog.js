@@ -2,6 +2,15 @@
 
 const CHANGELOG = [
     {
+        version: '1.10.0',
+        date: '2026-03-15',
+        changes: [
+            { type: 'feature', text: 'Endzeit für Events: optionales "Ende"-Feld wird in Umfragen, Erinnerungen und Gruppenbeschreibung angezeigt' },
+            { type: 'feature', text: 'Fester Versandzeitpunkt: alternativ zu "X Stunden vorher" kann ein konkretes Datum+Uhrzeit für den Umfrage-Versand gewählt werden' },
+            { type: 'feature', text: 'Nächste 3 Events in Gruppenbeschreibung: unterhalb des aktuellen Event-Status werden die nächsten Termine aufgelistet' },
+        ]
+    },
+    {
         version: '1.9.0',
         date: '2026-03-15',
         changes: [
