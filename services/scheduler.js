@@ -31,6 +31,7 @@ function startScheduler() {
             await checkEventReminders();
             await generateRecurringPolls();
             await archiveOldPolls();
+            await checkDescriptionEventSwitch();
         } catch (err) {
             console.error('[ERROR] Scheduler:', err);
         }
@@ -257,6 +258,36 @@ async function archiveOldPolls() {
             scheduleDescriptionUpdate();
         }
     }
+}
+
+// Update group description when an event starts or ends (so it switches to the next event)
+let lastDescriptionPollId = null;
+async function checkDescriptionEventSwitch() {
+    const now = new Date();
+    // Find the first non-archived poll whose event hasn't ended yet
+    const polls = db.prepare(`
+        SELECT p.id, p.event_date, e.event_time, e.end_time
+        FROM polls p JOIN events e ON p.event_id = e.id
+        WHERE p.archived = 0 AND p.status IN ('pending', 'active', 'closed')
+        ORDER BY p.event_date ASC, e.event_time ASC
+    `).all();
+
+    let currentPollId = null;
+    for (const p of polls) {
+        const relevantTime = p.end_time || p.event_time;
+        const eventEnd = parseBerlinDateTime(p.event_date, relevantTime);
+        if (isNaN(eventEnd.getTime()) || now < eventEnd) {
+            currentPollId = p.id;
+            break;
+        }
+    }
+
+    // If the "current" poll changed, trigger a description update
+    if (lastDescriptionPollId !== null && currentPollId !== lastDescriptionPollId) {
+        console.log(`[INFO] Description event switch: poll ${lastDescriptionPollId} → ${currentPollId}`);
+        scheduleDescriptionUpdate();
+    }
+    lastDescriptionPollId = currentPollId;
 }
 
 module.exports = { startScheduler };

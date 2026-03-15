@@ -19,7 +19,7 @@ WhatsApp-basiertes Anwesenheits-Management für Teams. Erstelle Trainings, Turni
 - **Wiederkehrende Ausnahmen**: Einzelne Termine bei wiederkehrenden Events aussetzen (z.B. Feiertage)
 - **Gruppen-Posting**: Ergebnis-Text + Chart in die Gruppe — auch manuell mehrfach möglich
 - **Frist verlängern**: Abstimmungsdeadline direkt im Dashboard verschieben
-- **Automatische Gruppenbeschreibung**: WhatsApp-Gruppenbeschreibung wird bei jeder Änderung automatisch aktualisiert — zeigt nächstes Event, Status aller Mitglieder (Zusagen, Absagen mit Grund, Vielleicht, Ausstehend) + statische Textblöcke
+- **Automatische Gruppenbeschreibung**: WhatsApp-Gruppenbeschreibung wird bei jeder Änderung automatisch aktualisiert — zeigt nächstes Event, Status aller Mitglieder (Zusagen, Absagen mit Grund, Vielleicht, Ausstehend) + statische Textblöcke. Wechselt automatisch zum nächsten Event sobald das aktuelle endet (end_time) bzw. beginnt (event_time)
 - **Beschreibungs-Tab**: Statische Textblöcke erstellen (oberhalb/unterhalb), Vorschau, manuelles Aktualisieren
 - **Statistiken-Tab**: Antwortquote & Ja/Nein/Vielleicht/Offen pro Mitglied — nur abgeschlossene Umfragen
 - **Gruppen-Übersicht** (DEV_MODE): Footer-Tab zeigt alle WhatsApp-Gruppen mit ID und Kopieren-Button — zum einfachen Nachschlagen der `GROUP_CHAT_ID`

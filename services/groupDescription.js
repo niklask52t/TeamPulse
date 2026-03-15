@@ -1,5 +1,6 @@
 const db = require('../db/database');
 const waha = require('./waha');
+const { parseBerlinDateTime } = require('./timeUtils');
 
 const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
 const MAX_DESC_LENGTH = 2048;
@@ -22,14 +23,21 @@ function buildDescription() {
         "SELECT content FROM group_description_blocks WHERE position = 'below' ORDER BY sort_order ASC, id ASC"
     ).all();
 
-    // 2. Find next upcoming poll (non-archived, closest event_date in future)
-    const nextPoll = db.prepare(`
+    // 2. Find next upcoming poll (non-archived, event not yet ended)
+    const now = new Date();
+    const pollCandidates = db.prepare(`
         SELECT p.*, e.title, e.description, e.event_time, e.end_time, e.meeting_time
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.archived = 0 AND p.status IN ('pending', 'active', 'closed')
         ORDER BY p.event_date ASC, e.event_time ASC
-        LIMIT 1
-    `).get();
+    `).all();
+
+    // Skip polls whose event has already ended (end_time if set, otherwise event_time)
+    const nextPoll = pollCandidates.find(p => {
+        const relevantTime = p.end_time || p.event_time;
+        const eventEnd = parseBerlinDateTime(p.event_date, relevantTime);
+        return isNaN(eventEnd.getTime()) || now < eventEnd;
+    }) || null;
 
     // 3. Build dynamic section
     let dynamic = '';
@@ -68,16 +76,20 @@ function buildDescription() {
         dynamic = 'Kein anstehendes Event.';
     }
 
-    // 4. Next 3 upcoming events (excluding the one already shown)
+    // 4. Next 3 upcoming events (excluding the one already shown, skip past events)
     const excludeId = nextPoll ? nextPoll.id : -1;
-    const upcomingEvents = db.prepare(`
-        SELECT p.event_date, e.title, e.event_time, e.end_time
+    const upcomingCandidates = db.prepare(`
+        SELECT p.id, p.event_date, e.title, e.event_time, e.end_time
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.archived = 0 AND p.id != ?
         AND p.event_date >= date('now')
         ORDER BY p.event_date ASC, e.event_time ASC
-        LIMIT 3
     `).all(excludeId);
+    const upcomingEvents = upcomingCandidates.filter(p => {
+        const relevantTime = p.end_time || p.event_time;
+        const eventEnd = parseBerlinDateTime(p.event_date, relevantTime);
+        return isNaN(eventEnd.getTime()) || now < eventEnd;
+    }).slice(0, 3);
 
     let upcoming = '';
     if (upcomingEvents.length > 0) {

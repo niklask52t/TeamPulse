@@ -21,6 +21,7 @@ const CHANGELOG = [
             { type: 'fix', text: 'Webhook-Fehlerbehandlung: Stimmen werden jetzt auch nach Server-Neustart zuverlässig verarbeitet (try/catch für poll.vote-Handler)' },
             { type: 'improvement', text: 'Gruppenbeschreibung: automatische Wiederholung bei WAHA-Fehler (Store-Cache-Problem nach Neustart)' },
             { type: 'feature', text: 'Manuelle Stimmkorrektur: Klick auf Mitgliedername in Umfrage-Details → Stimme ändern (✅/❌/🤷/⏳)' },
+            { type: 'improvement', text: 'Gruppenbeschreibung wechselt automatisch zum nächsten Event sobald das aktuelle Event endet (end_time) bzw. beginnt (event_time falls kein Ende gesetzt)' },
         ]
     },
     {

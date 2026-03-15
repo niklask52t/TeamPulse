@@ -98,6 +98,7 @@ TeamPulse/
 5. checkEventReminders — configurable per event (default 60min before event)
 6. generateRecurringPolls — create next week's polls
 7. archiveOldPolls — archive 24h after event
+8. checkDescriptionEventSwitch — update group description when current event ends (end_time or event_time)
 
 ## Manual Actions (poll detail)
 - Send poll: once only (pending → active), syncs group members first
@@ -106,6 +107,7 @@ TeamPulse/
 - Close poll: manual close (active → closed)
 - Post group results: multiple times (active/closed) — sends text + PNG chart image; does NOT close the poll
 - Send event reminder: multiple times (active/closed)
+- Manual vote override: click member name → set response (✅/❌/🤷/⏳), sends PN notification
 - Delete: always available
 
 ## Auth
