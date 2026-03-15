@@ -14,6 +14,10 @@ const CHANGELOG = [
             { type: 'feature', text: 'Event-Beschreibung: optionales Freitextfeld pro Event — wird in Umfragen, Erinnerungen, Ergebnis-Posts, Gruppenbeschreibung und Dashboard angezeigt' },
             { type: 'feature', text: 'Konfigurierbare Erinnerungen: Start-Erinnerung (Standard 60 Min vor Event), zwei Abstimmungs-Erinnerungen (Standard 120 und 15 Min vor Frist) — alles pro Event einstellbar' },
             { type: 'improvement', text: 'Start-Erinnerung zeigt Event-Namen und dynamische Zeitangabe statt "in 1 Stunde"' },
+            { type: 'feature', text: 'Festes Datum für Abstimmungsfrist: alternativ zu "Stunden vor Event" kann ein konkretes Datum+Uhrzeit als Frist gewählt werden' },
+            { type: 'improvement', text: 'Zeitvalidierung: Treffenszeit muss vor der Uhrzeit, Endzeit muss nach der Uhrzeit liegen' },
+            { type: 'fix', text: 'Statistiken und Dashboard basieren jetzt ausschließlich auf abgeschlossenen Umfragen (nicht mehr auf aktiven)' },
+            { type: 'fix', text: 'Tab-Wechsel lädt Daten jetzt immer neu — kein leerer Tab mehr nach Navigation' },
         ]
     },
     {

@@ -17,6 +17,9 @@ async function loadEvents() {
             const sendInfo = e.poll_send_at
                 ? `Versand: ${e.poll_send_at.replace('T', ' ')}`
                 : `Versand: ${fmtHours(e.poll_send_minutes_before || 1440)} vor Event`;
+            const deadlineInfo = e.poll_deadline_at
+                ? `Frist: ${e.poll_deadline_at.replace('T', ' ')}`
+                : `Frist: ${fmtHours(e.poll_deadline_minutes)} vor Event`;
             const cancelInfo = e.auto_cancel ? ` | Auto-Absage: min. ${e.min_participants}` : '';
             const descInfo = e.description ? `<p style="color:var(--text-secondary);font-size:0.85rem;margin-top:0.25rem">📝 ${esc(e.description)}</p>` : '';
             return `
@@ -24,7 +27,7 @@ async function loadEvents() {
                 ${dateDisplay}
                 <div class="card-info">
                     <h3>${esc(e.title)} <span class="badge badge-${e.type}">${typeLabels[e.type]}</span> ${recurring}</h3>
-                    <p>${e.event_time}${endStr} Uhr${e.meeting_time ? ' | Treffen: ' + e.meeting_time + ' Uhr' : ''} | ${sendInfo} | Frist: ${fmtHours(e.poll_deadline_minutes)} vor Event${cancelInfo}</p>
+                    <p>${e.event_time}${endStr} Uhr${e.meeting_time ? ' | Treffen: ' + e.meeting_time + ' Uhr' : ''} | ${sendInfo} | ${deadlineInfo}${cancelInfo}</p>
                     ${descInfo}
                 </div>
                 <div class="card-actions">
@@ -60,6 +63,9 @@ function showEventForm() {
     document.getElementById('send-mode-before').checked = true;
     document.getElementById('event-send-date').value = '';
     document.getElementById('event-send-time').value = '';
+    document.getElementById('deadline-mode-before').checked = true;
+    document.getElementById('event-deadline-date').value = '';
+    document.getElementById('event-deadline-time').value = '';
     document.getElementById('event-description').value = '';
     document.getElementById('event-event-reminder-min').value = '60';
     document.getElementById('event-deadline-r1-min').value = '120';
@@ -68,6 +74,7 @@ function showEventForm() {
     document.getElementById('event-min-participants').value = '8';
     toggleAutoCancel();
     toggleSendMode();
+    toggleDeadlineMode();
     toggleRecurring();
     hideExceptionsSection();
     attachFormListeners('event-form-el');
@@ -95,6 +102,15 @@ function toggleRecurring() {
             toggleSendMode();
         }
     }
+    // Fixed deadline date not available for recurring events
+    const deadlineFixedLabel = document.getElementById('deadline-mode-fixed-label');
+    if (deadlineFixedLabel) {
+        deadlineFixedLabel.classList.toggle('hidden', checked);
+        if (checked && document.getElementById('deadline-mode-fixed').checked) {
+            document.getElementById('deadline-mode-before').checked = true;
+            toggleDeadlineMode();
+        }
+    }
     // Show/hide exceptions section
     const excSection = document.getElementById('event-exceptions-section');
     if (excSection) excSection.classList.toggle('hidden', !checked);
@@ -107,6 +123,15 @@ function toggleSendMode() {
     document.getElementById('event-send-before').required = !isFixed;
     document.getElementById('event-send-date').required = isFixed;
     document.getElementById('event-send-time').required = isFixed;
+}
+
+function toggleDeadlineMode() {
+    const isFixed = document.getElementById('deadline-mode-fixed').checked;
+    document.getElementById('deadline-before-field').classList.toggle('hidden', isFixed);
+    document.getElementById('deadline-fixed-field').classList.toggle('hidden', !isFixed);
+    document.getElementById('event-deadline').required = !isFixed;
+    document.getElementById('event-deadline-date').required = isFixed;
+    document.getElementById('event-deadline-time').required = isFixed;
 }
 
 function toggleAutoCancel() {
@@ -143,7 +168,19 @@ async function editEvent(id) {
         document.getElementById('event-send-date').value = '';
         document.getElementById('event-send-time').value = '';
     }
-    document.getElementById('event-deadline').value = e.poll_deadline_minutes / 60;
+    if (e.poll_deadline_at) {
+        document.getElementById('deadline-mode-fixed').checked = true;
+        const [dlDate, dlTime] = e.poll_deadline_at.split('T');
+        document.getElementById('event-deadline-date').value = dlDate || '';
+        document.getElementById('event-deadline-time').value = dlTime || '';
+        document.getElementById('event-deadline').value = '1';
+    } else {
+        document.getElementById('deadline-mode-before').checked = true;
+        document.getElementById('event-deadline').value = e.poll_deadline_minutes / 60;
+        document.getElementById('event-deadline-date').value = '';
+        document.getElementById('event-deadline-time').value = '';
+    }
+    toggleDeadlineMode();
     document.getElementById('event-description').value = e.description || '';
     document.getElementById('event-event-reminder-min').value = e.event_reminder_minutes ?? 60;
     document.getElementById('event-deadline-r1-min').value = e.deadline_reminder_1_minutes ?? 120;
@@ -168,6 +205,7 @@ async function saveEvent(e) {
     e.preventDefault();
     const id = document.getElementById('event-id').value;
     const isFixed = document.getElementById('send-mode-fixed').checked;
+    const isDeadlineFixed = document.getElementById('deadline-mode-fixed').checked;
     const data = {
         title: document.getElementById('event-title').value,
         type: document.getElementById('event-type').value,
@@ -186,6 +224,16 @@ async function saveEvent(e) {
         min_participants: Number(document.getElementById('event-min-participants').value) || 0,
     };
 
+    // Time validation
+    if (data.meeting_time && data.meeting_time >= data.event_time) {
+        alert('Treffenszeit muss vor der Event-Uhrzeit liegen.');
+        return;
+    }
+    if (data.end_time && data.end_time <= data.event_time) {
+        alert('Endzeit muss nach der Event-Uhrzeit liegen.');
+        return;
+    }
+
     if (isFixed) {
         const sendDate = document.getElementById('event-send-date').value;
         const sendTime = document.getElementById('event-send-time').value;
@@ -195,6 +243,16 @@ async function saveEvent(e) {
     } else {
         data.poll_send_at = null;
         data.poll_send_minutes_before = Math.round(Number(document.getElementById('event-send-before').value) * 60);
+    }
+
+    if (isDeadlineFixed) {
+        const dlDate = document.getElementById('event-deadline-date').value;
+        const dlTime = document.getElementById('event-deadline-time').value;
+        if (!dlDate || !dlTime) { alert('Frist-Datum und Uhrzeit sind erforderlich'); return; }
+        data.poll_deadline_at = `${dlDate}T${dlTime}`;
+        data.poll_deadline_minutes = null;
+    } else {
+        data.poll_deadline_at = null;
     }
 
     try {

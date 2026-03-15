@@ -18,7 +18,7 @@ router.get('/', (req, res) => {
         LEFT JOIN (
             SELECT pr2.* FROM poll_responses pr2
             JOIN polls p ON pr2.poll_id = p.id
-            WHERE p.status IN ('active', 'closed')
+            WHERE p.status = 'closed'
         ) pr ON c.id = pr.contact_id
         GROUP BY c.id
         ORDER BY c.name

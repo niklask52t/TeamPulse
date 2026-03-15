@@ -83,7 +83,15 @@ function createPollForEvent(eventId, eventDate, deadlineMinutes, sendMinutesBefo
     if (!event) throw new Error(`Event ${eventId} not found`);
 
     const eventDateTime = parseBerlinDateTime(eventDate, event.event_time);
-    const deadline = new Date(eventDateTime.getTime() - (deadlineMinutes || 60) * 60 * 1000);
+
+    // Fixed deadline date takes precedence over minutes-before
+    let deadline;
+    if (event.poll_deadline_at) {
+        const [dlDate, dlTime] = event.poll_deadline_at.split('T');
+        deadline = parseBerlinDateTime(dlDate, dlTime || '00:00');
+    } else {
+        deadline = new Date(eventDateTime.getTime() - (deadlineMinutes || 60) * 60 * 1000);
+    }
 
     // Fixed send date takes precedence over minutes-before
     let sendAfter;

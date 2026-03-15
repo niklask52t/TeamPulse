@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS events (
     recurrence_day INTEGER,
     poll_send_at TEXT,
     poll_send_minutes_before INTEGER DEFAULT 1440,
+    poll_deadline_at TEXT,
     poll_deadline_minutes INTEGER DEFAULT 60,
     group_post_minutes_before INTEGER DEFAULT 60,
     event_reminder_minutes INTEGER DEFAULT 60,

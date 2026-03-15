@@ -167,8 +167,26 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>Abstimmungsfrist &amp; Ergebnis-Post (Stunden vor Event) *</label>
+                            <label>Abstimmungsfrist &amp; Ergebnis-Post *</label>
+                            <div style="display:flex;gap:1rem;margin-bottom:0.5rem">
+                                <label style="display:flex;align-items:center;gap:0.3rem;cursor:pointer">
+                                    <input type="radio" name="deadline-mode" value="before" id="deadline-mode-before" checked onchange="toggleDeadlineMode()">
+                                    Stunden vor Event
+                                </label>
+                                <label style="display:flex;align-items:center;gap:0.3rem;cursor:pointer" id="deadline-mode-fixed-label">
+                                    <input type="radio" name="deadline-mode" value="fixed" id="deadline-mode-fixed" onchange="toggleDeadlineMode()">
+                                    Festes Datum
+                                </label>
+                            </div>
+                        </div>
+                        <div id="deadline-before-field" class="form-group">
                             <input type="number" id="event-deadline" value="1" min="0.25" step="0.25" required>
+                        </div>
+                        <div id="deadline-fixed-field" class="form-group hidden">
+                            <div style="display:flex;gap:0.5rem">
+                                <input type="date" id="event-deadline-date" style="flex:1">
+                                <input type="time" id="event-deadline-time" style="flex:1">
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Beschreibung (optional)</label>
@@ -337,10 +355,10 @@
                         <p><strong>Einmalig:</strong> Festes Datum (nur Zukunft). Umfrage wird sofort als "Ausstehend" angelegt.</p>
                         <p><strong>Wiederkehrend:</strong> Wähle einen Wochentag — der Scheduler erstellt jede Woche automatisch eine neue Umfrage.</p>
                         <p><strong>Uhrzeit:</strong> Wann das Event beginnt (z.B. 19:00).</p>
-                        <p><strong>Ende:</strong> Optional — wann das Event endet (z.B. 20:30). Wird in Umfragen, Erinnerungen und Gruppenbeschreibung angezeigt.</p>
-                        <p><strong>Treffenszeit:</strong> Optional — wann sich das Team trifft (z.B. 18:30). Wird in allen Nachrichten zusätzlich angezeigt.</p>
+                        <p><strong>Treffenszeit:</strong> Optional — wann sich das Team trifft (z.B. 18:30). Muss vor der Event-Uhrzeit liegen.</p>
+                        <p><strong>Ende:</strong> Optional — wann das Event endet (z.B. 20:30). Muss nach der Event-Uhrzeit liegen.</p>
                         <p><strong>Umfrage senden:</strong> Entweder "X Stunden vor Event" (Standard: 24h) oder ein festes Datum+Uhrzeit. Bei wiederkehrenden Events ist nur "Stunden vorher" verfügbar.</p>
-                        <p><strong>Abstimmungsfrist:</strong> Stunden vor Event-Beginn, wann die Abstimmung schließt UND das Ergebnis automatisch gepostet wird. Standard: 1h.</p>
+                        <p><strong>Abstimmungsfrist:</strong> Entweder "X Stunden vor Event" (Standard: 1h) oder ein festes Datum+Uhrzeit. Bei wiederkehrenden Events ist nur "Stunden vorher" verfügbar.</p>
                         <p><strong>Start-Erinnerung:</strong> Minuten vor Event-Beginn — Privatnachricht an alle Zusager mit dem Event-Namen. Standard: 60 Min.</p>
                         <p><strong>Abstimmungs-Erinnerungen:</strong> Zwei Erinnerungen an Nicht-Abstimmer, konfigurierbar in Minuten vor der Frist. Standard: 120 Min (1. Erinnerung) und 15 Min (2. Erinnerung).</p>
                         <p><strong>Beschreibung:</strong> Optionales Freitextfeld — wird in WhatsApp-Umfragen, Erinnerungen, Ergebnis-Posts, Gruppenbeschreibung und im Dashboard angezeigt.</p>

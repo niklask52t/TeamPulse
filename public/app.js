@@ -182,10 +182,14 @@ async function apiFetch(url, options) {
 
 function activateTab(tabId) {
     if (['wiki', 'changelog', 'contacts'].includes(tabId)) tabId = 'dashboard';
-    if (tabId === 'dashboard') loadDashboard();
-    if (tabId === 'stats') loadStats();
     if (!checkDirtyAndClose()) return;
     hideAllForms();
+    // Reload tab data on every switch to avoid stale/empty content
+    if (tabId === 'dashboard') loadDashboard();
+    if (tabId === 'events') loadEvents();
+    if (tabId === 'polls') loadPolls();
+    if (tabId === 'stats') loadStats();
+    if (tabId === 'description' && typeof loadDescriptionBlocks === 'function') loadDescriptionBlocks();
 
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
