@@ -86,7 +86,7 @@ function scheduleDescriptionUpdate() {
     updateTimer = setTimeout(() => {
         updateTimer = null;
         updateGroupDescription();
-    }, 5000);
+    }, 15000);
 }
 
 async function updateGroupDescription() {
