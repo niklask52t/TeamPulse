@@ -84,7 +84,15 @@ function createPollForEvent(eventId, eventDate, deadlineMinutes, sendMinutesBefo
 
     const eventDateTime = parseBerlinDateTime(eventDate, event.event_time);
     const deadline = new Date(eventDateTime.getTime() - (deadlineMinutes || 60) * 60 * 1000);
-    const sendAfter = new Date(eventDateTime.getTime() - (sendMinutesBefore || event.poll_send_minutes_before || 1440) * 60 * 1000);
+
+    // Fixed send date takes precedence over minutes-before
+    let sendAfter;
+    if (event.poll_send_at) {
+        const [sendDate, sendTime] = event.poll_send_at.split('T');
+        sendAfter = parseBerlinDateTime(sendDate, sendTime || '00:00');
+    } else {
+        sendAfter = new Date(eventDateTime.getTime() - (sendMinutesBefore || event.poll_send_minutes_before || 1440) * 60 * 1000);
+    }
 
     const result = db.prepare(`
         INSERT INTO polls (event_id, event_date, send_after, deadline, status)
@@ -106,7 +114,7 @@ function createPollForEvent(eventId, eventDate, deadlineMinutes, sendMinutesBefo
 
 async function sendPoll(pollId) {
     const poll = db.prepare(`
-        SELECT p.*, e.title, e.event_time, e.meeting_time, e.type
+        SELECT p.*, e.title, e.event_time, e.end_time, e.meeting_time, e.type
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.id = ?
     `).get(pollId);
@@ -135,7 +143,7 @@ async function sendPoll(pollId) {
     }
 
     // Send native WhatsApp poll to group
-    await waha.sendPollMessage(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.meeting_time);
+    await waha.sendPollMessage(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, poll.meeting_time);
 
     // Mark all responses as message_sent and activate poll
     db.prepare('UPDATE poll_responses SET message_sent = 1 WHERE poll_id = ?').run(pollId);
@@ -285,7 +293,7 @@ function processReasonMessage(phone, text) {
 
 async function sendDeadlineReminder(pollId) {
     const poll = db.prepare(`
-        SELECT p.*, e.title, e.event_time, e.meeting_time
+        SELECT p.*, e.title, e.event_time, e.end_time, e.meeting_time
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.id = ?
     `).get(pollId);
@@ -305,7 +313,7 @@ async function sendDeadlineReminder(pollId) {
     for (const r of pending) {
         try {
             const chatId = r.phone.replace('+', '') + '@c.us';
-            await waha.sendReminder(chatId, poll.title, poll.event_date, poll.event_time, deadlineTime, poll.meeting_time);
+            await waha.sendReminder(chatId, poll.title, poll.event_date, poll.event_time, poll.end_time, deadlineTime, poll.meeting_time);
         } catch (err) {
             console.error(`Failed to send reminder to ${r.name}:`, err.message);
         }
@@ -317,7 +325,7 @@ async function sendDeadlineReminder(pollId) {
 // Post results to group WITHOUT closing the poll or changing status
 async function postGroupResults(pollId) {
     const poll = db.prepare(`
-        SELECT p.*, e.title, e.event_time, e.meeting_time
+        SELECT p.*, e.title, e.event_time, e.end_time, e.meeting_time
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.id = ?
     `).get(pollId);
@@ -335,7 +343,7 @@ async function postGroupResults(pollId) {
     const no = responses.filter(r => r.response === 'no').map(r => r.name);
     const maybe = responses.filter(r => r.response === 'maybe').map(r => r.name);
 
-    await waha.postResultsToGroup(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, yes, no, maybe, poll.meeting_time);
+    await waha.postResultsToGroup(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, yes, no, maybe, poll.meeting_time);
 
     // Send chart image to group
     try {
@@ -374,7 +382,7 @@ function extendDeadline(pollId, minutes) {
 
 async function sendEventReminders(pollId) {
     const poll = db.prepare(`
-        SELECT p.*, e.title, e.event_time, e.meeting_time
+        SELECT p.*, e.title, e.event_time, e.end_time, e.meeting_time
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.id = ?
     `).get(pollId);
@@ -389,7 +397,7 @@ async function sendEventReminders(pollId) {
     for (const r of yesResponses) {
         try {
             const chatId = r.phone.replace('+', '') + '@c.us';
-            await waha.sendEventReminder(chatId, poll.title, poll.event_time, poll.meeting_time);
+            await waha.sendEventReminder(chatId, poll.title, poll.event_time, poll.end_time, poll.meeting_time);
         } catch (err) {
             console.error(`Failed to send event reminder to ${r.name}:`, err.message);
         }

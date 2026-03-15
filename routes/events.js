@@ -21,7 +21,7 @@ router.get('/:id', (req, res) => {
 
 // POST create event
 router.post('/', (req, res) => {
-    const { title, type, event_date, event_time, meeting_time, recurring, recurrence_day, poll_send_minutes_before, poll_deadline_minutes } = req.body;
+    const { title, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_minutes_before, poll_send_at, poll_deadline_minutes } = req.body;
 
     if (!title || !type || !event_time) {
         return res.status(400).json({ error: 'Titel, Typ und Uhrzeit sind erforderlich' });
@@ -38,19 +38,25 @@ router.post('/', (req, res) => {
         }
     }
 
+    if (recurring && poll_send_at) {
+        return res.status(400).json({ error: 'Festes Versanddatum ist bei wiederkehrenden Events nicht möglich' });
+    }
+
     const deadlineMin = poll_deadline_minutes || 60;
-    const sendMin = poll_send_minutes_before || 1440;
+    const sendMin = poll_send_at ? 1440 : (poll_send_minutes_before || 1440);
 
     const result = db.prepare(`
-        INSERT INTO events (title, type, event_date, event_time, meeting_time, recurring, recurrence_day, poll_send_minutes_before, poll_deadline_minutes, group_post_minutes_before)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO events (title, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_at, poll_send_minutes_before, poll_deadline_minutes, group_post_minutes_before)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
         title, type,
         event_date || '',
         event_time,
+        end_time || null,
         meeting_time || null,
         recurring ? 1 : 0,
         recurrence_day ?? null,
+        poll_send_at || null,
         sendMin,
         deadlineMin,
         deadlineMin
@@ -98,7 +104,7 @@ router.post('/', (req, res) => {
 
 // PUT update event
 router.put('/:id', (req, res) => {
-    const { title, type, event_date, event_time, meeting_time, recurring, recurrence_day, poll_send_minutes_before, poll_deadline_minutes, active } = req.body;
+    const { title, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_minutes_before, poll_send_at, poll_deadline_minutes, active } = req.body;
 
     if (!title || !type || !event_time) {
         return res.status(400).json({ error: 'Titel, Typ und Uhrzeit sind erforderlich' });
@@ -109,16 +115,16 @@ router.put('/:id', (req, res) => {
     }
 
     const deadlineMin = poll_deadline_minutes || 60;
-    const sendMin = poll_send_minutes_before || 1440;
+    const sendMin = poll_send_at ? 1440 : (poll_send_minutes_before || 1440);
 
     const result = db.prepare(`
-        UPDATE events SET title = ?, type = ?, event_date = ?, event_time = ?, meeting_time = ?,
-        recurring = ?, recurrence_day = ?, poll_send_minutes_before = ?, poll_deadline_minutes = ?, group_post_minutes_before = ?, active = ?
+        UPDATE events SET title = ?, type = ?, event_date = ?, event_time = ?, end_time = ?, meeting_time = ?,
+        recurring = ?, recurrence_day = ?, poll_send_at = ?, poll_send_minutes_before = ?, poll_deadline_minutes = ?, group_post_minutes_before = ?, active = ?
         WHERE id = ?
     `).run(
-        title, type, event_date || '', event_time, meeting_time || null,
+        title, type, event_date || '', event_time, end_time || null, meeting_time || null,
         recurring ? 1 : 0, recurrence_day ?? null,
-        sendMin, deadlineMin, deadlineMin,
+        poll_send_at || null, sendMin, deadlineMin, deadlineMin,
         active !== undefined ? (active ? 1 : 0) : 1,
         req.params.id
     );

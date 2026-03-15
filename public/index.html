@@ -101,6 +101,10 @@
                             <input type="time" id="event-time" required>
                         </div>
                         <div class="form-group">
+                            <label>Ende (optional)</label>
+                            <input type="time" id="event-end-time">
+                        </div>
+                        <div class="form-group">
                             <label>Treffenszeit (optional)</label>
                             <input type="time" id="event-meeting-time">
                         </div>
@@ -131,8 +135,26 @@
                             </div>
                         </div>
                         <div class="form-group">
-                            <label>Umfrage senden (Stunden vor Event) *</label>
+                            <label>Umfrage-Versand *</label>
+                            <div style="display:flex;gap:1rem;margin-bottom:0.5rem">
+                                <label style="display:flex;align-items:center;gap:0.3rem;cursor:pointer">
+                                    <input type="radio" name="send-mode" value="before" id="send-mode-before" checked onchange="toggleSendMode()">
+                                    Stunden vor Event
+                                </label>
+                                <label style="display:flex;align-items:center;gap:0.3rem;cursor:pointer" id="send-mode-fixed-label">
+                                    <input type="radio" name="send-mode" value="fixed" id="send-mode-fixed" onchange="toggleSendMode()">
+                                    Festes Datum
+                                </label>
+                            </div>
+                        </div>
+                        <div id="send-before-field" class="form-group">
                             <input type="number" id="event-send-before" value="24" min="0.5" step="0.5" required>
+                        </div>
+                        <div id="send-fixed-field" class="form-group hidden">
+                            <div style="display:flex;gap:0.5rem">
+                                <input type="date" id="event-send-date" style="flex:1">
+                                <input type="time" id="event-send-time" style="flex:1">
+                            </div>
                         </div>
                         <div class="form-group">
                             <label>Abstimmungsfrist &amp; Ergebnis-Post (Stunden vor Event) *</label>

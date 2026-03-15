@@ -22,7 +22,7 @@ function buildDescription() {
 
     // 2. Find next upcoming poll (non-archived, closest event_date in future)
     const nextPoll = db.prepare(`
-        SELECT p.*, e.title, e.event_time, e.meeting_time
+        SELECT p.*, e.title, e.event_time, e.end_time, e.meeting_time
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.archived = 0 AND p.status IN ('pending', 'active', 'closed')
         ORDER BY p.event_date ASC, e.event_time ASC
@@ -34,7 +34,9 @@ function buildDescription() {
     if (nextPoll) {
         const statusLabels = { pending: 'Ausstehend', active: 'Abstimmung läuft', closed: 'Geschlossen' };
         dynamic += `📅 Nächstes Event: ${nextPoll.title}\n`;
-        dynamic += `🗓 ${fmtDate(nextPoll.event_date)} um ${nextPoll.event_time} Uhr\n`;
+        let timeStr = nextPoll.event_time;
+        if (nextPoll.end_time) timeStr += ` - ${nextPoll.end_time}`;
+        dynamic += `🗓 ${fmtDate(nextPoll.event_date)} um ${timeStr} Uhr\n`;
         if (nextPoll.meeting_time) {
             dynamic += `🤝 Treffen: ${nextPoll.meeting_time} Uhr\n`;
         }
@@ -61,11 +63,33 @@ function buildDescription() {
         dynamic = 'Kein anstehendes Event.';
     }
 
-    // 4. Assemble
+    // 4. Next 3 upcoming events (excluding the one already shown)
+    const excludeId = nextPoll ? nextPoll.id : -1;
+    const upcomingEvents = db.prepare(`
+        SELECT p.event_date, e.title, e.event_time, e.end_time
+        FROM polls p JOIN events e ON p.event_id = e.id
+        WHERE p.archived = 0 AND p.id != ?
+        AND p.event_date >= date('now')
+        ORDER BY p.event_date ASC, e.event_time ASC
+        LIMIT 3
+    `).all(excludeId);
+
+    let upcoming = '';
+    if (upcomingEvents.length > 0) {
+        upcoming = '📋 Nächste Events:\n';
+        for (const ev of upcomingEvents) {
+            upcoming += `• ${ev.title} – ${fmtDate(ev.event_date)}, ${ev.event_time}`;
+            if (ev.end_time) upcoming += ` - ${ev.end_time}`;
+            upcoming += ' Uhr\n';
+        }
+    }
+
+    // 5. Assemble
     const parts = [];
     if (aboveBlocks.length) parts.push(aboveBlocks.map(b => b.content).join('\n\n'));
     parts.push(dynamic);
     if (belowBlocks.length) parts.push(belowBlocks.map(b => b.content).join('\n\n'));
+    if (upcoming) parts.push(upcoming.trim());
     parts.push(FOOTER);
 
     let result = parts.join('\n\n');
