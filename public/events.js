@@ -12,7 +12,7 @@ async function loadEvents() {
 
         list.innerHTML = events.map(e => {
             const recurring = e.recurring ? `<span class="badge badge-recurring">Jeden ${dayNames[e.recurrence_day]}</span>` : '';
-            const dateDisplay = e.event_date ? fmtDateFancy(e.event_date) : '';
+            const dateDisplay = fmtDateFancy(e.next_event_date || e.event_date);
             const endStr = e.end_time ? ` - ${e.end_time}` : '';
             const sendInfo = e.poll_send_at
                 ? `Versand: ${e.poll_send_at.replace('T', ' ')}`

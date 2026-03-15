@@ -4,9 +4,19 @@ const db = require('../db/database');
 const pollManager = require('../services/pollManager');
 const { berlinToday, parseBerlinDateTime, TZ } = require('../services/timeUtils');
 
-// GET all events
+// GET all events (with next poll date for recurring events)
 router.get('/', (req, res) => {
     const events = db.prepare('SELECT * FROM events ORDER BY event_date DESC, event_time DESC').all();
+    const nextPollDate = db.prepare(`
+        SELECT event_date FROM polls WHERE event_id = ? AND archived = 0
+        ORDER BY event_date ASC LIMIT 1
+    `);
+    for (const e of events) {
+        if (e.recurring) {
+            const next = nextPollDate.get(e.id);
+            e.next_event_date = next ? next.event_date : null;
+        }
+    }
     res.json(events);
 });
 

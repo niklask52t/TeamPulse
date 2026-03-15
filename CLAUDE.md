@@ -92,17 +92,17 @@ TeamPulse/
 
 ## Scheduler Flow (every minute)
 1. checkAndSendPolls — send pending polls when `send_after` time is reached
-2. checkDeadlineReminders — 60min before deadline (shows actual deadline time, not minutes)
+2. checkDeadlineReminders — two reminders per poll (configurable per event, default 120min + 15min before deadline)
 3. checkAndClosePolls — close active polls past deadline
 4. checkGroupPosts — post results immediately for closed polls (no separate timing)
-5. checkEventReminders — 1h before event
+5. checkEventReminders — configurable per event (default 60min before event)
 6. generateRecurringPolls — create next week's polls
 7. archiveOldPolls — archive 24h after event
 
 ## Manual Actions (poll detail)
 - Send poll: once only (pending → active), syncs group members first
 - Send reminder: multiple times (active only) — sends plain text reminder to all non-voters with deadline time
-- Extend deadline: adjustable via form (any minutes, resets reminder_sent=0 so another reminder can fire)
+- Extend deadline: adjustable via form (any minutes, resets both reminder flags so reminders fire again)
 - Close poll: manual close (active → closed)
 - Post group results: multiple times (active/closed) — sends text + PNG chart image; does NOT close the poll
 - Send event reminder: multiple times (active/closed)
@@ -150,7 +150,13 @@ TeamPulse/
 - `events.end_time TEXT` — optional event end time (e.g. "20:30"), displayed in polls/messages/description
 - `events.poll_send_minutes_before INTEGER DEFAULT 1440` — when to send the poll (minutes before event)
 - `events.poll_send_at TEXT` — alternative fixed send date/time (e.g. "2026-03-20T10:00"), mutually exclusive with poll_send_minutes_before
+- `events.poll_deadline_at TEXT` — alternative fixed deadline date/time, mutually exclusive with poll_deadline_minutes
+- `events.event_reminder_minutes INTEGER DEFAULT 60` — minutes before event for start reminder to yes-voters
+- `events.deadline_reminder_1_minutes INTEGER DEFAULT 120` — first deadline reminder (minutes before deadline)
+- `events.deadline_reminder_2_minutes INTEGER DEFAULT 15` — second deadline reminder (minutes before deadline)
+- `events.description TEXT` — optional event description shown everywhere
 - `polls.send_after TEXT` — ISO timestamp: earliest time the poll should be sent
+- `polls.reminder_2_sent INTEGER DEFAULT 0` — tracks second deadline reminder
 - `events.auto_cancel INTEGER DEFAULT 0` — if 1, send cancellation when yes < min_participants at deadline
 - `events.min_participants INTEGER DEFAULT 0` — minimum yes count for auto-cancel
 - `poll_responses.reason TEXT` — stores optional reason/comment from all voters (yes, maybe, no)
@@ -163,7 +169,9 @@ TeamPulse/
 ## Dashboard
 - Default landing tab with key metrics at a glance
 - Shows: next event with live countdown, active polls with progress bars, quick stats (events/members/response rate/closed), response trend (last 10 closed polls)
+- All stats (response rate, closed count) based exclusively on closed polls
 - `GET /api/dashboard` returns all data in one call
+- Tab switching always reloads data to prevent stale content
 
 ## Auto-Cancel
 - Optional per-event setting: `auto_cancel` flag + `min_participants` count
@@ -176,6 +184,24 @@ TeamPulse/
 - `GET/POST/DELETE /api/events/:id/exceptions` for CRUD
 - Scheduler skips excepted dates when generating polls and sending
 - UI: exception management in event edit form (date picker + optional reason)
+
+## Event Descriptions
+- Optional `description` field per event, displayed everywhere: WhatsApp polls, reminders, result posts, cancellation messages, group description, dashboard, event cards, poll details
+- Shown with 📝 prefix
+
+## Configurable Reminders
+- **Event start reminder**: `event_reminder_minutes` (default 60), private message to yes-voters with dynamic time label
+- **Deadline reminders**: two per poll — `deadline_reminder_1_minutes` (default 120) and `deadline_reminder_2_minutes` (default 15)
+- `polls.reminder_2_sent` tracks second reminder; `extendDeadline` resets both flags
+- All timings configurable per event in the form
+
+## Time Validation
+- `meeting_time` must be before `event_time` (frontend alert + backend 400)
+- `end_time` must be after `event_time` (frontend alert + backend 400)
+
+## Fixed Deadline Date
+- Like `poll_send_at`, the deadline can be a fixed date/time (`poll_deadline_at`) instead of "hours before event"
+- Not available for recurring events (same as fixed send date)
 
 ## Yes-Vote Comments
 - After any vote (including yes), private messages within 5 minutes are saved as comments

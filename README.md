@@ -5,23 +5,27 @@ WhatsApp-basiertes Anwesenheits-Management für Teams. Erstelle Trainings, Turni
 ## Features
 
 - **Login-System**: Geschütztes Dashboard mit Passwort-Pflichtänderung beim ersten Login
+- **Dashboard**: Startseite mit Quick-Stats, nächstes Event mit Live-Countdown, aktive Umfragen mit Fortschrittsbalken, Antwort-Trend
 - **Event-Management**: Wiederkehrende Trainings und einmalige Events (Turniere, Sondertermine) erstellen und verwalten
+- **Event-Beschreibung**: Optionales Freitextfeld pro Event — wird überall angezeigt (Umfrage, Erinnerungen, Ergebnisse, Gruppenbeschreibung, Dashboard)
 - **Keine manuelle Kontaktverwaltung**: Teilnehmer werden automatisch aus der WhatsApp-Gruppe synchronisiert
 - **Gruppen-Umfrage**: Umfrage wird als native WhatsApp-Poll in die Gruppe geschickt (Tap-to-Vote)
-- **Antwort-Sammlung**: Übersichtliche Darstellung aller Zu-/Absagen, gruppiert nach Status — inkl. Begründungen für "Vielleicht"-Stimmen
-- **Treffenszeit**: Optionale Treffenszeit pro Event — wird in Umfrage, Erinnerungen und Ergebnissen angezeigt
-- **Absage/Vielleicht-Follow-up**: Wer mit "Nein" oder "Vielleicht" abstimmt, bekommt automatisch eine Privatnachricht zur optionalen Begründung
-- **Umfrage-Versand**: Konfigurierbar, wann die Umfrage gesendet wird (Standard: 24h vor Event)
-- **Abstimmungsfrist = Ergebnis-Post**: Ein Feld — Umfrage schließt und Ergebnis wird sofort gepostet (Standard: 1h vor Event)
+- **Antwort-Sammlung**: Übersichtliche Darstellung aller Zu-/Absagen, gruppiert nach Status — inkl. Kommentare/Begründungen für alle Stimmen
+- **Kommentare**: Auch Ja-Stimmer können privat einen Kommentar senden; Nein/Vielleicht bekommen automatisch eine Follow-up-Nachricht
+- **Treffenszeit & Ende**: Optionale Treffenszeit (muss vor Event liegen) und Endzeit (muss nach Event liegen) — in allen Nachrichten angezeigt
+- **Umfrage-Versand**: "Stunden vor Event" oder festes Datum (Standard: 24h vor Event)
+- **Abstimmungsfrist**: "Stunden vor Event" oder festes Datum — Umfrage schließt und Ergebnis wird sofort gepostet (Standard: 1h vor Event)
+- **Automatische Absage**: Optional pro Event — bei zu wenigen Zusagen wird automatisch eine Absage in die Gruppe gesendet
+- **Wiederkehrende Ausnahmen**: Einzelne Termine bei wiederkehrenden Events aussetzen (z.B. Feiertage)
 - **Gruppen-Posting**: Ergebnis-Text + Chart in die Gruppe — auch manuell mehrfach möglich
 - **Frist verlängern**: Abstimmungsdeadline direkt im Dashboard verschieben
 - **Automatische Gruppenbeschreibung**: WhatsApp-Gruppenbeschreibung wird bei jeder Änderung automatisch aktualisiert — zeigt nächstes Event, Status aller Mitglieder (Zusagen, Absagen mit Grund, Vielleicht, Ausstehend) + statische Textblöcke
 - **Beschreibungs-Tab**: Statische Textblöcke erstellen (oberhalb/unterhalb), Vorschau, manuelles Aktualisieren
-- **Statistiken-Tab**: Antwortquote & Ja/Nein/Vielleicht/Offen pro Mitglied aus allen abgeschlossenen Umfragen
+- **Statistiken-Tab**: Antwortquote & Ja/Nein/Vielleicht/Offen pro Mitglied — nur abgeschlossene Umfragen
 - **Gruppen-Übersicht** (DEV_MODE): Footer-Tab zeigt alle WhatsApp-Gruppen mit ID und Kopieren-Button — zum einfachen Nachschlagen der `GROUP_CHAT_ID`
-- **Erinnerungen**:
-  - Automatisch 60 Min. vor Fristablauf (zeigt genaue Uhrzeit) an alle Nicht-Voter
-  - 1 Stunde vor Event-Beginn an alle Zusager
+- **Erinnerungen** (konfigurierbar pro Event):
+  - 2x Abstimmungs-Erinnerung: Standard 120 Min + 15 Min vor Fristablauf an alle Nicht-Voter (privat)
+  - Start-Erinnerung: Standard 60 Min vor Event an alle Zusager (privat, mit Event-Name + dynamischer Zeitangabe)
 
 ## Tech Stack
 
