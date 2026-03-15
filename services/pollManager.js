@@ -38,10 +38,18 @@ async function syncGroupParticipants() {
         `);
         const updateLid = db.prepare('UPDATE contacts SET lid = ? WHERE phone = ?');
 
+        // Log first participant's full structure for debugging
+        if (participants.length > 0) {
+            console.log(`[SYNC] Participant[0] full keys: ${Object.keys(participants[0]).join(', ')}`);
+            console.log(`[SYNC] Participant[0] full data: ${JSON.stringify(participants[0]).slice(0, 500)}`);
+        }
+        if (allContacts.length > 0) {
+            console.log(`[SYNC] Contact[0] full keys: ${Object.keys(allContacts[0]).join(', ')}`);
+            console.log(`[SYNC] Contact[0] full data: ${JSON.stringify(allContacts[0]).slice(0, 500)}`);
+        }
+
         let synced = 0;
         for (const p of participants) {
-            // Log participant data for LID debugging
-            console.log(`[SYNC] Participant: ${JSON.stringify({ id: p.id, jid: p.jid, lid: p.lid, lidJid: p.lidJid }).slice(0, 200)}`);
             const rawId = p.id || p.jid || '';
             if (!rawId || rawId.endsWith('@g.us')) continue; // skip sub-groups / bots without phone
             // Skip LID-only participants (no real phone number)
@@ -134,7 +142,7 @@ async function sendPoll(pollId) {
     console.log(`[INFO] Poll ${pollId} sent to group ${GROUP_CHAT_ID}`);
 }
 
-function processResponse(phone, text) {
+async function processResponse(phone, text) {
     const isLid = phone.includes('@lid');
     const normalizedPhone = phone.replace(/@c\.us|@lid|@s\.whatsapp\.net/g, '').replace(/^\+/, '').replace(/\D/g, '');
 
@@ -147,14 +155,44 @@ function processResponse(phone, text) {
     if (!contactRow && isLid) {
         contactRow = db.prepare('SELECT * FROM contacts WHERE lid = ?').get(normalizedPhone);
         if (contactRow) {
-            console.log(`[INFO] Matched LID ${normalizedPhone} to contact ${contactRow.name} (${contactRow.phone})`);
+            console.log(`[INFO] Matched LID ${normalizedPhone} to contact ${contactRow.name} (${contactRow.phone}) via DB`);
+        }
+    }
+
+    // If still not found and it's a LID, try resolving via WAHA API
+    if (!contactRow && isLid) {
+        try {
+            console.log(`[INFO] Trying WAHA API to resolve LID ${normalizedPhone}...`);
+            const wahaContact = await waha.getContactById(normalizedPhone + '@lid');
+            console.log(`[INFO] WAHA getContactById result: ${JSON.stringify(wahaContact).slice(0, 500)}`);
+            if (wahaContact) {
+                // Try to extract a phone number from the WAHA contact response
+                const wahaPhone = wahaContact.id?.replace('@c.us', '')
+                    || wahaContact.phone
+                    || wahaContact.number
+                    || '';
+                const wahaPhoneDigits = String(wahaPhone).replace(/\D/g, '');
+                if (wahaPhoneDigits && !wahaPhoneDigits.includes(normalizedPhone)) {
+                    // Found a real phone number — look up in contacts
+                    contactRow = db.prepare(`
+                        SELECT * FROM contacts WHERE REPLACE(REPLACE(REPLACE(phone, '+', ''), ' ', ''), '-', '') = ?
+                    `).get(wahaPhoneDigits);
+                    if (contactRow) {
+                        // Save LID mapping for future lookups
+                        db.prepare('UPDATE contacts SET lid = ? WHERE id = ?').run(normalizedPhone, contactRow.id);
+                        console.log(`[INFO] Resolved LID ${normalizedPhone} → ${contactRow.name} (${contactRow.phone}) via WAHA API, saved mapping`);
+                    }
+                }
+            }
+        } catch (err) {
+            console.error(`[WARN] WAHA LID resolution failed for ${normalizedPhone}:`, err.message);
         }
     }
 
     if (!contactRow) {
         // Don't auto-create contacts for LIDs — they're not real phone numbers
         if (isLid) {
-            console.log(`[WARN] Unknown LID ${normalizedPhone} — run sync to populate LID mappings`);
+            console.log(`[WARN] Unknown LID ${normalizedPhone} — could not resolve to any known contact`);
             return null;
         }
         try {

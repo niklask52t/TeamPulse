@@ -111,7 +111,7 @@ router.post('/:id/send-event-reminder', async (req, res) => {
 });
 
 // WAHA webhook endpoint
-router.post('/webhook', (req, res) => {
+router.post('/webhook', async (req, res) => {
     const { event, payload } = req.body;
     const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
 
@@ -147,13 +147,20 @@ router.post('/webhook', (req, res) => {
 
     // Native WhatsApp poll vote — only from our group
     if (event === 'poll.vote' && payload) {
-        console.log(`[WEBHOOK] poll.vote full payload: ${JSON.stringify(payload).slice(0, 2000)}`);
+        // Log individual fields to avoid truncation
+        console.log(`[WEBHOOK] poll.vote keys: ${Object.keys(payload).join(', ')}`);
+        console.log(`[WEBHOOK] poll.vote.vote: ${JSON.stringify(payload.vote).slice(0, 1000)}`);
+        console.log(`[WEBHOOK] poll.vote.poll: ${JSON.stringify(payload.poll).slice(0, 1000)}`);
+        console.log(`[WEBHOOK] poll.vote voter: ${JSON.stringify(payload.vote?.voter || payload.voter || 'none')}`);
+        console.log(`[WEBHOOK] poll.vote from/sender/participant: from=${payload.from} sender=${JSON.stringify(payload.sender)} participant=${payload.participant || payload.vote?.participant}`);
 
         // Try all known WAHA payload shapes for voter phone
         const phone = senderPhone || fromPhone
             || resolvePhone(payload.vote?.voter)
             || resolvePhone(payload.voter)
             || resolvePhone(payload.vote?.from)
+            || resolvePhone(payload.participant)
+            || resolvePhone(payload.vote?.participant)
             || '';
 
         // Try all known shapes for selected options
@@ -166,7 +173,7 @@ router.post('/webhook', (req, res) => {
 
         if (phone && selectedOptions.length > 0) {
             const optionName = selectedOptions[0]?.name || selectedOptions[0]?.value || selectedOptions[0] || '';
-            const result = pollManager.processResponse(phone, optionName);
+            const result = await pollManager.processResponse(phone, optionName);
             if (result) {
                 console.log(`[VOTE] poll.vote from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
             } else {

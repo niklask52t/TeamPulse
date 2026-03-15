@@ -180,6 +180,38 @@ async function getGroups() {
     return Array.isArray(data) ? data : [];
 }
 
+// Get a single contact by ID (can be @c.us or @lid) — tries multiple WAHA endpoint shapes
+async function getContactById(contactId) {
+    // Try WAHA Plus endpoint first
+    const endpoints = [
+        `${WAHA_API_URL}/api/${WAHA_SESSION}/contacts/${encodeURIComponent(contactId)}`,
+        `${WAHA_API_URL}/api/contacts?session=${WAHA_SESSION}&contactId=${encodeURIComponent(contactId)}`,
+        `${WAHA_API_URL}/api/${WAHA_SESSION}/contacts/check-exists`,
+    ];
+    for (const url of endpoints.slice(0, 2)) {
+        try {
+            const res = await fetch(url, { headers: getHeaders });
+            if (res.ok) {
+                const data = await res.json();
+                if (data && (data.id || data.phone || data.number)) return data;
+            }
+        } catch { /* try next */ }
+    }
+    // Try check-exists with POST
+    try {
+        const res = await fetch(endpoints[2], {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ session: WAHA_SESSION, phone: contactId }),
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data) return data;
+        }
+    } catch { /* ignore */ }
+    return null;
+}
+
 module.exports = {
     sendMessage,
     sendPollMessage,
@@ -192,4 +224,5 @@ module.exports = {
     getGroupParticipants,
     getAllContacts,
     getGroups,
+    getContactById,
 };
