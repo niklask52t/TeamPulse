@@ -255,6 +255,17 @@ async function saveEvent(e) {
         data.poll_deadline_at = null;
     }
 
+    // Warn if creating a new event while 2+ polls are already active
+    if (!id) {
+        try {
+            const acRes = await apiFetch(`${API}/api/polls/active-count`);
+            const { count } = await acRes.json();
+            if (count >= 2) {
+                if (!confirm('Es sind bereits ' + count + ' Umfragen aktiv. Die neue Umfrage wird erstellt, erscheint aber erst in der Gruppenbeschreibung, sobald wieder Platz ist. Trotzdem erstellen?')) return;
+            }
+        } catch (_) { /* ignore, proceed */ }
+    }
+
     try {
         let res;
         if (id) {

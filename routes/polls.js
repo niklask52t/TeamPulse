@@ -3,6 +3,12 @@ const router = express.Router();
 const db = require('../db/database');
 const pollManager = require('../services/pollManager');
 
+// GET count of active polls
+router.get('/active-count', (req, res) => {
+    const row = db.prepare("SELECT COUNT(*) as count FROM polls WHERE status = 'active' AND archived = 0").get();
+    res.json({ count: row.count });
+});
+
 // GET all polls with responses
 router.get('/', (req, res) => {
     const polls = db.prepare(`
