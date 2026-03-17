@@ -198,6 +198,24 @@ async function sendNoFollowUp(chatId, eventTitle, eventDate) {
     return sendMessage(chatId, text);
 }
 
+async function sendYesFollowUp(chatId, eventTitle, eventDate) {
+    const text =
+        `✅ Du hast für *${eventTitle}* am ${fmtDate(eventDate)} zugesagt.\n\n` +
+        `Optional: Schreib innerhalb von *5 Minuten* einen Kommentar (z.B. "Komme 10 Min später") — oder ignoriere diese Nachricht.`;
+    return sendMessage(chatId, text);
+}
+
+async function sendVoteChangeFollowUp(chatId, eventTitle, eventDate, newResponse, oldReason) {
+    const labels = { yes: 'Zusagen ✅', no: 'Absagen ❌', maybe: 'Vielleicht 🤷' };
+    const label = labels[newResponse] || newResponse;
+    let text = `🔄 Du hast deine Stimme für *${eventTitle}* am ${fmtDate(eventDate)} zu *${label}* geändert.`;
+    if (oldReason) {
+        text += `\n\nDein vorheriger Kommentar war: _"${oldReason}"_`;
+    }
+    text += `\n\nOptional: Schreib innerhalb von *5 Minuten* einen neuen Kommentar — oder ignoriere diese Nachricht.`;
+    return sendMessage(chatId, text);
+}
+
 async function sendAdminVoteNotification(chatId, eventTitle, eventDate, newResponse) {
     const labels = { yes: 'Zusagen ✅', no: 'Absagen ❌', maybe: 'Vielleicht 🤷' };
     const label = labels[newResponse] || newResponse;
@@ -329,6 +347,8 @@ module.exports = {
     sendEventReminder,
     sendMaybeFollowUp,
     sendNoFollowUp,
+    sendYesFollowUp,
+    sendVoteChangeFollowUp,
     sendAdminVoteNotification,
     sendTooLateNotification,
     postResultsToGroup,

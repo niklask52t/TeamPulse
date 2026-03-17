@@ -208,6 +208,6 @@ TeamPulse/
 
 ## Yes-Vote Comments
 - After any vote (including yes), private messages within 5 minutes are saved as comments
-- No follow-up message sent for yes votes (only for no/maybe)
+- Follow-up message sent for all vote types (yes, no, maybe) asking for optional comment
 - Poll text includes hint: "Privat antworten für Kommentar"
 - Comments shown in poll detail, group description, and results post

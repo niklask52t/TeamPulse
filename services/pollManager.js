@@ -264,23 +264,35 @@ async function processResponse(phone, text) {
         return null;
     }
 
-    // Ensure response row exists, then update
+    // Ensure response row exists, then check previous vote
     db.prepare(`
         INSERT OR IGNORE INTO poll_responses (poll_id, contact_id) VALUES (?, ?)
     `).run(activePoll.poll_id, contactRow.id);
 
+    const previousResponse = db.prepare(`
+        SELECT response, reason FROM poll_responses WHERE poll_id = ? AND contact_id = ?
+    `).get(activePoll.poll_id, contactRow.id);
+
+    const isVoteChange = previousResponse && previousResponse.response && previousResponse.response !== response;
+
+    // Keep old reason on vote change — only replaced if user sends a new comment within 5 min
     db.prepare(`
         UPDATE poll_responses SET response = ?, responded_at = datetime('now')
         WHERE poll_id = ? AND contact_id = ?
     `).run(response, activePoll.poll_id, contactRow.id);
 
-    // Send follow-up asking for reason when voting "Vielleicht" or "Nein"
-    if (response === 'maybe') {
-        const chatId = contactRow.phone.replace('+', '') + '@c.us';
+    // Send follow-up for all vote types
+    const chatId = contactRow.phone.replace('+', '') + '@c.us';
+    if (isVoteChange) {
+        waha.sendVoteChangeFollowUp(chatId, activePoll.event_title, activePoll.event_date, response, previousResponse.reason)
+            .catch(e => console.error('[ERROR] sendVoteChangeFollowUp:', e.message));
+    } else if (response === 'yes') {
+        waha.sendYesFollowUp(chatId, activePoll.event_title, activePoll.event_date)
+            .catch(e => console.error('[ERROR] sendYesFollowUp:', e.message));
+    } else if (response === 'maybe') {
         waha.sendMaybeFollowUp(chatId, activePoll.event_title, activePoll.event_date)
             .catch(e => console.error('[ERROR] sendMaybeFollowUp:', e.message));
     } else if (response === 'no') {
-        const chatId = contactRow.phone.replace('+', '') + '@c.us';
         waha.sendNoFollowUp(chatId, activePoll.event_title, activePoll.event_date)
             .catch(e => console.error('[ERROR] sendNoFollowUp:', e.message));
     }
@@ -297,12 +309,12 @@ function processReasonMessage(phone, text) {
     `).get(normalizedPhone);
     if (!contact) return null;
 
-    // Find most recent maybe or no response without a reason (within 5 minutes)
+    // Find most recent response within 5 minutes (allows overwriting existing reason on vote change)
     const pendingReason = db.prepare(`
         SELECT pr.id, p.id as poll_id, pr.response
         FROM poll_responses pr
         JOIN polls p ON pr.poll_id = p.id
-        WHERE pr.contact_id = ? AND pr.response IN ('yes', 'maybe', 'no') AND pr.reason IS NULL
+        WHERE pr.contact_id = ? AND pr.response IN ('yes', 'maybe', 'no')
         AND p.archived = 0
         AND pr.responded_at >= datetime('now', '-5 minutes')
         ORDER BY p.id DESC LIMIT 1

@@ -2,6 +2,15 @@
 
 const CHANGELOG = [
     {
+        version: '2.1.0',
+        date: '2026-03-17',
+        changes: [
+            { type: 'feature', text: 'Ja-Stimmen PN: nach Zusage wird jetzt auch eine private Nachricht mit Kommentar-Option gesendet (vorher nur bei Nein/Vielleicht)' },
+            { type: 'feature', text: 'Stimmänderungs-PN: bei Ummeldung wird eine 🔄-Nachricht gesendet, die den alten Kommentar zeigt und 5 Min für einen neuen gibt' },
+            { type: 'improvement', text: 'Kommentare bleiben bei Stimmänderung erhalten, wenn kein neuer Kommentar geschrieben wird — neuer Kommentar überschreibt den alten' },
+        ]
+    },
+    {
         version: '2.0.0',
         date: '2026-03-15',
         changes: [
