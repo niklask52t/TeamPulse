@@ -168,6 +168,7 @@ async function postResultsToGroup(groupId, eventTitle, eventDate, eventTime, end
     const total = yesData.length + noData.length + maybeData.length;
     const all = total + (pendingData ? pendingData.length : 0);
     lines.push(`Total: ${total}/${all} Antworten`);
+    lines.push(AUTO_HINT);
 
     return sendMessage(groupId, lines.join('\n'));
 }
@@ -180,7 +181,7 @@ async function sendCancellationMessage(chatId, eventTitle, eventDate, eventTime,
         `📅 ${fmtDate(eventDate)} um ${timeStr} Uhr\n`;
     if (meetingTime) text += `🤝 Treffen: ${meetingTime} Uhr\n`;
     if (description) text += `📝 ${description}\n`;
-    text += `\nZu wenige Zusagen (${yesCount}/${minRequired}).`;
+    text += `\nZu wenige Zusagen (${yesCount}/${minRequired}).` + AUTO_HINT;
     return sendMessage(chatId, text);
 }
 
@@ -309,6 +310,28 @@ async function updateGroupDescription(groupId, description) {
     }
 }
 
+async function pinMessage(chatId, messageId) {
+    const url = `${WAHA_API_URL}/api/${WAHA_SESSION}/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}/pin`;
+    const res = await fetch(url, { method: 'PUT', headers, body: JSON.stringify({ duration: 0 }) });
+    if (!res.ok) {
+        const body = await res.text();
+        console.warn(`[WARN] pinMessage failed (${res.status}): ${body.slice(0, 200)}`);
+        return null;
+    }
+    return res.json();
+}
+
+async function unpinMessage(chatId, messageId) {
+    const url = `${WAHA_API_URL}/api/${WAHA_SESSION}/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}/pin`;
+    const res = await fetch(url, { method: 'DELETE', headers });
+    if (!res.ok) {
+        const body = await res.text();
+        console.warn(`[WARN] unpinMessage failed (${res.status}): ${body.slice(0, 200)}`);
+        return null;
+    }
+    return res.json();
+}
+
 // Get a single contact by ID (can be @c.us or @lid) — tries multiple WAHA endpoint shapes
 async function getContactById(contactId) {
     // Try WAHA Plus endpoint first
@@ -360,4 +383,6 @@ module.exports = {
     getGroups,
     getContactById,
     updateGroupDescription,
+    pinMessage,
+    unpinMessage,
 };

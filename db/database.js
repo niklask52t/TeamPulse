@@ -28,6 +28,9 @@ try { db.exec('ALTER TABLE events ADD COLUMN event_reminder_minutes INTEGER DEFA
 try { db.exec('ALTER TABLE events ADD COLUMN deadline_reminder_1_minutes INTEGER DEFAULT 120'); } catch { /* already exists */ }
 try { db.exec('ALTER TABLE events ADD COLUMN deadline_reminder_2_minutes INTEGER DEFAULT 15'); } catch { /* already exists */ }
 try { db.exec('ALTER TABLE polls ADD COLUMN reminder_2_sent INTEGER DEFAULT 0'); } catch { /* already exists */ }
+try { db.exec('ALTER TABLE polls ADD COLUMN poll_message_id TEXT'); } catch { /* already exists */ }
+try { db.exec('ALTER TABLE polls ADD COLUMN result_message_id TEXT'); } catch { /* already exists */ }
+try { db.exec('ALTER TABLE polls ADD COLUMN result_unpinned INTEGER DEFAULT 0'); } catch { /* already exists */ }
 
 // Seed default admin user if no users exist
 const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;

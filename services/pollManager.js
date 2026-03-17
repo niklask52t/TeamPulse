@@ -151,11 +151,17 @@ async function sendPoll(pollId) {
     }
 
     // Send native WhatsApp poll to group
-    await waha.sendPollMessage(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, poll.meeting_time, poll.description);
+    const pollResult = await waha.sendPollMessage(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, poll.meeting_time, poll.description);
 
-    // Mark all responses as message_sent and activate poll
+    // Save message ID and pin the poll
+    const pollMessageId = pollResult?.id || pollResult?.key?.id || null;
     db.prepare('UPDATE poll_responses SET message_sent = 1 WHERE poll_id = ?').run(pollId);
-    db.prepare("UPDATE polls SET status = 'active', sent_at = datetime('now') WHERE id = ?").run(pollId);
+    db.prepare("UPDATE polls SET status = 'active', sent_at = datetime('now'), poll_message_id = ? WHERE id = ?").run(pollMessageId, pollId);
+
+    if (pollMessageId) {
+        waha.pinMessage(GROUP_CHAT_ID, pollMessageId)
+            .catch(e => console.error('[ERROR] pinMessage poll:', e.message));
+    }
     console.log(`[INFO] Poll ${pollId} sent to group ${GROUP_CHAT_ID}`);
     scheduleDescriptionUpdate();
 }
@@ -385,7 +391,10 @@ async function postGroupResults(pollId, cancelInfo) {
     const maybe = responses.filter(r => r.response === 'maybe').map(r => ({ name: r.name, reason: r.reason }));
     const pending = responses.filter(r => !r.response).map(r => ({ name: r.name }));
 
-    await waha.postResultsToGroup(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, yes, no, maybe, pending, poll.meeting_time, cancelInfo, poll.description);
+    const resultResponse = await waha.postResultsToGroup(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, yes, no, maybe, pending, poll.meeting_time, cancelInfo, poll.description);
+
+    // Save result message ID and pin it
+    const resultMessageId = resultResponse?.id || resultResponse?.key?.id || null;
 
     // Send chart image to group
     try {
@@ -397,13 +406,28 @@ async function postGroupResults(pollId, cancelInfo) {
     }
 
     // Only mark as posted (don't change status — use closePoll() for that)
-    db.prepare('UPDATE polls SET group_posted = 1 WHERE id = ?').run(pollId);
+    db.prepare('UPDATE polls SET group_posted = 1, result_message_id = ? WHERE id = ?').run(resultMessageId, pollId);
+
+    if (resultMessageId) {
+        waha.pinMessage(GROUP_CHAT_ID, resultMessageId)
+            .catch(e => console.error('[ERROR] pinMessage result:', e.message));
+    }
     scheduleDescriptionUpdate();
 }
 
 // Explicitly close a poll (deadline passed or manual action)
 function closePoll(pollId) {
+    const poll = db.prepare('SELECT poll_message_id FROM polls WHERE id = ?').get(pollId);
     db.prepare("UPDATE polls SET status = 'closed' WHERE id = ? AND status = 'active'").run(pollId);
+
+    // Unpin the poll message
+    if (poll?.poll_message_id) {
+        const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
+        if (GROUP_CHAT_ID) {
+            waha.unpinMessage(GROUP_CHAT_ID, poll.poll_message_id)
+                .catch(e => console.error('[ERROR] unpinMessage poll:', e.message));
+        }
+    }
     scheduleDescriptionUpdate();
 }
 
