@@ -72,7 +72,7 @@ async function sendReminder(chatId, eventTitle, eventDate, eventTime, endTime, d
         `📅 ${fmtDate(eventDate)} um ${timeStr} Uhr\n`;
     if (meetingTime) text += `🤝 Treffen: ${meetingTime} Uhr\n`;
     if (description) text += `📝 ${description}\n`;
-    text += `\n⏰ Abstimmung endet um *${deadlineTime} Uhr* — bitte jetzt in der Gruppe abstimmen.`;
+    text += `\n⏰ Abstimmung endet um *${deadlineTime} Uhr* — bitte jetzt in der Gruppe abstimmen.` + AUTO_HINT;
     return sendMessage(chatId, text);
 }
 
@@ -125,7 +125,7 @@ async function sendEventReminder(chatId, eventTitle, eventTime, endTime, meeting
         `⏰ ${timeStr} Uhr\n`;
     if (meetingTime) text += `🤝 Treffen: ${meetingTime} Uhr\n`;
     if (description) text += `📝 ${description}\n`;
-    text += `\nBis gleich!`;
+    text += `\nBis gleich!` + AUTO_HINT;
     return sendMessage(chatId, text);
 }
 
@@ -184,24 +184,26 @@ async function sendCancellationMessage(chatId, eventTitle, eventDate, eventTime,
     return sendMessage(chatId, text);
 }
 
+const AUTO_HINT = '\n\n_🤖 Automatisch generierte Nachricht von TeamPulse_';
+
 async function sendMaybeFollowUp(chatId, eventTitle, eventDate) {
     const text =
         `🤷 Du hast mit *Vielleicht* abgestimmt für *${eventTitle}* am ${fmtDate(eventDate)}.\n\n` +
-        `Optional: Schreib innerhalb von *5 Minuten* kurz warum (z.B. "Komme evtl. zu spät", "Weiß noch nicht") — oder ignoriere diese Nachricht.`;
+        `Optional: Schreib innerhalb von *5 Minuten* kurz warum (z.B. "Komme evtl. zu spät", "Weiß noch nicht") — oder ignoriere diese Nachricht.` + AUTO_HINT;
     return sendMessage(chatId, text);
 }
 
 async function sendNoFollowUp(chatId, eventTitle, eventDate) {
     const text =
         `❌ Du hast für *${eventTitle}* am ${fmtDate(eventDate)} abgesagt.\n\n` +
-        `Optional: Schreib innerhalb von *5 Minuten* kurz den Grund (z.B. "Krank", "Keine Zeit") — oder ignoriere diese Nachricht.`;
+        `Optional: Schreib innerhalb von *5 Minuten* kurz den Grund (z.B. "Krank", "Keine Zeit") — oder ignoriere diese Nachricht.` + AUTO_HINT;
     return sendMessage(chatId, text);
 }
 
 async function sendYesFollowUp(chatId, eventTitle, eventDate) {
     const text =
         `✅ Du hast für *${eventTitle}* am ${fmtDate(eventDate)} zugesagt.\n\n` +
-        `Optional: Schreib innerhalb von *5 Minuten* einen Kommentar (z.B. "Komme 10 Min später") — oder ignoriere diese Nachricht.`;
+        `Optional: Schreib innerhalb von *5 Minuten* einen Kommentar (z.B. "Komme 10 Min später") — oder ignoriere diese Nachricht.` + AUTO_HINT;
     return sendMessage(chatId, text);
 }
 
@@ -212,7 +214,7 @@ async function sendVoteChangeFollowUp(chatId, eventTitle, eventDate, newResponse
     if (oldReason) {
         text += `\n\nDein vorheriger Kommentar war: _"${oldReason}"_`;
     }
-    text += `\n\nOptional: Schreib innerhalb von *5 Minuten* einen neuen Kommentar — oder ignoriere diese Nachricht.`;
+    text += `\n\nOptional: Schreib innerhalb von *5 Minuten* einen neuen Kommentar — oder ignoriere diese Nachricht.` + AUTO_HINT;
     return sendMessage(chatId, text);
 }
 
@@ -221,7 +223,7 @@ async function sendAdminVoteNotification(chatId, eventTitle, eventDate, newRespo
     const label = labels[newResponse] || newResponse;
     const text =
         `ℹ️ Deine Stimme für *${eventTitle}* am ${fmtDate(eventDate)} wurde vom Admin zu *${label}* geändert.\n\n` +
-        `Optional: Schreib innerhalb von *5 Minuten* einen Kommentar — oder ignoriere diese Nachricht.`;
+        `Optional: Schreib innerhalb von *5 Minuten* einen Kommentar — oder ignoriere diese Nachricht.` + AUTO_HINT;
     return sendMessage(chatId, text);
 }
 
@@ -229,7 +231,7 @@ async function sendTooLateNotification(chatId, eventTitle, eventDate) {
     const text =
         `⏰ Die Abstimmung für *${eventTitle}* am ${fmtDate(eventDate)} ist bereits beendet.\n\n` +
         `Deine Stimme konnte leider nicht mehr gezählt werden.\n` +
-        `Falls du doch anwesend warst, wende dich an *Niklas Kronig* — er kann deine Stimme nachträglich anpassen.`;
+        `Falls du doch anwesend warst, wende dich an *Niklas Kronig* — er kann deine Stimme nachträglich anpassen.` + AUTO_HINT;
     return sendMessage(chatId, text);
 }
 
