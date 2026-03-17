@@ -8,6 +8,9 @@ const CHANGELOG = [
             { type: 'feature', text: 'Ja-Stimmen PN: nach Zusage wird jetzt auch eine private Nachricht mit Kommentar-Option gesendet (vorher nur bei Nein/Vielleicht)' },
             { type: 'feature', text: 'Stimmänderungs-PN: bei Ummeldung wird eine 🔄-Nachricht gesendet, die den alten Kommentar zeigt und 5 Min für einen neuen gibt' },
             { type: 'improvement', text: 'Kommentare bleiben bei Stimmänderung erhalten, wenn kein neuer Kommentar geschrieben wird — neuer Kommentar überschreibt den alten' },
+            { type: 'feature', text: 'Auto-Pin: aktive Umfragen werden in der Gruppe angepinnt und beim Schließen entpinnt' },
+            { type: 'feature', text: 'Auto-Pin: Ergebnis-Posts werden angepinnt und nach Event-Ende (end_time oder event_time) automatisch entpinnt' },
+            { type: 'feature', text: 'Bot-Hinweis: alle automatischen Nachrichten (PNs, Ergebnisse, Absagen) enden mit "🤖 Automatisch generierte Nachricht von TeamPulse"' },
         ]
     },
     {

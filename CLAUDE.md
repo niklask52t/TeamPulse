@@ -79,12 +79,14 @@ TeamPulse/
 - Members are upserted into the `contacts` table (phone UNIQUE constraint)
 - Poll responses reference contact IDs as before — no DB schema change needed
 
-## Reason Follow-up Flow (Nein & Vielleicht)
-- When someone votes 'maybe' or 'no' (poll.vote), a private WhatsApp message is sent asking for an optional reason
-- The voter has **5 minutes** to reply with a reason — after that, `processReasonMessage()` ignores the message (SQL: `responded_at >= datetime('now', '-5 minutes')`)
-- Only the next private message within the 5-minute window is saved as the reason
-- Reasons are displayed in the poll detail view alongside the member's name for both "no" and "maybe" responses
+## Follow-up & Comment Flow
+- After every vote (yes, no, maybe), a private WhatsApp follow-up message is sent asking for an optional comment
+- The voter has **5 minutes** to reply — after that, `processReasonMessage()` ignores the message (SQL: `responded_at >= datetime('now', '-5 minutes')`)
+- On vote change: a 🔄 message is sent showing the old comment; old comment is preserved unless a new one is written within 5 min
+- `processReasonMessage` allows overwriting existing reasons (no IS NULL constraint)
+- Reasons/comments are displayed in the poll detail view alongside the member's name for all vote types
 - Votes after deadline: processResponse sends a "too late" PN (sendTooLateNotification) when no active poll exists but a closed one does
+- All automatic PNs end with "🤖 Automatisch generierte Nachricht von TeamPulse"
 
 ## DEV_MODE
 - `DEV_MODE=true` in `.env` enables the "Gruppen" footer tab (shows all WhatsApp groups with IDs from WAHA)
@@ -92,14 +94,15 @@ TeamPulse/
 - Groups tab is hidden by default, only shown when DEV_MODE is true
 
 ## Scheduler Flow (every minute)
-1. checkAndSendPolls — send pending polls when `send_after` time is reached
+1. checkAndSendPolls — send pending polls when `send_after` time is reached (pins poll message)
 2. checkDeadlineReminders — two reminders per poll (configurable per event, default 120min + 15min before deadline)
-3. checkAndClosePolls — close active polls past deadline
-4. checkGroupPosts — post results immediately for closed polls (no separate timing)
+3. checkAndClosePolls — close active polls past deadline (unpins poll message)
+4. checkGroupPosts — post results immediately for closed polls (pins result message)
 5. checkEventReminders — configurable per event (default 60min before event)
 6. generateRecurringPolls — create next week's polls
 7. archiveOldPolls — archive 24h after event
-8. checkDescriptionEventSwitch — update group description when current event ends (end_time or event_time)
+8. unpinExpiredResults — unpin result messages after event ends (end_time or event_time)
+9. checkDescriptionEventSwitch — update group description when current event ends (end_time or event_time)
 
 ## Manual Actions (poll detail)
 - Send poll: once only (pending → active), syncs group members first
@@ -132,6 +135,8 @@ TeamPulse/
 - Poll options: "Ja ✅", "Nein ❌", "Vielleicht 🤷" — matched by emoji-stripped exact match first, then keyword includes
 - `sendReminder` sends plain text reminder (sendButtons was removed — WA deprecated it for unofficial clients in 2024)
 - `sendResultImage` sends a PNG chart via POST /api/sendFile (multipart first, JSON base64 fallback)
+- `pinMessage` / `unpinMessage` via PUT/DELETE `/api/{session}/chats/{chatId}/messages/{messageId}/pin`
+- Auto-pin: poll pinned on send, unpinned on close; result pinned on post, unpinned after event ends
 
 ## Stats
 - `GET /api/stats` returns per-contact totals from closed polls: yes/no/maybe/no_response + response_rate %
@@ -160,6 +165,9 @@ TeamPulse/
 - `events.description TEXT` — optional event description shown everywhere
 - `polls.send_after TEXT` — ISO timestamp: earliest time the poll should be sent
 - `polls.reminder_2_sent INTEGER DEFAULT 0` — tracks second deadline reminder
+- `polls.poll_message_id TEXT` — WAHA message ID of the sent poll (for pinning/unpinning)
+- `polls.result_message_id TEXT` — WAHA message ID of the result post (for pinning/unpinning)
+- `polls.result_unpinned INTEGER DEFAULT 0` — tracks whether result message has been unpinned after event end
 - `events.auto_cancel INTEGER DEFAULT 0` — if 1, send cancellation when yes < min_participants at deadline
 - `events.min_participants INTEGER DEFAULT 0` — minimum yes count for auto-cancel
 - `poll_responses.reason TEXT` — stores optional reason/comment from all voters (yes, maybe, no)
@@ -206,8 +214,10 @@ TeamPulse/
 - Like `poll_send_at`, the deadline can be a fixed date/time (`poll_deadline_at`) instead of "hours before event"
 - Not available for recurring events (same as fixed send date)
 
-## Yes-Vote Comments
-- After any vote (including yes), private messages within 5 minutes are saved as comments
-- Follow-up message sent for all vote types (yes, no, maybe) asking for optional comment
+## Vote Comments & Follow-ups
+- After every vote (yes, no, maybe), a follow-up PN is sent asking for optional comment
+- On vote change: 🔄 PN sent showing old comment; old comment preserved unless new one written within 5 min
+- `processReasonMessage` allows overwriting existing reasons (no IS NULL constraint)
 - Poll text includes hint: "Privat antworten für Kommentar"
 - Comments shown in poll detail, group description, and results post
+- All automatic messages include "🤖 Automatisch generierte Nachricht von TeamPulse" hint

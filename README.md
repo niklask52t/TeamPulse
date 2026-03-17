@@ -11,13 +11,16 @@ WhatsApp-basiertes Anwesenheits-Management für Teams. Erstelle Trainings, Turni
 - **Keine manuelle Kontaktverwaltung**: Teilnehmer werden automatisch aus der WhatsApp-Gruppe synchronisiert
 - **Gruppen-Umfrage**: Umfrage wird als native WhatsApp-Poll in die Gruppe geschickt (Tap-to-Vote)
 - **Antwort-Sammlung**: Übersichtliche Darstellung aller Zu-/Absagen, gruppiert nach Status — inkl. Kommentare/Begründungen für alle Stimmen
-- **Kommentare**: Auch Ja-Stimmer können privat einen Kommentar senden; Nein/Vielleicht bekommen automatisch eine Follow-up-Nachricht
+- **Kommentare**: Nach jeder Abstimmung (Ja/Nein/Vielleicht) wird eine Follow-up-PN gesendet mit optionaler Kommentar-Möglichkeit (5-Min-Fenster)
+- **Stimmänderung**: Bei Ummeldung wird der alte Kommentar in der PN angezeigt — bleibt erhalten wenn kein neuer geschrieben wird
 - **Treffenszeit & Ende**: Optionale Treffenszeit (muss vor Event liegen) und Endzeit (muss nach Event liegen) — in allen Nachrichten angezeigt
 - **Umfrage-Versand**: "Stunden vor Event" oder festes Datum (Standard: 24h vor Event)
 - **Abstimmungsfrist**: "Stunden vor Event" oder festes Datum — Umfrage schließt und Ergebnis wird sofort gepostet (Standard: 1h vor Event)
 - **Automatische Absage**: Optional pro Event — bei zu wenigen Zusagen wird automatisch eine Absage in die Gruppe gesendet
 - **Wiederkehrende Ausnahmen**: Einzelne Termine bei wiederkehrenden Events aussetzen (z.B. Feiertage)
 - **Gruppen-Posting**: Ergebnis-Text + Chart in die Gruppe — auch manuell mehrfach möglich
+- **Auto-Pin**: Aktive Umfragen werden in der Gruppe angepinnt (entpinnt beim Schließen), Ergebnis-Posts werden angepinnt (entpinnt nach Event-Ende)
+- **Bot-Hinweis**: Alle automatischen Nachrichten sind mit "🤖 Automatisch generierte Nachricht von TeamPulse" gekennzeichnet
 - **Frist verlängern**: Abstimmungsdeadline direkt im Dashboard verschieben
 - **Automatische Gruppenbeschreibung**: WhatsApp-Gruppenbeschreibung wird bei jeder Änderung automatisch aktualisiert — zeigt nächstes Event, Status aller Mitglieder (Zusagen, Absagen mit Grund, Vielleicht, Ausstehend) + statische Textblöcke. Wechselt automatisch zum nächsten Event sobald das aktuelle endet (end_time) bzw. beginnt (event_time)
 - **Beschreibungs-Tab**: Statische Textblöcke erstellen (oberhalb/unterhalb), Vorschau, manuelles Aktualisieren

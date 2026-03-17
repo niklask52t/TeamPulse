@@ -375,14 +375,16 @@
                             <li><strong>Archiviert</strong> — 24h nach Event-Ende, wandert ins Archiv</li>
                         </ol>
                         <p>Automatisches Schließen passiert, sobald die Abstimmungsfrist abläuft. Ergebnisse werden als Text + Bild-Chart in die Gruppe gepostet.</p>
+                        <p><strong>Auto-Pin:</strong> Aktive Umfragen werden automatisch in der Gruppe angepinnt und beim Schließen entpinnt. Ergebnis-Posts werden angepinnt und nach Event-Ende (end_time, sonst event_time) automatisch entpinnt.</p>
                     </div>
                     <div class="wiki-section">
                         <h3>Abstimmen &amp; Antworten</h3>
                         <p>Teilnehmer stimmen direkt in WhatsApp über die native Umfrage ab: <strong>Ja / Nein / Vielleicht</strong>.</p>
-                        <p><strong>Bei "Nein" oder "Vielleicht":</strong> Der Voter bekommt eine private Nachricht und kann innerhalb von <strong>5 Minuten</strong> optional einen Grund angeben.</p>
-                        <p><strong>Kommentare:</strong> Auch Ja-Stimmer können innerhalb von 5 Minuten privat einen Kommentar senden (z.B. "Komme 10 Min später"). In der Umfrage steht ein Hinweis dazu.</p>
+                        <p><strong>Nach jeder Abstimmung</strong> (Ja, Nein, Vielleicht) bekommt der Voter eine private Nachricht und kann innerhalb von <strong>5 Minuten</strong> optional einen Kommentar/Grund angeben.</p>
+                        <p><strong>Stimmänderung:</strong> Wer seine Stimme ändert, bekommt eine 🔄-Nachricht mit dem alten Kommentar und kann innerhalb von 5 Minuten einen neuen schreiben. Ohne neuen Kommentar bleibt der alte erhalten.</p>
                         <p><strong>Ergebnisse:</strong> Alle Antworten werden mit Namen und Kommentaren/Gründen angezeigt — gruppiert nach Zusagen, Absagen, Vielleicht und Ausstehend.</p>
                         <p>Antworten werden alle 15 Sekunden automatisch aktualisiert, wenn ein Poll-Detail geöffnet ist.</p>
+                        <p><strong>Alle automatischen Nachrichten</strong> sind mit dem Hinweis <em>"🤖 Automatisch generierte Nachricht von TeamPulse"</em> gekennzeichnet.</p>
                     </div>
                     <div class="wiki-section">
                         <h3>Manuelle Aktionen</h3>
@@ -408,6 +410,7 @@
                             <li><strong>Event-Erinnerung</strong> — 1h vor Event an alle Zusager (privat)</li>
                             <li><strong>Wiederkehrend</strong> — nächste Woche neue Umfrage erstellen</li>
                             <li><strong>Archivieren</strong> — 24h nach Event-Ende</li>
+                            <li><strong>Ergebnis entpinnen</strong> — nach Event-Ende (end_time oder event_time)</li>
                         </ol>
                     </div>
                     <div class="wiki-section">
