@@ -174,13 +174,13 @@ function scheduleDescriptionUpdate() {
     }, 60000);
 }
 
-// 120s debounce for text block changes
+// 60s debounce for text block changes
 function scheduleBlockDescriptionUpdate() {
     if (blockTimer) clearTimeout(blockTimer);
     blockTimer = setTimeout(() => {
         blockTimer = null;
         updateGroupDescription();
-    }, 120000);
+    }, 60000);
 }
 
 async function updateGroupDescription() {
