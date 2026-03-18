@@ -11,6 +11,7 @@ const CHANGELOG = [
             { type: 'feature', text: 'Kompakte Umfrage-Zusammenfassung in Gruppenbeschreibung: aktive Umfragen nach dem Haupt-Event werden als Einzeiler mit Emoji-Counts angezeigt (✅X ❌X 🤷X)' },
             { type: 'feature', text: 'Neu senden (Reset): aktive Umfragen können mit einem Klick zurückgesetzt und neu in die Gruppe gesendet werden — alle Stimmen werden gelöscht' },
             { type: 'improvement', text: 'Sortierung: aktive und ausstehende Umfragen zeigen nächstes Event oben, Archiv zeigt neustes oben' },
+            { type: 'fix', text: 'SQLite-Binding-Fehler behoben: WAHA-Antworten mit unerwarteter Struktur (Objekt statt String) werden jetzt korrekt verarbeitet' },
         ]
     },
     {

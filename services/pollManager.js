@@ -7,11 +7,13 @@ const { scheduleDescriptionUpdate } = require('./groupDescription');
 const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
 
 // Extract message ID string from WAHA response (handles various response shapes)
+// Always returns a string or null — never undefined or objects
 function extractMessageId(result) {
-    const raw = result?.id || result?.key?.id || null;
-    if (raw === null || raw === undefined) return null;
+    if (!result) return null;
+    const raw = result.id || result.key?.id || null;
+    if (raw == null) return null;
     if (typeof raw === 'string') return raw;
-    if (typeof raw === 'object') return raw._serialized || raw.id || JSON.stringify(raw);
+    if (typeof raw === 'object') return String(raw._serialized || raw.id || JSON.stringify(raw));
     return String(raw);
 }
 

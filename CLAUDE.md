@@ -28,7 +28,7 @@ TeamPulse/
 ├── services/
 │   ├── waha.js        # WAHA API client (sendPollMessage, sendMessage, sendReminder, sendResultImage, sendMaybeFollowUp, postResultsToGroup, getGroupParticipants, getAllContacts, getGroups, updateGroupDescription)
 │   ├── scheduler.js   # Cron: send/close/archive polls, reminders, group posts
-│   ├── pollManager.js # Poll lifecycle (create, send, resend, processResponse, processReasonMessage, close, extendDeadline)
+│   ├── pollManager.js # Poll lifecycle (create, send, resend, processResponse, processReasonMessage, close, extendDeadline) + extractMessageId helper
 │   ├── groupDescription.js  # Build & update WhatsApp group description (debounced)
 │   ├── chartGenerator.js  # PNG bar chart via @napi-rs/canvas
 │   └── timeUtils.js   # Europe/Berlin timezone helpers
@@ -63,7 +63,7 @@ TeamPulse/
 
 ## Poll Lifecycle
 1. **pending** → created (immediately when event is created, for both recurring and one-off), not yet sent
-1.5. **sending** → in-memory lock (not in DB) while WAHA call is in progress (prevents duplicate sends from overlapping scheduler ticks)
+1.5. **sending** → in-memory lock via `sendingPolls` Set (not in DB) while WAHA call is in progress (prevents duplicate sends from overlapping scheduler ticks). Lock released on success or error.
 2. **active** → sent to group via WhatsApp, collecting responses
 3. **closed** → deadline passed (auto by scheduler) or manually closed
 4. **archived** → 24h after event ends, moved to archive
