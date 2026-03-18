@@ -22,6 +22,12 @@ function addDays(dateStr, days) {
 }
 
 function startScheduler() {
+    // Recover polls stuck in 'sending' status (e.g. from server crash during send)
+    const stuck = db.prepare("UPDATE polls SET status = 'pending' WHERE status = 'sending'").run();
+    if (stuck.changes > 0) {
+        console.log(`[INFO] Recovered ${stuck.changes} poll(s) stuck in 'sending' status`);
+    }
+
     cron.schedule('* * * * *', async () => {
         try {
             await checkAndSendPolls();
