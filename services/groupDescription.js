@@ -99,10 +99,14 @@ function buildDescription() {
         dynamicParts.push(buildPollHeader(poll) + '\n\n' + buildPollResponseBlock(poll));
     }
 
-    // Remaining active polls as compact one-liners
+    // Remaining active polls as compact one-liners with header
     const extraActivePolls = activePolls.slice(MAX_ACTIVE_IN_DESC);
-    for (const poll of extraActivePolls) {
-        dynamicParts.push(buildCompactPollSummary(poll));
+    if (extraActivePolls.length > 0) {
+        const lines = ['📋 Weitere aktive Umfragen:'];
+        for (const poll of extraActivePolls) {
+            lines.push(buildCompactPollSummary(poll));
+        }
+        dynamicParts.push(lines.join('\n'));
     }
 
     // Pending poll — event info only, no votes
@@ -161,13 +165,13 @@ function buildDescription() {
 let voteTimer = null;
 let blockTimer = null;
 
-// 15s debounce for votes/poll changes
+// 60s debounce for votes/poll changes
 function scheduleDescriptionUpdate() {
     if (voteTimer) clearTimeout(voteTimer);
     voteTimer = setTimeout(() => {
         voteTimer = null;
         updateGroupDescription();
-    }, 15000);
+    }, 60000);
 }
 
 // 120s debounce for text block changes

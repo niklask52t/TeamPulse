@@ -13,6 +13,8 @@ const CHANGELOG = [
             { type: 'improvement', text: 'Sortierung: aktive und ausstehende Umfragen zeigen nächstes Event oben, Archiv zeigt neustes oben' },
             { type: 'fix', text: 'SQLite-Binding-Fehler behoben: WAHA-Antworten mit unerwarteter Struktur (Objekt statt String) werden jetzt korrekt verarbeitet' },
             { type: 'fix', text: 'Stimmen-Zuordnung bei mehreren aktiven Umfragen: Stimmen werden jetzt per Poll-Message-ID der richtigen Umfrage zugeordnet (vorher immer der ersten)' },
+            { type: 'improvement', text: 'Gruppenbeschreibung: kompakte Umfragen haben jetzt die Überschrift "Weitere aktive Umfragen"' },
+            { type: 'improvement', text: 'Gruppenbeschreibung: Aktualisierung nur noch alle 60 Sekunden statt 15 (weniger API-Last)' },
         ]
     },
     {

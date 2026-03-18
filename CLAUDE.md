@@ -148,10 +148,10 @@ TeamPulse/
 
 ## Group Description Auto-Update
 - `services/groupDescription.js` builds description from: static blocks (above) + next event (full detail) + remaining active polls (compact one-liner with emoji counts) + pending poll + static blocks (below) + upcoming events + footer
-- Only 1 active poll shown with full vote breakdown (MAX_ACTIVE_IN_DESC=1), remaining active polls shown as compact summary: `🗳 Title – Date, Time — ✅X ❌X 🤷X`
+- Only 1 active poll shown with full vote breakdown (MAX_ACTIVE_IN_DESC=1), remaining active polls shown under "📋 Weitere aktive Umfragen:" as compact summary: `🗳 Title – Date, Time — ✅X ❌X 🤷X`
 - Footer: "Powered by TeamPulse by Niklas Kronig" + contact note
 - Updated via `PUT /api/{session}/groups/{groupId}/description` (WAHA)
-- **Debounced** — 15s for votes/poll changes, 120s for text block CRUD; "In WhatsApp aktualisieren" button for immediate push
+- **Debounced** — 60s for votes/poll changes, 120s for text block CRUD; "In WhatsApp aktualisieren" button for immediate push
 - Triggered by: vote, reason, poll send/close, deadline extend, archive, new recurring poll
 - Static blocks stored in `group_description_blocks` table (content, position: above/below, sort_order)
 - Bot must be group admin to update description
