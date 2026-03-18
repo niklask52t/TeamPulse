@@ -193,7 +193,7 @@ async function sendPoll(pollId) {
     scheduleDescriptionUpdate();
 }
 
-async function processResponse(phone, text) {
+async function processResponse(phone, text, pollMessageId) {
     const isLid = phone.includes('@lid');
     const normalizedPhone = phone.replace(/@c\.us|@lid|@s\.whatsapp\.net/g, '').replace(/^\+/, '').replace(/\D/g, '');
 
@@ -270,13 +270,23 @@ async function processResponse(phone, text) {
 
     if (!response) return null;
 
-    // Find any active poll (don't require existing poll_response row)
-    const activePoll = db.prepare(`
-        SELECT p.id as poll_id, p.event_date, e.title as event_title
-        FROM polls p JOIN events e ON p.event_id = e.id
-        WHERE p.status = 'active'
-        ORDER BY p.deadline ASC LIMIT 1
-    `).get();
+    // Find the correct active poll — match by poll message ID first, fallback to earliest deadline
+    let activePoll = null;
+    if (pollMessageId) {
+        activePoll = db.prepare(`
+            SELECT p.id as poll_id, p.event_date, e.title as event_title
+            FROM polls p JOIN events e ON p.event_id = e.id
+            WHERE p.status = 'active' AND p.poll_message_id = ?
+        `).get(pollMessageId);
+    }
+    if (!activePoll) {
+        activePoll = db.prepare(`
+            SELECT p.id as poll_id, p.event_date, e.title as event_title
+            FROM polls p JOIN events e ON p.event_id = e.id
+            WHERE p.status = 'active'
+            ORDER BY p.deadline ASC LIMIT 1
+        `).get();
+    }
 
     if (!activePoll) {
         // Check if there's a recently closed poll — send "too late" notification

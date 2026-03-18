@@ -135,6 +135,7 @@ TeamPulse/
 - Handles `message` (text reply), `poll.vote` (native poll), and `buttons_response` events
 - Group messages: `payload.sender` = voter JID; private messages: `payload.from` = sender JID
 - Poll options: "Ja ✅", "Nein ❌", "Vielleicht 🤷" — matched by emoji-stripped exact match first, then keyword includes
+- Vote matching: `processResponse(phone, text, pollMessageId)` matches votes to polls by WAHA poll_message_id first, falls back to earliest-deadline active poll if no match
 - `sendReminder` sends plain text reminder (sendButtons was removed — WA deprecated it for unofficial clients in 2024)
 - `sendResultImage` sends a PNG chart via POST /api/sendFile (multipart first, JSON base64 fallback)
 - `pinMessage` / `unpinMessage` via PUT/DELETE `/api/{session}/chats/{chatId}/messages/{messageId}/pin`

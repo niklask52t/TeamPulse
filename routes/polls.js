@@ -231,10 +231,16 @@ router.post('/webhook', async (req, res) => {
             || payload.vote?.options
             || [];
 
+        // Extract poll message ID to match vote to the correct poll
+        const pollMsgId = payload.vote?.pollMessageId || payload.poll?.id || payload.poll?.key?.id
+            || payload.vote?.id || payload.pollMessageId || null;
+        const pollMsgIdStr = pollMsgId && typeof pollMsgId === 'object'
+            ? (pollMsgId._serialized || pollMsgId.id || null) : (pollMsgId || null);
+
         if (phone && selectedOptions.length > 0) {
             const optionName = selectedOptions[0]?.name || selectedOptions[0]?.value || selectedOptions[0] || '';
             try {
-                const result = await pollManager.processResponse(phone, optionName);
+                const result = await pollManager.processResponse(phone, optionName, pollMsgIdStr);
                 if (result) {
                     console.log(`[VOTE] poll.vote from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
                 } else {

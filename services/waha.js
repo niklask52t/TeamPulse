@@ -311,6 +311,7 @@ async function updateGroupDescription(groupId, description) {
 }
 
 async function pinMessage(chatId, messageId) {
+    if (!messageId) { console.warn('[WARN] pinMessage skipped — no messageId'); return null; }
     const url = `${WAHA_API_URL}/api/${WAHA_SESSION}/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}/pin`;
     const res = await fetch(url, { method: 'PUT', headers, body: JSON.stringify({ duration: 0 }) });
     if (!res.ok) {
@@ -322,6 +323,7 @@ async function pinMessage(chatId, messageId) {
 }
 
 async function unpinMessage(chatId, messageId) {
+    if (!messageId) return null;
     const url = `${WAHA_API_URL}/api/${WAHA_SESSION}/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}/pin`;
     const res = await fetch(url, { method: 'DELETE', headers });
     if (!res.ok) {
