@@ -2,6 +2,16 @@
 
 const CHANGELOG = [
     {
+        version: '2.2.0',
+        date: '2026-03-18',
+        changes: [
+            { type: 'fix', text: 'Umfrage-Spam behoben: neuer Zwischenstatus "sending" verhindert, dass der Scheduler dieselbe Umfrage mehrfach gleichzeitig versendet' },
+            { type: 'improvement', text: '"Privat antworten für Kommentar" aus Umfrage-Text entfernt — Teilnehmer sehen den Kommentar-Hinweis ohnehin in der privaten Nachricht nach Abstimmung' },
+            { type: 'improvement', text: 'Bot-Hinweis jetzt auch in Umfrage-Nachrichten: "🤖 Automatisch generierte Nachricht von TeamPulse" steht jetzt bei allen Bot-Aktionen in WhatsApp' },
+            { type: 'feature', text: 'Kompakte Umfrage-Zusammenfassung in Gruppenbeschreibung: aktive Umfragen nach dem Haupt-Event werden als Einzeiler mit Emoji-Counts angezeigt (✅X ❌X 🤷X)' },
+        ]
+    },
+    {
         version: '2.1.0',
         date: '2026-03-17',
         changes: [
@@ -21,7 +31,7 @@ const CHANGELOG = [
             { type: 'feature', text: 'Automatische Absage: optionale Mindest-Zusagen pro Event — bei zu wenigen Zusagen wird automatisch eine Absage-Nachricht in die Gruppe gesendet' },
             { type: 'feature', text: 'Wiederkehrende Ausnahmen: einzelne Termine bei wiederkehrenden Events aussetzen (z.B. Feiertage), mit optionalem Grund' },
             { type: 'feature', text: 'Kommentare für Zusagen: nach jeder Abstimmung (auch Ja) können Teilnehmer privat einen Kommentar senden (z.B. "Komme 10 Min später")' },
-            { type: 'feature', text: 'Poll-Hinweis: "Privat antworten für Kommentar" wird automatisch in jeder Umfrage angezeigt' },
+            { type: 'feature', text: 'Poll-Hinweis: Bot-Disclaimer wird automatisch in jeder Umfrage angezeigt' },
             { type: 'feature', text: 'Ergebnis-Post zeigt jetzt auch Kommentare von Ja-Stimmern an' },
             { type: 'feature', text: 'Event-Beschreibung: optionales Freitextfeld pro Event — wird in Umfragen, Erinnerungen, Ergebnis-Posts, Gruppenbeschreibung und Dashboard angezeigt' },
             { type: 'feature', text: 'Konfigurierbare Erinnerungen: Start-Erinnerung (Standard 60 Min vor Event), zwei Abstimmungs-Erinnerungen (Standard 120 und 15 Min vor Frist) — alles pro Event einstellbar' },

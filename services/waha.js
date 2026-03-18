@@ -41,7 +41,7 @@ async function sendPollMessage(chatId, eventTitle, eventDate, eventTime, endTime
     name += ' Uhr';
     if (meetingTime) name += ` (Treffen: ${meetingTime} Uhr)`;
     if (description) name += `\n📝 ${description}`;
-    name += '\n💬 Privat antworten für Kommentar';
+    name += '\n\n_🤖 Automatisch generierte Nachricht von TeamPulse_';
     const res = await fetch(url, {
         method: 'POST',
         headers,

@@ -63,6 +63,7 @@ TeamPulse/
 
 ## Poll Lifecycle
 1. **pending** → created (immediately when event is created, for both recurring and one-off), not yet sent
+1.5. **sending** → transitional state while WAHA call is in progress (prevents duplicate sends from overlapping scheduler ticks)
 2. **active** → sent to group via WhatsApp, collecting responses
 3. **closed** → deadline passed (auto by scheduler) or manually closed
 4. **archived** → 24h after event ends, moved to archive
@@ -218,6 +219,6 @@ TeamPulse/
 - After every vote (yes, no, maybe), a follow-up PN is sent asking for optional comment
 - On vote change: 🔄 PN sent showing old comment; old comment preserved unless new one written within 5 min
 - `processReasonMessage` allows overwriting existing reasons (no IS NULL constraint)
-- Poll text includes hint: "Privat antworten für Kommentar"
+- Poll text includes AUTO_HINT footer (no more "Privat antworten für Kommentar")
 - Comments shown in poll detail, group description, and results post
 - All automatic messages include "🤖 Automatisch generierte Nachricht von TeamPulse" hint

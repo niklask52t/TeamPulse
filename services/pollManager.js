@@ -129,8 +129,12 @@ async function sendPoll(pollId) {
     if (!poll) throw new Error(`Poll ${pollId} not found`);
     if (poll.status === 'active') throw new Error('Umfrage wurde bereits gesendet');
     if (poll.status === 'closed') throw new Error('Umfrage ist bereits geschlossen');
+    if (poll.status === 'sending') throw new Error('Umfrage wird gerade gesendet');
 
     if (!GROUP_CHAT_ID) throw new Error('GROUP_CHAT_ID not configured');
+
+    // Mark as sending immediately to prevent duplicate sends from overlapping scheduler ticks
+    db.prepare("UPDATE polls SET status = 'sending' WHERE id = ? AND status = 'pending'").run(pollId);
 
     // Sync latest group members before sending
     await syncGroupParticipants();
@@ -151,7 +155,14 @@ async function sendPoll(pollId) {
     }
 
     // Send native WhatsApp poll to group
-    const pollResult = await waha.sendPollMessage(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, poll.meeting_time, poll.description);
+    let pollResult;
+    try {
+        pollResult = await waha.sendPollMessage(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, poll.meeting_time, poll.description);
+    } catch (err) {
+        // Rollback to pending so scheduler can retry next minute
+        db.prepare("UPDATE polls SET status = 'pending' WHERE id = ? AND status = 'sending'").run(pollId);
+        throw err;
+    }
 
     // Save message ID and pin the poll
     const pollMessageId = pollResult?.id || pollResult?.key?.id || null;

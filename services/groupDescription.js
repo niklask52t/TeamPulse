@@ -14,7 +14,19 @@ function fmtDate(dateStr) {
     return `${d}.${m}.${y} (${dayNames[dow]})`;
 }
 
-const MAX_ACTIVE_IN_DESC = 2;
+const MAX_ACTIVE_IN_DESC = 1;
+
+function buildCompactPollSummary(poll) {
+    const responses = db.prepare(`
+        SELECT response FROM poll_responses WHERE poll_id = ?
+    `).all(poll.id);
+    const y = responses.filter(r => r.response === 'yes').length;
+    const n = responses.filter(r => r.response === 'no').length;
+    const m = responses.filter(r => r.response === 'maybe').length;
+    let timeStr = poll.event_time;
+    if (poll.end_time) timeStr += ` - ${poll.end_time}`;
+    return `🗳 ${poll.title} – ${fmtDate(poll.event_date)}, ${timeStr} Uhr — ✅${y} ❌${n} 🤷${m}`;
+}
 
 function buildPollResponseBlock(poll) {
     const responses = db.prepare(`
@@ -75,7 +87,6 @@ function buildDescription() {
     // 3. Separate active polls from pending/closed
     const activePolls = upcomingPolls.filter(p => p.status === 'active');
     const shownActivePolls = activePolls.slice(0, MAX_ACTIVE_IN_DESC);
-    const extraActiveCount = activePolls.length - shownActivePolls.length;
 
     // Next pending poll (for event info only, no vote listing)
     const nextPendingPoll = upcomingPolls.find(p => p.status === 'pending') || null;
@@ -88,9 +99,10 @@ function buildDescription() {
         dynamicParts.push(buildPollHeader(poll) + '\n\n' + buildPollResponseBlock(poll));
     }
 
-    // Extra active polls hint
-    if (extraActiveCount > 0) {
-        dynamicParts.push(`+${extraActiveCount} laufende Umfrage${extraActiveCount > 1 ? 'n' : ''}`);
+    // Remaining active polls as compact one-liners
+    const extraActivePolls = activePolls.slice(MAX_ACTIVE_IN_DESC);
+    for (const poll of extraActivePolls) {
+        dynamicParts.push(buildCompactPollSummary(poll));
     }
 
     // Pending poll — event info only, no votes
