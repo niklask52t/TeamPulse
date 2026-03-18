@@ -9,6 +9,7 @@ const CHANGELOG = [
             { type: 'improvement', text: '"Privat antworten für Kommentar" aus Umfrage-Text entfernt — Teilnehmer sehen den Kommentar-Hinweis ohnehin in der privaten Nachricht nach Abstimmung' },
             { type: 'improvement', text: 'Bot-Hinweis jetzt auch in Umfrage-Nachrichten: "🤖 Automatisch generierte Nachricht von TeamPulse" steht jetzt bei allen Bot-Aktionen in WhatsApp' },
             { type: 'feature', text: 'Kompakte Umfrage-Zusammenfassung in Gruppenbeschreibung: aktive Umfragen nach dem Haupt-Event werden als Einzeiler mit Emoji-Counts angezeigt (✅X ❌X 🤷X)' },
+            { type: 'feature', text: 'Neu senden (Reset): aktive Umfragen können mit einem Klick zurückgesetzt und neu in die Gruppe gesendet werden — alle Stimmen werden gelöscht' },
         ]
     },
     {

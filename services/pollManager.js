@@ -426,6 +426,57 @@ async function postGroupResults(pollId, cancelInfo) {
     scheduleDescriptionUpdate();
 }
 
+// Reset an active poll: clear all responses, re-send to group as new WhatsApp poll
+async function resendPoll(pollId) {
+    const poll = db.prepare(`
+        SELECT p.*, e.title, e.description, e.event_time, e.end_time, e.meeting_time
+        FROM polls p JOIN events e ON p.event_id = e.id
+        WHERE p.id = ?
+    `).get(pollId);
+    if (!poll) throw new Error(`Poll ${pollId} not found`);
+    if (poll.status !== 'active') throw new Error('Nur aktive Umfragen können neu gesendet werden');
+    if (!GROUP_CHAT_ID) throw new Error('GROUP_CHAT_ID not configured');
+
+    // Unpin old poll message
+    if (poll.poll_message_id) {
+        waha.unpinMessage(GROUP_CHAT_ID, poll.poll_message_id)
+            .catch(e => console.error('[ERROR] unpinMessage old poll:', e.message));
+    }
+
+    // Reset all responses
+    db.prepare('UPDATE poll_responses SET response = NULL, reason = NULL, responded_at = NULL WHERE poll_id = ?').run(pollId);
+
+    // Reset reminder flags so they fire again
+    db.prepare('UPDATE polls SET reminder_sent = 0, reminder_2_sent = 0 WHERE id = ?').run(pollId);
+
+    // Sync latest group members
+    await syncGroupParticipants();
+
+    // Add any new contacts
+    const existingContactIds = db.prepare('SELECT contact_id FROM poll_responses WHERE poll_id = ?').all(pollId).map(r => r.contact_id);
+    const allContacts = db.prepare('SELECT * FROM contacts').all();
+    const insertResponse = db.prepare('INSERT OR IGNORE INTO poll_responses (poll_id, contact_id) VALUES (?, ?)');
+    for (const c of allContacts) {
+        if (!existingContactIds.includes(c.id)) {
+            insertResponse.run(pollId, c.id);
+        }
+    }
+
+    // Send new WhatsApp poll
+    const pollResult = await waha.sendPollMessage(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, poll.meeting_time, poll.description);
+    const pollMessageId = pollResult?.id || pollResult?.key?.id || null;
+
+    db.prepare("UPDATE polls SET poll_message_id = ?, sent_at = datetime('now') WHERE id = ?").run(pollMessageId, pollId);
+
+    if (pollMessageId) {
+        waha.pinMessage(GROUP_CHAT_ID, pollMessageId)
+            .catch(e => console.error('[ERROR] pinMessage resend:', e.message));
+    }
+
+    console.log(`[INFO] Poll ${pollId} resent (reset + new WhatsApp poll)`);
+    scheduleDescriptionUpdate();
+}
+
 // Explicitly close a poll (deadline passed or manual action)
 function closePoll(pollId) {
     const poll = db.prepare('SELECT poll_message_id FROM polls WHERE id = ?').get(pollId);
@@ -492,6 +543,7 @@ module.exports = {
     sendDeadlineReminder,
     postGroupResults,
     closePoll,
+    resendPoll,
     extendDeadline,
     sendEventReminders,
 };

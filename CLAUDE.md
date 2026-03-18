@@ -113,6 +113,7 @@ TeamPulse/
 - Post group results: multiple times (active/closed) — sends text + PNG chart image; does NOT close the poll
 - Send event reminder: multiple times (active/closed)
 - Manual vote override: click member name → set response (✅/❌/🤷/⏳), sends PN notification. Works on all polls including archived — stats update accordingly
+- Resend (reset): active only — clears all votes, unpins old poll, sends new WhatsApp poll, resets reminder flags
 - Delete: always available
 
 ## Auth

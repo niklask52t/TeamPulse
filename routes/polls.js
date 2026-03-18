@@ -96,6 +96,16 @@ router.put('/:id/extend', (req, res) => {
     }
 });
 
+// POST resend poll (reset all votes + send new WhatsApp poll)
+router.post('/:id/resend', async (req, res) => {
+    try {
+        await pollManager.resendPoll(Number(req.params.id));
+        res.json({ success: true });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
+
 // POST manually close poll
 router.post('/:id/close', (req, res) => {
     try {

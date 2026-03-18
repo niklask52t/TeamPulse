@@ -202,6 +202,7 @@ function buildActionButtons(poll) {
     }
     if (poll.status === 'active') {
         btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'send-reminder', 'Abstimmungs-Erinnerung an alle ohne Antwort senden?')">⏰ Abstimmungs-Erinnerung</button>`);
+        btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'resend', 'Alle Stimmen zurücksetzen und Umfrage NEU in die Gruppe senden?')">🔄 Neu senden (Reset)</button>`);
         btns.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'close', 'Umfrage jetzt manuell schließen?')">Umfrage schließen</button>`);
         btns.push(`<button class="btn btn-secondary btn-sm" onclick="showExtendForm(${poll.id})">Frist verlängern</button>`);
     }
