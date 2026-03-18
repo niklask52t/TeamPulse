@@ -32,6 +32,39 @@ try { db.exec('ALTER TABLE polls ADD COLUMN poll_message_id TEXT'); } catch { /*
 try { db.exec('ALTER TABLE polls ADD COLUMN result_message_id TEXT'); } catch { /* already exists */ }
 try { db.exec('ALTER TABLE polls ADD COLUMN result_unpinned INTEGER DEFAULT 0'); } catch { /* already exists */ }
 
+// Migrate polls CHECK constraint to include 'sending' status
+try {
+    const checkInfo = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='polls'").get();
+    if (checkInfo && checkInfo.sql && !checkInfo.sql.includes("'sending'")) {
+        db.exec(`
+            CREATE TABLE polls_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_id INTEGER NOT NULL,
+                event_date TEXT NOT NULL,
+                sent_at TEXT,
+                send_after TEXT,
+                deadline TEXT NOT NULL,
+                reminder_sent INTEGER DEFAULT 0,
+                reminder_2_sent INTEGER DEFAULT 0,
+                group_posted INTEGER DEFAULT 0,
+                event_reminder_sent INTEGER DEFAULT 0,
+                archived INTEGER DEFAULT 0,
+                status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'sending', 'active', 'closed')),
+                poll_message_id TEXT,
+                result_message_id TEXT,
+                result_unpinned INTEGER DEFAULT 0,
+                FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+            );
+            INSERT INTO polls_new SELECT id, event_id, event_date, sent_at, send_after, deadline,
+                reminder_sent, reminder_2_sent, group_posted, event_reminder_sent, archived, status,
+                poll_message_id, result_message_id, result_unpinned FROM polls;
+            DROP TABLE polls;
+            ALTER TABLE polls_new RENAME TO polls;
+        `);
+        console.log('Migrated polls CHECK constraint to include sending status');
+    }
+} catch (err) { console.error('[WARN] polls CHECK migration:', err.message); }
+
 // Seed default admin user if no users exist
 const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
 if (userCount === 0) {

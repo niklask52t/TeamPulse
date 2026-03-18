@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS polls (
     group_posted INTEGER DEFAULT 0,
     event_reminder_sent INTEGER DEFAULT 0,
     archived INTEGER DEFAULT 0,
-    status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'active', 'closed')),
+    status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'sending', 'active', 'closed')),
     FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
 );
 
