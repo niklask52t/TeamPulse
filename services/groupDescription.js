@@ -49,7 +49,7 @@ function buildPollResponseBlock(poll) {
 }
 
 function buildPollHeader(poll) {
-    const statusLabels = { pending: 'Ausstehend', active: 'Abstimmung läuft', closed: 'Geschlossen' };
+    const statusLabels = { pending: 'Ausstehend', active: 'Abstimmung läuft', closed: 'Ergebnis' };
     let header = `📅 ${poll.title}\n`;
     let timeStr = poll.event_time;
     if (poll.end_time) timeStr += ` - ${poll.end_time}`;
@@ -84,9 +84,16 @@ function buildDescription() {
         return isNaN(eventEnd.getTime()) || now < eventEnd;
     });
 
-    // 3. Separate active polls from pending/closed
+    // 3. Separate polls by status
+    // Closed polls whose event is still running get highest priority (results visible until event ends)
+    const closedPolls = upcomingPolls.filter(p => p.status === 'closed');
     const activePolls = upcomingPolls.filter(p => p.status === 'active');
-    const shownActivePolls = activePolls.slice(0, MAX_ACTIVE_IN_DESC);
+
+    // Closed polls take priority slots, then active polls fill remaining
+    const shownPolls = [
+        ...closedPolls.slice(0, MAX_ACTIVE_IN_DESC),
+        ...activePolls.slice(0, Math.max(0, MAX_ACTIVE_IN_DESC - closedPolls.length))
+    ];
 
     // Next pending poll (for event info only, no vote listing)
     const nextPendingPoll = upcomingPolls.find(p => p.status === 'pending') || null;
@@ -94,13 +101,14 @@ function buildDescription() {
     // 4. Build dynamic section
     const dynamicParts = [];
 
-    // Active polls with full vote breakdown
-    for (const poll of shownActivePolls) {
+    // Closed/active polls with full vote breakdown
+    for (const poll of shownPolls) {
         dynamicParts.push(buildPollHeader(poll) + '\n\n' + buildPollResponseBlock(poll));
     }
 
     // Remaining active polls as compact one-liners with header
-    const extraActivePolls = activePolls.slice(MAX_ACTIVE_IN_DESC);
+    const shownIds = new Set(shownPolls.map(p => p.id));
+    const extraActivePolls = activePolls.filter(p => !shownIds.has(p.id));
     if (extraActivePolls.length > 0) {
         const lines = ['📋 Weitere aktive Umfragen:'];
         for (const poll of extraActivePolls) {
@@ -117,8 +125,8 @@ function buildDescription() {
     const dynamic = dynamicParts.length > 0 ? dynamicParts.join('\n\n') : 'Kein anstehendes Event.';
 
     // 5. Next 3 upcoming events (excluding already shown polls)
-    const shownIds = new Set([...shownActivePolls.map(p => p.id)]);
-    if (nextPendingPoll) shownIds.add(nextPendingPoll.id);
+    const allShownIds = new Set([...shownPolls.map(p => p.id), ...extraActivePolls.map(p => p.id)]);
+    if (nextPendingPoll) allShownIds.add(nextPendingPoll.id);
     const upcomingCandidates = db.prepare(`
         SELECT p.id, p.event_date, e.title, e.event_time, e.end_time
         FROM polls p JOIN events e ON p.event_id = e.id
@@ -127,7 +135,7 @@ function buildDescription() {
         ORDER BY p.event_date ASC, e.event_time ASC
     `).all();
     const upcomingEvents = upcomingCandidates.filter(p => {
-        if (shownIds.has(p.id)) return false;
+        if (allShownIds.has(p.id)) return false;
         const relevantTime = p.end_time || p.event_time;
         const eventEnd = parseBerlinDateTime(p.event_date, relevantTime);
         return isNaN(eventEnd.getTime()) || now < eventEnd;
