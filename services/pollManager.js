@@ -6,6 +6,15 @@ const { generateResultChart } = require('./chartGenerator');
 const { scheduleDescriptionUpdate } = require('./groupDescription');
 const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
 
+// Extract message ID string from WAHA response (handles various response shapes)
+function extractMessageId(result) {
+    const raw = result?.id || result?.key?.id || null;
+    if (raw === null || raw === undefined) return null;
+    if (typeof raw === 'string') return raw;
+    if (typeof raw === 'object') return raw._serialized || raw.id || JSON.stringify(raw);
+    return String(raw);
+}
+
 // In-memory lock to prevent duplicate sends from overlapping scheduler ticks
 const sendingPolls = new Set();
 
@@ -168,7 +177,8 @@ async function sendPoll(pollId) {
     }
 
     // Save message ID and pin the poll
-    const pollMessageId = pollResult?.id || pollResult?.key?.id || null;
+    console.log(`[DEBUG] sendPoll WAHA response: ${JSON.stringify(pollResult).slice(0, 500)}`);
+    const pollMessageId = extractMessageId(pollResult);
     db.prepare('UPDATE poll_responses SET message_sent = 1 WHERE poll_id = ?').run(pollId);
     db.prepare("UPDATE polls SET status = 'active', sent_at = datetime('now'), poll_message_id = ? WHERE id = ?").run(pollMessageId, pollId);
 
@@ -409,7 +419,7 @@ async function postGroupResults(pollId, cancelInfo) {
     const resultResponse = await waha.postResultsToGroup(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, yes, no, maybe, pending, poll.meeting_time, cancelInfo, poll.description);
 
     // Save result message ID and pin it
-    const resultMessageId = resultResponse?.id || resultResponse?.key?.id || null;
+    const resultMessageId = extractMessageId(resultResponse);
 
     // Send chart image to group
     try {
@@ -468,7 +478,7 @@ async function resendPoll(pollId) {
 
     // Send new WhatsApp poll
     const pollResult = await waha.sendPollMessage(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, poll.meeting_time, poll.description);
-    const pollMessageId = pollResult?.id || pollResult?.key?.id || null;
+    const pollMessageId = extractMessageId(pollResult);
 
     db.prepare("UPDATE polls SET poll_message_id = ?, sent_at = datetime('now') WHERE id = ?").run(pollMessageId, pollId);
 
