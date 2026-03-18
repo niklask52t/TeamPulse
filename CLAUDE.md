@@ -28,7 +28,7 @@ TeamPulse/
 ├── services/
 │   ├── waha.js        # WAHA API client (sendPollMessage, sendMessage, sendReminder, sendResultImage, sendMaybeFollowUp, postResultsToGroup, getGroupParticipants, getAllContacts, getGroups, updateGroupDescription)
 │   ├── scheduler.js   # Cron: send/close/archive polls, reminders, group posts
-│   ├── pollManager.js # Poll lifecycle (create, send, processResponse, processReasonMessage, close, extendDeadline)
+│   ├── pollManager.js # Poll lifecycle (create, send, resend, processResponse, processReasonMessage, close, extendDeadline)
 │   ├── groupDescription.js  # Build & update WhatsApp group description (debounced)
 │   ├── chartGenerator.js  # PNG bar chart via @napi-rs/canvas
 │   └── timeUtils.js   # Europe/Berlin timezone helpers
@@ -146,7 +146,8 @@ TeamPulse/
 - Frontend: Stats tab with sortable table + color-coded bar charts per member
 
 ## Group Description Auto-Update
-- `services/groupDescription.js` builds description from: static blocks (above) + next event status + static blocks (below) + footer
+- `services/groupDescription.js` builds description from: static blocks (above) + next event (full detail) + remaining active polls (compact one-liner with emoji counts) + pending poll + static blocks (below) + upcoming events + footer
+- Only 1 active poll shown with full vote breakdown (MAX_ACTIVE_IN_DESC=1), remaining active polls shown as compact summary: `🗳 Title – Date, Time — ✅X ❌X 🤷X`
 - Footer: "Powered by TeamPulse by Niklas Kronig" + contact note
 - Updated via `PUT /api/{session}/groups/{groupId}/description` (WAHA)
 - **Debounced** — 15s for votes/poll changes, 120s for text block CRUD; "In WhatsApp aktualisieren" button for immediate push

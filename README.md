@@ -31,6 +31,8 @@ WhatsApp-basiertes Anwesenheits-Management für Teams. Erstelle Trainings, Turni
   - Start-Erinnerung: Standard 60 Min vor Event an alle Zusager (privat, mit Event-Name + dynamischer Zeitangabe)
 - **Zu-spät-Benachrichtigung**: Wer nach Fristablauf abstimmt, wird per PN informiert dass die Abstimmung beendet ist
 - **Manuelle Stimmkorrektur**: Admin kann Stimmen im Dashboard ändern (auch bei archivierten Umfragen) — Mitglied wird per PN benachrichtigt, Statistiken werden aktualisiert
+- **Neu senden (Reset)**: Aktive Umfragen können komplett zurückgesetzt und als neue WhatsApp-Umfrage neu gesendet werden — alle bisherigen Stimmen werden gelöscht
+- **Kompakte Umfrage-Übersicht**: In der Gruppenbeschreibung wird das nächste Event voll detailliert angezeigt, weitere aktive Umfragen als kompakter Einzeiler mit Emoji-Counts (✅X ❌X 🤷X)
 
 ## Tech Stack
 
