@@ -6,6 +6,9 @@ const { generateResultChart } = require('./chartGenerator');
 const { scheduleDescriptionUpdate } = require('./groupDescription');
 const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
 
+// In-memory lock to prevent duplicate sends from overlapping scheduler ticks
+const sendingPolls = new Set();
+
 // Sync group participants from WAHA into the local contacts table
 async function syncGroupParticipants() {
     if (!GROUP_CHAT_ID) {
@@ -129,12 +132,12 @@ async function sendPoll(pollId) {
     if (!poll) throw new Error(`Poll ${pollId} not found`);
     if (poll.status === 'active') throw new Error('Umfrage wurde bereits gesendet');
     if (poll.status === 'closed') throw new Error('Umfrage ist bereits geschlossen');
-    if (poll.status === 'sending') throw new Error('Umfrage wird gerade gesendet');
+    if (sendingPolls.has(pollId)) throw new Error('Umfrage wird gerade gesendet');
 
     if (!GROUP_CHAT_ID) throw new Error('GROUP_CHAT_ID not configured');
 
-    // Mark as sending immediately to prevent duplicate sends from overlapping scheduler ticks
-    db.prepare("UPDATE polls SET status = 'sending' WHERE id = ? AND status = 'pending'").run(pollId);
+    // Lock in memory to prevent duplicate sends from overlapping scheduler ticks
+    sendingPolls.add(pollId);
 
     // Sync latest group members before sending
     await syncGroupParticipants();
@@ -159,8 +162,8 @@ async function sendPoll(pollId) {
     try {
         pollResult = await waha.sendPollMessage(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, poll.meeting_time, poll.description);
     } catch (err) {
-        // Rollback to pending so scheduler can retry next minute
-        db.prepare("UPDATE polls SET status = 'pending' WHERE id = ? AND status = 'sending'").run(pollId);
+        // Release lock so scheduler can retry next minute
+        sendingPolls.delete(pollId);
         throw err;
     }
 
@@ -173,6 +176,7 @@ async function sendPoll(pollId) {
         waha.pinMessage(GROUP_CHAT_ID, pollMessageId)
             .catch(e => console.error('[ERROR] pinMessage poll:', e.message));
     }
+    sendingPolls.delete(pollId);
     console.log(`[INFO] Poll ${pollId} sent to group ${GROUP_CHAT_ID}`);
     scheduleDescriptionUpdate();
 }

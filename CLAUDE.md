@@ -63,7 +63,7 @@ TeamPulse/
 
 ## Poll Lifecycle
 1. **pending** → created (immediately when event is created, for both recurring and one-off), not yet sent
-1.5. **sending** → transitional state while WAHA call is in progress (prevents duplicate sends from overlapping scheduler ticks)
+1.5. **sending** → in-memory lock (not in DB) while WAHA call is in progress (prevents duplicate sends from overlapping scheduler ticks)
 2. **active** → sent to group via WhatsApp, collecting responses
 3. **closed** → deadline passed (auto by scheduler) or manually closed
 4. **archived** → 24h after event ends, moved to archive

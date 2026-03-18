@@ -18,11 +18,13 @@ async function loadPolls() {
     const polls = await res.json();
     const list = document.getElementById('polls-list');
 
-    const statusLabels = { pending: 'Ausstehend', active: 'Aktiv', closed: 'Geschlossen' };
+    const statusLabels = { pending: 'Ausstehend', active: 'Aktiv', closed: 'Geschlossen', sending: 'Wird gesendet' };
 
-    const activePending = polls.filter(p => !p.archived && p.status === 'pending');
-    const activeNonPending = polls.filter(p => !p.archived && p.status !== 'pending');
-    const archived = polls.filter(p => p.archived);
+    const sortAsc = (a, b) => (a.event_date + a.event_time).localeCompare(b.event_date + b.event_time);
+    const sortDesc = (a, b) => (b.event_date + b.event_time).localeCompare(a.event_date + a.event_time);
+    const activePending = polls.filter(p => !p.archived && p.status === 'pending').sort(sortAsc);
+    const activeNonPending = polls.filter(p => !p.archived && p.status !== 'pending').sort(sortAsc);
+    const archived = polls.filter(p => p.archived).sort(sortDesc);
 
     const renderPollCard = (p) => `
         <div class="card" style="cursor:pointer" id="poll-card-${p.id}" onclick="togglePollDetail(${p.id})">
