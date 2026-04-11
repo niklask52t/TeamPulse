@@ -293,3 +293,6 @@ npm run dev
 ## Lizenz
 
 MIT
+
+---
+_Last reviewed: 2026-04-11_
