@@ -10,11 +10,46 @@ const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
 // Always returns a string or null — never undefined or objects
 function extractMessageId(result) {
     if (!result) return null;
-    const raw = result.id || result.key?.id || null;
+    const raw = result.id || result.key?.id || result.key?._serialized || result._data?.id || null;
     if (raw == null) return null;
     if (typeof raw === 'string') return raw;
     if (typeof raw === 'object') return String(raw._serialized || raw.id || JSON.stringify(raw));
     return String(raw);
+}
+
+function normalizeMessageId(id) {
+    if (!id) return '';
+    const text = typeof id === 'string' ? id : String(id._serialized || id.id || JSON.stringify(id));
+    return text.trim();
+}
+
+function calculatePollSchedule(event, eventDate, deadlineMinutes, sendMinutesBefore) {
+    const eventDateTime = parseBerlinDateTime(eventDate, event.event_time);
+    if (isNaN(eventDateTime.getTime())) {
+        throw new Error(`Invalid event date/time for event ${event.id}: ${eventDate} ${event.event_time}`);
+    }
+
+    let deadline;
+    if (event.poll_deadline_at) {
+        const [dlDate, dlTime] = event.poll_deadline_at.split('T');
+        deadline = parseBerlinDateTime(dlDate, dlTime || '00:00');
+    } else {
+        deadline = new Date(eventDateTime.getTime() - (deadlineMinutes || event.poll_deadline_minutes || 60) * 60 * 1000);
+    }
+
+    let sendAfter;
+    if (event.poll_send_at) {
+        const [sendDate, sendTime] = event.poll_send_at.split('T');
+        sendAfter = parseBerlinDateTime(sendDate, sendTime || '00:00');
+    } else {
+        sendAfter = new Date(eventDateTime.getTime() - (sendMinutesBefore || event.poll_send_minutes_before || 1440) * 60 * 1000);
+    }
+
+    if (isNaN(deadline.getTime()) || isNaN(sendAfter.getTime())) {
+        throw new Error(`Invalid poll schedule for event ${event.id}`);
+    }
+
+    return { sendAfter, deadline };
 }
 
 // In-memory lock to prevent duplicate sends from overlapping scheduler ticks
@@ -96,25 +131,7 @@ function createPollForEvent(eventId, eventDate, deadlineMinutes, sendMinutesBefo
     const event = db.prepare('SELECT * FROM events WHERE id = ?').get(eventId);
     if (!event) throw new Error(`Event ${eventId} not found`);
 
-    const eventDateTime = parseBerlinDateTime(eventDate, event.event_time);
-
-    // Fixed deadline date takes precedence over minutes-before
-    let deadline;
-    if (event.poll_deadline_at) {
-        const [dlDate, dlTime] = event.poll_deadline_at.split('T');
-        deadline = parseBerlinDateTime(dlDate, dlTime || '00:00');
-    } else {
-        deadline = new Date(eventDateTime.getTime() - (deadlineMinutes || 60) * 60 * 1000);
-    }
-
-    // Fixed send date takes precedence over minutes-before
-    let sendAfter;
-    if (event.poll_send_at) {
-        const [sendDate, sendTime] = event.poll_send_at.split('T');
-        sendAfter = parseBerlinDateTime(sendDate, sendTime || '00:00');
-    } else {
-        sendAfter = new Date(eventDateTime.getTime() - (sendMinutesBefore || event.poll_send_minutes_before || 1440) * 60 * 1000);
-    }
+    const { sendAfter, deadline } = calculatePollSchedule(event, eventDate, deadlineMinutes, sendMinutesBefore);
 
     const result = db.prepare(`
         INSERT INTO polls (event_id, event_date, send_after, deadline, status)
@@ -147,50 +164,43 @@ async function sendPoll(pollId) {
 
     if (!GROUP_CHAT_ID) throw new Error('GROUP_CHAT_ID not configured');
 
-    // Lock in memory to prevent duplicate sends from overlapping scheduler ticks
     sendingPolls.add(pollId);
-
-    // Sync latest group members before sending
-    await syncGroupParticipants();
-
-    // Add any new contacts (synced after poll creation) as pending responses
-    const existingContactIds = db.prepare(`
-        SELECT contact_id FROM poll_responses WHERE poll_id = ?
-    `).all(pollId).map(r => r.contact_id);
-
-    const allContacts = db.prepare('SELECT * FROM contacts').all();
-    const insertResponse = db.prepare(`
-        INSERT OR IGNORE INTO poll_responses (poll_id, contact_id) VALUES (?, ?)
-    `);
-    for (const c of allContacts) {
-        if (!existingContactIds.includes(c.id)) {
-            insertResponse.run(pollId, c.id);
-        }
-    }
-
-    // Send native WhatsApp poll to group
-    let pollResult;
     try {
-        pollResult = await waha.sendPollMessage(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, poll.meeting_time, poll.description);
-    } catch (err) {
-        // Release lock so scheduler can retry next minute
+        // Sync latest group members before sending
+        await syncGroupParticipants();
+
+        // Add any new contacts (synced after poll creation) as pending responses
+        const existingContactIds = new Set(db.prepare(`
+            SELECT contact_id FROM poll_responses WHERE poll_id = ?
+        `).all(pollId).map(r => r.contact_id));
+
+        const allContacts = db.prepare('SELECT * FROM contacts').all();
+        const insertResponse = db.prepare(`
+            INSERT OR IGNORE INTO poll_responses (poll_id, contact_id) VALUES (?, ?)
+        `);
+        for (const c of allContacts) {
+            if (!existingContactIds.has(c.id)) {
+                insertResponse.run(pollId, c.id);
+            }
+        }
+
+        const pollResult = await waha.sendPollMessage(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, poll.meeting_time, poll.description);
+
+        // Save message ID and pin the poll
+        console.log(`[DEBUG] sendPoll WAHA response: ${JSON.stringify(pollResult).slice(0, 500)}`);
+        const pollMessageId = extractMessageId(pollResult);
+        db.prepare('UPDATE poll_responses SET message_sent = 1 WHERE poll_id = ?').run(pollId);
+        db.prepare("UPDATE polls SET status = 'active', sent_at = datetime('now'), poll_message_id = ? WHERE id = ?").run(pollMessageId, pollId);
+
+        if (pollMessageId) {
+            waha.pinMessage(GROUP_CHAT_ID, pollMessageId)
+                .catch(e => console.error('[ERROR] pinMessage poll:', e.message));
+        }
+        console.log(`[INFO] Poll ${pollId} sent to group ${GROUP_CHAT_ID}`);
+        scheduleDescriptionUpdate();
+    } finally {
         sendingPolls.delete(pollId);
-        throw err;
     }
-
-    // Save message ID and pin the poll
-    console.log(`[DEBUG] sendPoll WAHA response: ${JSON.stringify(pollResult).slice(0, 500)}`);
-    const pollMessageId = extractMessageId(pollResult);
-    db.prepare('UPDATE poll_responses SET message_sent = 1 WHERE poll_id = ?').run(pollId);
-    db.prepare("UPDATE polls SET status = 'active', sent_at = datetime('now'), poll_message_id = ? WHERE id = ?").run(pollMessageId, pollId);
-
-    if (pollMessageId) {
-        waha.pinMessage(GROUP_CHAT_ID, pollMessageId)
-            .catch(e => console.error('[ERROR] pinMessage poll:', e.message));
-    }
-    sendingPolls.delete(pollId);
-    console.log(`[INFO] Poll ${pollId} sent to group ${GROUP_CHAT_ID}`);
-    scheduleDescriptionUpdate();
 }
 
 async function processResponse(phone, text, pollMessageId) {
@@ -273,19 +283,28 @@ async function processResponse(phone, text, pollMessageId) {
     // Find the correct active poll — match by poll message ID first, fallback to earliest deadline
     let activePoll = null;
     if (pollMessageId) {
+        const normalizedPollMessageId = normalizeMessageId(pollMessageId);
         activePoll = db.prepare(`
             SELECT p.id as poll_id, p.event_date, e.title as event_title
             FROM polls p JOIN events e ON p.event_id = e.id
             WHERE p.status = 'active' AND p.poll_message_id = ?
-        `).get(pollMessageId);
+        `).get(normalizedPollMessageId);
+
+        if (!activePoll) {
+            const activePolls = db.prepare(`
+                SELECT p.id as poll_id, p.event_date, p.poll_message_id, e.title as event_title
+                FROM polls p JOIN events e ON p.event_id = e.id
+                WHERE p.status = 'active' AND p.poll_message_id IS NOT NULL
+            `).all();
+            activePoll = activePolls.find(p => normalizeMessageId(p.poll_message_id) === normalizedPollMessageId) || null;
+        }
     }
     if (!activePoll) {
-        activePoll = db.prepare(`
-            SELECT p.id as poll_id, p.event_date, e.title as event_title
-            FROM polls p JOIN events e ON p.event_id = e.id
-            WHERE p.status = 'active'
-            ORDER BY p.deadline ASC LIMIT 1
-        `).get();
+        const activeCount = db.prepare("SELECT COUNT(*) as cnt FROM polls WHERE status = 'active'").get().cnt;
+        if (activeCount > 0) {
+            console.warn(`[WARN] Vote ignored because poll message ID was missing or unknown. phone=${phone} pollMessageId=${pollMessageId || 'none'} option=${text}`);
+            return null;
+        }
     }
 
     if (!activePoll) {
@@ -407,7 +426,8 @@ async function sendDeadlineReminder(pollId, isSecond) {
 }
 
 // Post results to group WITHOUT closing the poll or changing status
-async function postGroupResults(pollId, cancelInfo) {
+async function postGroupResults(pollId, cancelInfo, options = {}) {
+    const markPosted = options.markPosted !== false;
     const poll = db.prepare(`
         SELECT p.*, e.title, e.description, e.event_time, e.end_time, e.meeting_time, e.auto_cancel, e.min_participants
         FROM polls p JOIN events e ON p.event_id = e.id
@@ -443,13 +463,45 @@ async function postGroupResults(pollId, cancelInfo) {
     }
 
     // Only mark as posted (don't change status — use closePoll() for that)
-    db.prepare('UPDATE polls SET group_posted = 1, result_message_id = ? WHERE id = ?').run(resultMessageId, pollId);
+    if (markPosted) {
+        db.prepare('UPDATE polls SET group_posted = 1, result_message_id = ? WHERE id = ?').run(resultMessageId, pollId);
+    } else if (resultMessageId) {
+        db.prepare('UPDATE polls SET result_message_id = ? WHERE id = ?').run(resultMessageId, pollId);
+    }
 
     if (resultMessageId) {
         waha.pinMessage(GROUP_CHAT_ID, resultMessageId)
             .catch(e => console.error('[ERROR] pinMessage result:', e.message));
     }
     scheduleDescriptionUpdate();
+}
+
+function refreshOpenPollScheduleForEvent(eventId) {
+    const event = db.prepare('SELECT * FROM events WHERE id = ?').get(eventId);
+    if (!event) throw new Error(`Event ${eventId} not found`);
+
+    const polls = db.prepare(`
+        SELECT * FROM polls
+        WHERE event_id = ? AND archived = 0 AND status IN ('pending', 'active')
+    `).all(eventId);
+
+    const update = db.prepare(`
+        UPDATE polls
+        SET event_date = ?, send_after = ?, deadline = ?, reminder_sent = 0, reminder_2_sent = 0, event_reminder_sent = 0
+        WHERE id = ?
+    `);
+
+    let updated = 0;
+    for (const poll of polls) {
+        const eventDate = event.recurring ? poll.event_date : event.event_date;
+        if (!eventDate) continue;
+        const { sendAfter, deadline } = calculatePollSchedule(event, eventDate, event.poll_deadline_minutes, event.poll_send_minutes_before);
+        update.run(eventDate, sendAfter.toISOString(), deadline.toISOString(), poll.id);
+        updated++;
+    }
+
+    if (updated > 0) scheduleDescriptionUpdate();
+    return updated;
 }
 
 // Reset an active poll: clear all responses, re-send to group as new WhatsApp poll
@@ -564,6 +616,7 @@ module.exports = {
     syncGroupParticipants,
     createPollForEvent,
     sendPoll,
+    refreshOpenPollScheduleForEvent,
     processResponse,
     processReasonMessage,
     sendDeadlineReminder,

@@ -2,6 +2,21 @@
 
 const CHANGELOG = [
     {
+        version: '2.3.0',
+        date: '2026-04-20',
+        changes: [
+            { type: 'fix', text: 'WAHA-Aufrufe haben jetzt Timeouts, damit der Bot bei hängender WAHA-Verbindung nicht dauerhaft stehen bleibt' },
+            { type: 'fix', text: 'Scheduler läuft nicht mehr parallel überlappend; lange Läufe überspringen den nächsten Tick sauber statt Aktionen doppelt auszuführen' },
+            { type: 'fix', text: 'Poll-Votes werden robuster dem echten Voter und der richtigen WhatsApp-Gruppe zugeordnet' },
+            { type: 'fix', text: 'Stimmen ohne eindeutige Poll-Message-ID werden nicht mehr automatisch der falschen aktiven Umfrage zugeschlagen' },
+            { type: 'fix', text: 'Manuelles Ergebnisposten während aktiver Umfragen blockiert den späteren finalen Ergebnispost nicht mehr' },
+            { type: 'fix', text: 'Event-Änderungen aktualisieren offene Poll-Zeitpunkte, Deadlines und Erinnerungen passend mit' },
+            { type: 'improvement', text: 'UI lädt Tabs beim Start nicht mehr doppelt und öffnet Umfragen aus dem Dashboard zuverlässig' },
+            { type: 'improvement', text: 'Kaputte Zeichencodierung in UI, Changelog, README und Bot-Nachrichten repariert' },
+            { type: 'fix', text: 'npm-Abhängigkeiten aktualisiert; npm audit meldet keine bekannten Schwachstellen mehr' },
+        ]
+    },
+    {
         version: '2.2.0',
         date: '2026-03-18',
         changes: [

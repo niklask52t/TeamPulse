@@ -57,7 +57,7 @@ WhatsApp-basiertes Anwesenheits-Management für Teams. Erstelle Trainings, Turni
 |---|---|---|
 | `PORT` | Server-Port | `3000` |
 | `SESSION_SECRET` | Session-Verschlüsselung (zufälliger String) | `a1b2c3d4e5...` |
-| `WAHA_API_URL` | URL der WAHA-Instanz | `http://localhost:3000` |
+| `WAHA_API_URL` | URL der WAHA-Instanz | `http://localhost:3001` |
 | `WAHA_API_KEY` | API-Key für WAHA | `your-api-key` |
 | `WAHA_SESSION` | WAHA Session-Name | `default` |
 | `GROUP_CHAT_ID` | WhatsApp Gruppen-ID für Ergebnis-Posts | `120363xxx@g.us` |
@@ -128,13 +128,13 @@ Inhalt:
 ```env
 PORT=3000
 SESSION_SECRET=HIER_EINEN_LANGEN_ZUFAELLIGEN_STRING_EINSETZEN
-WAHA_API_URL=http://localhost:3000
+WAHA_API_URL=http://localhost:3001
 WAHA_API_KEY=dein-waha-api-key
 WAHA_SESSION=default
 GROUP_CHAT_ID=120363xxx@g.us
 ```
 
-> **Tipp:** `WAHA_API_URL` ist die URL der laufenden WAHA-Instanz. Wenn WAHA auf dem gleichen Server läuft, trägst du dort deren IP/Port ein (z.B. `http://localhost:3000`).
+> **Tipp:** `WAHA_API_URL` ist die URL der laufenden WAHA-Instanz. TeamPulse und WAHA dürfen nicht denselben Port belegen. Wenn TeamPulse auf `3000` läuft, nutze für WAHA z.B. `http://localhost:3001` oder die echte IP/den echten Port deiner WAHA-Instanz.
 
 #### GROUP_CHAT_ID herausfinden
 

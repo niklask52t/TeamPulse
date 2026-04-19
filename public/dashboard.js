@@ -84,7 +84,7 @@ function renderDashboard(data) {
                 ? `<span class="dashboard-poll-cancel ${p.yes_count < p.min_participants ? 'dashboard-poll-cancel--danger' : 'dashboard-poll-cancel--ok'}">${p.yes_count}/${p.min_participants} min.</span>`
                 : '';
             pollsHtml += `
-                <div class="dashboard-poll-card" onclick="activateTab('polls');togglePollDetail(${p.id})">
+                <div class="dashboard-poll-card" onclick="openPollFromDashboard(${p.id})">
                     <div class="dashboard-poll-header">
                         <strong>${esc(p.title)}</strong>
                         ${cancelBadge}

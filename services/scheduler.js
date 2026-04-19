@@ -22,7 +22,15 @@ function addDays(dateStr, days) {
 }
 
 function startScheduler() {
+    let isRunning = false;
+
     cron.schedule('* * * * *', async () => {
+        if (isRunning) {
+            console.warn('[WARN] Scheduler tick skipped because previous tick is still running');
+            return;
+        }
+
+        isRunning = true;
         try {
             await checkAndSendPolls();
             await checkDeadlineReminders();
@@ -35,6 +43,8 @@ function startScheduler() {
             await checkDescriptionEventSwitch();
         } catch (err) {
             console.error('[ERROR] Scheduler:', err);
+        } finally {
+            isRunning = false;
         }
     });
 

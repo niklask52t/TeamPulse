@@ -1,6 +1,7 @@
-const WAHA_API_URL = process.env.WAHA_API_URL || 'http://localhost:3000';
+const WAHA_API_URL = process.env.WAHA_API_URL || 'http://localhost:3001';
 const WAHA_API_KEY = process.env.WAHA_API_KEY || '';
 const WAHA_SESSION = process.env.WAHA_SESSION || 'default';
+const WAHA_TIMEOUT_MS = Number(process.env.WAHA_TIMEOUT_MS || 20000);
 
 const headers = {
     'Content-Type': 'application/json',
@@ -10,6 +11,25 @@ const headers = {
 const getHeaders = {
     ...(WAHA_API_KEY && { 'X-Api-Key': WAHA_API_KEY }),
 };
+
+async function wahaFetch(pathOrUrl, options = {}) {
+    const controller = new AbortController();
+    const timeoutMs = options.timeoutMs || WAHA_TIMEOUT_MS;
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    const url = pathOrUrl.startsWith('http') ? pathOrUrl : `${WAHA_API_URL}${pathOrUrl}`;
+
+    try {
+        const { timeoutMs: _timeoutMs, ...fetchOptions } = options;
+        return await fetch(url, { ...fetchOptions, signal: controller.signal });
+    } catch (err) {
+        if (err.name === 'AbortError') {
+            throw new Error(`WAHA request timed out after ${timeoutMs}ms: ${options.method || 'GET'} ${url}`);
+        }
+        throw err;
+    } finally {
+        clearTimeout(timeout);
+    }
+}
 
 // Format YYYY-MM-DD → DD.MM.YYYY (Mo) for human-readable WhatsApp messages
 function fmtDate(dateStr) {
@@ -22,7 +42,7 @@ function fmtDate(dateStr) {
 
 async function sendMessage(chatId, text) {
     const url = `${WAHA_API_URL}/api/sendText`;
-    const res = await fetch(url, {
+    const res = await wahaFetch(url, {
         method: 'POST',
         headers,
         body: JSON.stringify({ session: WAHA_SESSION, chatId, text }),
@@ -42,7 +62,7 @@ async function sendPollMessage(chatId, eventTitle, eventDate, eventTime, endTime
     if (meetingTime) name += ` (Treffen: ${meetingTime} Uhr)`;
     if (description) name += `\n📝 ${description}`;
     name += '\n\n_🤖 Automatisch generierte Nachricht von TeamPulse_';
-    const res = await fetch(url, {
+    const res = await wahaFetch(url, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -84,11 +104,11 @@ async function sendResultImage(chatId, imageBuffer, caption) {
     form.append('chatId', chatId);
     form.append('caption', caption || '');
     form.append('file', new Blob([imageBuffer], { type: 'image/png' }), 'ergebnis.png');
-    const r1 = await fetch(`${WAHA_API_URL}/api/sendFile`, { method: 'POST', headers: apiKey, body: form });
+    const r1 = await wahaFetch(`/api/sendFile`, { method: 'POST', headers: apiKey, body: form });
     if (r1.ok) return r1.json();
 
     // JSON base64 fallback
-    const r2 = await fetch(`${WAHA_API_URL}/api/sendFile`, {
+    const r2 = await wahaFetch(`/api/sendFile`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -239,7 +259,7 @@ async function sendTooLateNotification(chatId, eventTitle, eventDate) {
 // Get all participants of a group
 async function getGroupParticipants(groupId) {
     const url = `${WAHA_API_URL}/api/${WAHA_SESSION}/groups/${encodeURIComponent(groupId)}/participants/v2`;
-    const res = await fetch(url, { headers: getHeaders });
+    const res = await wahaFetch(url, { headers: getHeaders });
     if (!res.ok) {
         const body = await res.text();
         throw new Error(`WAHA getGroupParticipants failed (${res.status}): ${body}`);
@@ -252,7 +272,7 @@ async function getGroupParticipants(groupId) {
 // Get all contacts known to WAHA (for name resolution)
 async function getAllContacts() {
     const url = `${WAHA_API_URL}/api/contacts/all?session=${WAHA_SESSION}`;
-    const res = await fetch(url, { headers: getHeaders });
+    const res = await wahaFetch(url, { headers: getHeaders });
     if (!res.ok) {
         const body = await res.text();
         throw new Error(`WAHA getAllContacts failed (${res.status}): ${body}`);
@@ -264,7 +284,7 @@ async function getAllContacts() {
 // Get all groups the session is part of
 async function getGroups() {
     const url = `${WAHA_API_URL}/api/${WAHA_SESSION}/groups`;
-    const res = await fetch(url, { headers: getHeaders });
+    const res = await wahaFetch(url, { headers: getHeaders });
     if (!res.ok) {
         const body = await res.text();
         throw new Error(`WAHA getGroups failed (${res.status}): ${body}`);
@@ -282,7 +302,7 @@ async function updateGroupDescription(groupId, description) {
         // Preload group metadata into whatsapp-web.js Store before each attempt
         try {
             const preloadUrl = `${WAHA_API_URL}/api/${WAHA_SESSION}/groups/${groupId}`;
-            await fetch(preloadUrl, { headers: getHeaders });
+            await wahaFetch(preloadUrl, { headers: getHeaders });
         } catch { /* ignore preload errors */ }
 
         // Wait a bit after preload so WAHA's Store can cache the metadata
@@ -290,7 +310,7 @@ async function updateGroupDescription(groupId, description) {
             await new Promise(r => setTimeout(r, attempt * 3000));
         }
 
-        const res = await fetch(url, {
+        const res = await wahaFetch(url, {
             method: 'PUT',
             headers,
             body: JSON.stringify({ description }),
@@ -313,7 +333,7 @@ async function updateGroupDescription(groupId, description) {
 async function pinMessage(chatId, messageId) {
     if (!messageId) { console.warn('[WARN] pinMessage skipped — no messageId'); return null; }
     const url = `${WAHA_API_URL}/api/${WAHA_SESSION}/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}/pin`;
-    const res = await fetch(url, { method: 'PUT', headers, body: JSON.stringify({ duration: 0 }) });
+    const res = await wahaFetch(url, { method: 'PUT', headers, body: JSON.stringify({ duration: 0 }) });
     if (!res.ok) {
         const body = await res.text();
         console.warn(`[WARN] pinMessage failed (${res.status}): ${body.slice(0, 200)}`);
@@ -325,7 +345,7 @@ async function pinMessage(chatId, messageId) {
 async function unpinMessage(chatId, messageId) {
     if (!messageId) return null;
     const url = `${WAHA_API_URL}/api/${WAHA_SESSION}/chats/${encodeURIComponent(chatId)}/messages/${encodeURIComponent(messageId)}/pin`;
-    const res = await fetch(url, { method: 'DELETE', headers });
+    const res = await wahaFetch(url, { method: 'DELETE', headers });
     if (!res.ok) {
         const body = await res.text();
         console.warn(`[WARN] unpinMessage failed (${res.status}): ${body.slice(0, 200)}`);
@@ -344,7 +364,7 @@ async function getContactById(contactId) {
     ];
     for (const url of endpoints.slice(0, 2)) {
         try {
-            const res = await fetch(url, { headers: getHeaders });
+            const res = await wahaFetch(url, { headers: getHeaders });
             if (res.ok) {
                 const data = await res.json();
                 if (data && (data.id || data.phone || data.number)) return data;
@@ -353,7 +373,7 @@ async function getContactById(contactId) {
     }
     // Try check-exists with POST
     try {
-        const res = await fetch(endpoints[2], {
+        const res = await wahaFetch(endpoints[2], {
             method: 'POST',
             headers,
             body: JSON.stringify({ session: WAHA_SESSION, phone: contactId }),

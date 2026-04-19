@@ -86,6 +86,11 @@ async function togglePollDetail(id) {
     if (chevron) chevron.innerHTML = 'Details &#x25B2;';
 }
 
+async function openPollFromDashboard(id) {
+    await activateTab('polls');
+    await togglePollDetail(id);
+}
+
 async function renderPollDetail(id) {
     const detail = document.getElementById(`poll-detail-${id}`);
     const res = await apiFetch(`${API}/api/polls/${id}`);

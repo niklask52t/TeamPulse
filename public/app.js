@@ -1,10 +1,12 @@
 // ===== CORE CONFIG =====
 const API = '';
 const TZ = 'Europe/Berlin';
+let headerClockTimer = null;
 
 // ===== DATE / TIME HELPERS =====
 
 function startClock() {
+    if (headerClockTimer) return;
     function tick() {
         document.getElementById('header-clock').textContent = new Date().toLocaleString('de-DE', {
             timeZone: TZ, weekday: 'short', day: '2-digit', month: '2-digit',
@@ -12,7 +14,7 @@ function startClock() {
         });
     }
     tick();
-    setInterval(tick, 1000);
+    headerClockTimer = setInterval(tick, 1000);
 }
 
 // Format minutes as human-readable hours (e.g. 90 → "1.5h", 30 → "30 Min")
@@ -93,11 +95,6 @@ function showApp(username) {
     document.getElementById('app').classList.remove('hidden');
     document.getElementById('current-user').textContent = username;
     startClock();
-    loadDashboard();
-    loadEvents();
-    loadPolls();
-    loadStats();
-    loadDescriptionBlocks();
     renderChangelog();
     apiFetch(`${API}/api/config`).then(r => r.json()).then(cfg => {
         if (cfg.devMode) {
@@ -180,16 +177,16 @@ async function apiFetch(url, options) {
 
 // ===== NAVIGATION =====
 
-function activateTab(tabId) {
+async function activateTab(tabId) {
     if (['wiki', 'changelog', 'contacts'].includes(tabId)) tabId = 'dashboard';
     if (!checkDirtyAndClose()) return;
     hideAllForms();
     // Reload tab data on every switch to avoid stale/empty content
-    if (tabId === 'dashboard') loadDashboard();
-    if (tabId === 'events') loadEvents();
-    if (tabId === 'polls') loadPolls();
-    if (tabId === 'stats') loadStats();
-    if (tabId === 'description' && typeof loadDescriptionBlocks === 'function') loadDescriptionBlocks();
+    if (tabId === 'dashboard') await loadDashboard();
+    if (tabId === 'events') await loadEvents();
+    if (tabId === 'polls') await loadPolls();
+    if (tabId === 'stats') await loadStats();
+    if (tabId === 'description' && typeof loadDescriptionBlocks === 'function') await loadDescriptionBlocks();
 
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));

@@ -170,6 +170,14 @@ router.put('/:id', (req, res) => {
 
     if (result.changes === 0) return res.status(404).json({ error: 'Event nicht gefunden' });
     const event = db.prepare('SELECT * FROM events WHERE id = ?').get(req.params.id);
+    try {
+        const updatedPolls = pollManager.refreshOpenPollScheduleForEvent(event.id);
+        if (updatedPolls > 0) {
+            console.log(`[INFO] Refreshed schedule for ${updatedPolls} open poll(s) after event ${event.id} update`);
+        }
+    } catch (err) {
+        console.error('[ERROR] refreshOpenPollScheduleForEvent:', err.message);
+    }
     res.json(event);
 });
 

@@ -75,7 +75,8 @@ router.post('/:id/send-reminder', async (req, res) => {
 // POST manually post results to group (does NOT close the poll)
 router.post('/:id/post-group', async (req, res) => {
     try {
-        await pollManager.postGroupResults(Number(req.params.id));
+        const poll = db.prepare('SELECT status FROM polls WHERE id = ?').get(Number(req.params.id));
+        await pollManager.postGroupResults(Number(req.params.id), null, { markPosted: poll?.status !== 'active' });
         res.json({ success: true });
     } catch (err) {
         res.status(400).json({ error: err.message });
@@ -174,8 +175,25 @@ router.post('/webhook', async (req, res) => {
     // sender can be a string JID ("49123@c.us") OR an object {id, name, ...} depending on WAHA version
     function resolvePhone(raw) {
         if (!raw) return '';
-        if (typeof raw === 'object') return raw.id || raw.jid || raw.phone || '';
+        if (typeof raw === 'object') return raw.id || raw._serialized || raw.jid || raw.phone || '';
         return String(raw);
+    }
+
+    function resolveVoter(payload) {
+        const candidates = [
+            payload.vote?.voter,
+            payload.voter,
+            payload.vote?.participant,
+            payload.participant,
+            payload.sender,
+            payload.vote?.from,
+        ];
+        return candidates.map(resolvePhone).find(v => v && !v.endsWith('@g.us')) || '';
+    }
+
+    function resolvePollGroup(payload) {
+        const candidates = [payload.from, payload.chatId, payload.poll?.from, payload.poll?.chatId, payload.vote?.from];
+        return candidates.map(resolvePhone).find(v => v && v.endsWith('@g.us')) || '';
     }
 
     const senderPhone = resolvePhone(payload?.sender);
@@ -214,14 +232,13 @@ router.post('/webhook', async (req, res) => {
         console.log(`[WEBHOOK] poll.vote voter: ${JSON.stringify(payload.vote?.voter || payload.voter || 'none')}`);
         console.log(`[WEBHOOK] poll.vote from/sender/participant: from=${payload.from} sender=${JSON.stringify(payload.sender)} participant=${payload.participant || payload.vote?.participant}`);
 
-        // Try all known WAHA payload shapes for voter phone
-        const phone = senderPhone || fromPhone
-            || resolvePhone(payload.vote?.voter)
-            || resolvePhone(payload.voter)
-            || resolvePhone(payload.vote?.from)
-            || resolvePhone(payload.participant)
-            || resolvePhone(payload.vote?.participant)
-            || '';
+        const groupId = resolvePollGroup(payload);
+        if (GROUP_CHAT_ID && groupId && groupId !== GROUP_CHAT_ID) {
+            console.log(`[VOTE] poll.vote ignored from other group: ${groupId}`);
+            return res.json({ ok: true });
+        }
+
+        const phone = resolveVoter(payload);
 
         // Try all known shapes for selected options
         const selectedOptions = payload.vote?.selectedOptions
@@ -232,8 +249,8 @@ router.post('/webhook', async (req, res) => {
             || [];
 
         // Extract poll message ID to match vote to the correct poll
-        const pollMsgId = payload.vote?.pollMessageId || payload.poll?.id || payload.poll?.key?.id
-            || payload.vote?.id || payload.pollMessageId || null;
+        const pollMsgId = payload.vote?.pollMessageId || payload.vote?.parentMessageId || payload.poll?.id || payload.poll?.key?.id
+            || payload.poll?.key?._serialized || payload.pollMessageId || payload.messageId || null;
         const pollMsgIdStr = pollMsgId && typeof pollMsgId === 'object'
             ? (pollMsgId._serialized || pollMsgId.id || null) : (pollMsgId || null);
 
