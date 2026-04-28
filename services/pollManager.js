@@ -23,6 +23,41 @@ function normalizeMessageId(id) {
     return text.trim();
 }
 
+function collectMessageIdCandidates(value, out = new Set()) {
+    if (value == null) return out;
+    if (Array.isArray(value)) {
+        for (const item of value) collectMessageIdCandidates(item, out);
+        return out;
+    }
+    if (typeof value === 'object') {
+        collectMessageIdCandidates(value.id, out);
+        collectMessageIdCandidates(value._serialized, out);
+        collectMessageIdCandidates(value.key?.id, out);
+        collectMessageIdCandidates(value.key?._serialized, out);
+        collectMessageIdCandidates(value.messageId, out);
+        collectMessageIdCandidates(value.pollMessageId, out);
+        collectMessageIdCandidates(value.parentMessageId, out);
+        return out;
+    }
+
+    const text = String(value).trim();
+    if (!text) return out;
+    out.add(text);
+
+    const loose = text.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+    if (loose) out.add(`loose:${loose}`);
+    return out;
+}
+
+function messageIdsMatch(left, right) {
+    const leftSet = collectMessageIdCandidates(left);
+    const rightSet = collectMessageIdCandidates(right);
+    for (const candidate of leftSet) {
+        if (rightSet.has(candidate)) return true;
+    }
+    return false;
+}
+
 function calculatePollSchedule(event, eventDate, deadlineMinutes, sendMinutesBefore) {
     const eventDateTime = parseBerlinDateTime(eventDate, event.event_time);
     if (isNaN(eventDateTime.getTime())) {
@@ -283,26 +318,35 @@ async function processResponse(phone, text, pollMessageId) {
     // Find the correct active poll — match by poll message ID first, fallback to earliest deadline
     let activePoll = null;
     if (pollMessageId) {
-        const normalizedPollMessageId = normalizeMessageId(pollMessageId);
-        activePoll = db.prepare(`
-            SELECT p.id as poll_id, p.event_date, e.title as event_title
+        const incomingId = Array.isArray(pollMessageId) ? pollMessageId.find(Boolean) : pollMessageId;
+        const normalizedPollMessageId = normalizeMessageId(incomingId);
+        const activePolls = db.prepare(`
+            SELECT p.id as poll_id, p.event_date, p.poll_message_id, p.sent_at, e.title as event_title
             FROM polls p JOIN events e ON p.event_id = e.id
-            WHERE p.status = 'active' AND p.poll_message_id = ?
-        `).get(normalizedPollMessageId);
+            WHERE p.status = 'active'
+            ORDER BY datetime(COALESCE(p.sent_at, '1970-01-01T00:00:00Z')) DESC, p.id DESC
+        `).all();
 
-        if (!activePoll) {
-            const activePolls = db.prepare(`
-                SELECT p.id as poll_id, p.event_date, p.poll_message_id, e.title as event_title
-                FROM polls p JOIN events e ON p.event_id = e.id
-                WHERE p.status = 'active' AND p.poll_message_id IS NOT NULL
-            `).all();
-            activePoll = activePolls.find(p => normalizeMessageId(p.poll_message_id) === normalizedPollMessageId) || null;
+        activePoll = activePolls.find(p => p.poll_message_id && messageIdsMatch(p.poll_message_id, pollMessageId)) || null;
+
+        if (!activePoll && normalizedPollMessageId) {
+            console.warn(`[WARN] No active poll matched incoming pollMessageId=${normalizedPollMessageId}. Active polls: ${activePolls.map(p => `${p.poll_id}:${p.poll_message_id || 'none'}`).join(', ')}`);
         }
     }
     if (!activePoll) {
-        const activeCount = db.prepare("SELECT COUNT(*) as cnt FROM polls WHERE status = 'active'").get().cnt;
-        if (activeCount > 0) {
-            console.warn(`[WARN] Vote ignored because poll message ID was missing or unknown. phone=${phone} pollMessageId=${pollMessageId || 'none'} option=${text}`);
+        const activePolls = db.prepare(`
+            SELECT p.id as poll_id, p.event_date, p.poll_message_id, p.sent_at, e.title as event_title
+            FROM polls p JOIN events e ON p.event_id = e.id
+            WHERE p.status = 'active'
+            ORDER BY datetime(COALESCE(p.sent_at, '1970-01-01T00:00:00Z')) DESC, p.id DESC
+        `).all();
+
+        if (activePolls.length === 1) {
+            activePoll = activePolls[0];
+            console.warn(`[WARN] Vote matched via single-active-poll fallback. phone=${phone} pollId=${activePoll.poll_id} option=${text}`);
+        } else if (activePolls.length > 1) {
+            const incomingId = Array.isArray(pollMessageId) ? pollMessageId.join(' | ') : (pollMessageId || 'none');
+            console.warn(`[WARN] Vote ignored because poll message ID was missing or unknown and ${activePolls.length} active polls exist. phone=${phone} pollMessageId=${incomingId} option=${text}`);
             return null;
         }
     }

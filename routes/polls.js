@@ -196,6 +196,37 @@ router.post('/webhook', async (req, res) => {
         return candidates.map(resolvePhone).find(v => v && v.endsWith('@g.us')) || '';
     }
 
+    function collectPollMessageIds(payload) {
+        const seen = new Set();
+        const values = [
+            payload.vote?.pollMessageId,
+            payload.vote?.parentMessageId,
+            payload.vote?.id,
+            payload.poll?.id,
+            payload.poll?.messageId,
+            payload.poll?.key?.id,
+            payload.poll?.key?._serialized,
+            payload.pollMessageId,
+            payload.messageId,
+            payload.key?.id,
+            payload.key?._serialized,
+        ];
+
+        for (const value of values) {
+            if (value == null) continue;
+            if (typeof value === 'object') {
+                const nested = [value.id, value._serialized, value.key?.id, value.key?._serialized];
+                for (const item of nested) {
+                    if (item) seen.add(String(item));
+                }
+            } else {
+                seen.add(String(value));
+            }
+        }
+
+        return [...seen];
+    }
+
     const senderPhone = resolvePhone(payload?.sender);
     const fromPhone   = resolvePhone(payload?.from);
 
@@ -249,15 +280,12 @@ router.post('/webhook', async (req, res) => {
             || [];
 
         // Extract poll message ID to match vote to the correct poll
-        const pollMsgId = payload.vote?.pollMessageId || payload.vote?.parentMessageId || payload.poll?.id || payload.poll?.key?.id
-            || payload.poll?.key?._serialized || payload.pollMessageId || payload.messageId || null;
-        const pollMsgIdStr = pollMsgId && typeof pollMsgId === 'object'
-            ? (pollMsgId._serialized || pollMsgId.id || null) : (pollMsgId || null);
+        const pollMsgIds = collectPollMessageIds(payload);
 
         if (phone && selectedOptions.length > 0) {
             const optionName = selectedOptions[0]?.name || selectedOptions[0]?.value || selectedOptions[0] || '';
             try {
-                const result = await pollManager.processResponse(phone, optionName, pollMsgIdStr);
+                const result = await pollManager.processResponse(phone, optionName, pollMsgIds);
                 if (result) {
                     console.log(`[VOTE] poll.vote from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
                 } else {

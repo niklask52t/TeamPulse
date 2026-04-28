@@ -2,6 +2,16 @@
 
 const CHANGELOG = [
     {
+        version: '2.3.1',
+        date: '2026-04-28',
+        changes: [
+            { type: 'fix', text: 'Poll-Votes nach manuell frueh gestarteten Umfragen werden jetzt deutlich robuster der richtigen aktiven Umfrage zugeordnet' },
+            { type: 'fix', text: 'Webhook sammelt jetzt mehrere Poll-Message-ID-Kandidaten aus dem WAHA-Payload statt sich auf ein einzelnes Feld zu verlassen' },
+            { type: 'improvement', text: 'Wenn genau eine Umfrage aktiv ist, koennen Votes bei fehlender oder anders serialisierter Poll-ID kontrolliert ueber einen sicheren Fallback trotzdem gezaehlt werden' },
+            { type: 'improvement', text: 'Debug-Logs zeigen jetzt klarer, welche aktive Poll-ID gespeichert war und warum ein eingehender Vote gematcht oder verworfen wurde' },
+        ]
+    },
+    {
         version: '2.3.0',
         date: '2026-04-20',
         changes: [
