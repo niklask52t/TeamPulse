@@ -336,7 +336,7 @@
                     <div class="wiki-section">
                         <h3>Erste Schritte</h3>
                         <p>Standard-Login: <strong>admin / admin</strong> — beim ersten Login muss das Passwort geändert werden.</p>
-                        <p>TeamPulse verbindet sich mit einer WAHA-Instanz (WhatsApp HTTP API) und versendet native WhatsApp-Umfragen in eine konfigurierte Gruppe.</p>
+                        <p>TeamPulse verbindet sich mit einer Evolution-Instanz (WhatsApp HTTP API) und versendet native WhatsApp-Umfragen in eine konfigurierte Gruppe.</p>
                         <p>Teilnehmer werden automatisch aus der WhatsApp-Gruppe synchronisiert — kein manuelles Anlegen von Kontakten nötig.</p>
                     </div>
                     <div class="wiki-section">
@@ -431,26 +431,26 @@
                         </ol>
                         <p><strong>Textblöcke:</strong> Erstelle beliebig viele Blöcke mit Position (oberhalb/unterhalb) und Reihenfolge. Niedrigere Reihenfolge = weiter oben.</p>
                         <p><strong>Vorschau:</strong> Zeigt die aktuelle Beschreibung mit Zeichenzähler (max. 2048 Zeichen).</p>
-                        <p><strong>Voraussetzung:</strong> Der WAHA-Bot muss <strong>Gruppen-Admin</strong> sein, damit die Beschreibung aktualisiert werden kann.</p>
+                        <p><strong>Voraussetzung:</strong> Der Evolution-Bot muss <strong>Gruppen-Admin</strong> sein, damit die Beschreibung aktualisiert werden kann.</p>
                     </div>
                     <div class="wiki-section">
                         <h3>Konfiguration (.env)</h3>
-                        <p><code>WAHA_API_URL</code> — URL der WAHA-Instanz (z.B. http://172.16.80.27:3000)</p>
-                        <p><code>WAHA_API_KEY</code> — API-Key für WAHA-Authentifizierung</p>
+                        <p><code>EVOLUTION_API_URL</code> — URL der Evolution-Instanz (z.B. http://172.16.80.27:3000)</p>
+                        <p><code>EVOLUTION_API_KEY</code> — API-Key für Evolution-Authentifizierung</p>
                         <p><code>GROUP_CHAT_ID</code> — WhatsApp-Gruppen-ID (Format: 120363xxx@g.us)</p>
                         <p><code>SESSION_SECRET</code> — Zufälliger String für Session-Verschlüsselung</p>
                         <p><code>DEV_MODE</code> — Bei "true" wird der Gruppen-Tab im Footer sichtbar (zum Nachschlagen von Gruppen-IDs)</p>
                     </div>
                     <div class="wiki-section">
-                        <h3>WAHA Webhook</h3>
-                        <p>In der WAHA-Session muss ein Webhook konfiguriert sein:</p>
-                        <p><strong>URL:</strong> <code>http://&lt;TeamPulse-IP&gt;:3000/api/webhooks/waha</code></p>
-                        <p><strong>Events:</strong> <code>message</code>, <code>poll.vote</code></p>
+                        <h3>Evolution Webhook</h3>
+                        <p>In der Evolution-Instance muss ein Webhook konfiguriert sein:</p>
+                        <p><strong>URL:</strong> <code>http://&lt;TeamPulse-IP&gt;:3000/api/webhooks/evolution/messages-upsert</code></p>
+                        <p><strong>Event:</strong> <code>MESSAGES_UPSERT</code> (Webhook by Events aktiviert)</p>
                         <p>Ohne korrekten Webhook werden Abstimmungen nicht erkannt. TeamPulse lauscht auf 0.0.0.0, ist also von allen Netzwerk-Interfaces erreichbar.</p>
                     </div>
                     <div class="wiki-section">
                         <h3>Fehlerbehebung</h3>
-                        <p><strong>Stimmen werden nicht erkannt:</strong> Prüfe ob WAHA-Webhooks korrekt konfiguriert sind. Logs: <code>journalctl -u teampulse -f</code></p>
+                        <p><strong>Stimmen werden nicht erkannt:</strong> Prüfe ob Evolution-Webhooks korrekt konfiguriert sind. Logs: <code>journalctl -u teampulse -f</code></p>
                         <p><strong>Gruppen-ID finden:</strong> <code>DEV_MODE=true</code> in .env setzen, dann im Footer-Tab "Gruppen" nachschauen.</p>
                         <p><strong>Erinnerung kam nicht:</strong> Erinnerungen werden automatisch 2x gesendet (Standard: 120 und 15 Min vor Frist). Zeitpunkte sind pro Event konfigurierbar.</p>
                         <p><strong>Passwort vergessen:</strong> Auf dem Server mit Node.js das Passwort zurücksetzen (siehe README).</p>

@@ -1,111 +1,82 @@
 # TeamPulse
 
-WhatsApp-basiertes Anwesenheits-Management für Teams. Erstelle Trainings, Turniere und andere Events, versende automatisch Umfragen per WhatsApp (via WAHA) und sammle die Antworten übersichtlich im Dashboard.
+TeamPulse ist ein WhatsApp-basiertes Anwesenheits-Management fuer Teams. Das Projekt nutzt jetzt **Evolution API v2** als WhatsApp-Provider und versendet native WhatsApp-Umfragen direkt in eine konfigurierte Gruppe.
 
 ## Features
 
-- **Login-System**: Geschütztes Dashboard mit Passwort-Pflichtänderung beim ersten Login
-- **Dashboard**: Startseite mit Quick-Stats, nächstes Event mit Live-Countdown, aktive Umfragen mit Fortschrittsbalken, Antwort-Trend
-- **Event-Management**: Wiederkehrende Trainings und einmalige Events (Turniere, Sondertermine) erstellen und verwalten
-- **Event-Beschreibung**: Optionales Freitextfeld pro Event — wird überall angezeigt (Umfrage, Erinnerungen, Ergebnisse, Gruppenbeschreibung, Dashboard)
-- **Keine manuelle Kontaktverwaltung**: Teilnehmer werden automatisch aus der WhatsApp-Gruppe synchronisiert
-- **Gruppen-Umfrage**: Umfrage wird als native WhatsApp-Poll in die Gruppe geschickt (Tap-to-Vote)
-- **Antwort-Sammlung**: Übersichtliche Darstellung aller Zu-/Absagen, gruppiert nach Status — inkl. Kommentare/Begründungen für alle Stimmen
-- **Kommentare**: Nach jeder Abstimmung (Ja/Nein/Vielleicht) wird eine Follow-up-PN gesendet mit optionaler Kommentar-Möglichkeit (5-Min-Fenster)
-- **Stimmänderung**: Bei Ummeldung wird der alte Kommentar in der PN angezeigt — bleibt erhalten wenn kein neuer geschrieben wird
-- **Treffenszeit & Ende**: Optionale Treffenszeit (muss vor Event liegen) und Endzeit (muss nach Event liegen) — in allen Nachrichten angezeigt
-- **Umfrage-Versand**: "Stunden vor Event" oder festes Datum (Standard: 24h vor Event)
-- **Abstimmungsfrist**: "Stunden vor Event" oder festes Datum — Umfrage schließt und Ergebnis wird sofort gepostet (Standard: 1h vor Event)
-- **Automatische Absage**: Optional pro Event — bei zu wenigen Zusagen wird automatisch eine Absage in die Gruppe gesendet
-- **Wiederkehrende Ausnahmen**: Einzelne Termine bei wiederkehrenden Events aussetzen (z.B. Feiertage)
-- **Gruppen-Posting**: Ergebnis-Text + Chart in die Gruppe — auch manuell mehrfach möglich
-- **Auto-Pin**: Aktive Umfragen werden in der Gruppe angepinnt (entpinnt beim Schließen), Ergebnis-Posts werden angepinnt (entpinnt nach Event-Ende)
-- **Bot-Hinweis**: Alle automatischen Nachrichten sind mit "🤖 Automatisch generierte Nachricht von TeamPulse" gekennzeichnet
-- **Frist verlängern**: Abstimmungsdeadline direkt im Dashboard verschieben
-- **Automatische Gruppenbeschreibung**: WhatsApp-Gruppenbeschreibung wird bei jeder Änderung automatisch aktualisiert — zeigt nächstes Event, Status aller Mitglieder (Zusagen, Absagen mit Grund, Vielleicht, Ausstehend) + statische Textblöcke. Wechselt automatisch zum nächsten Event sobald das aktuelle endet (end_time) bzw. beginnt (event_time)
-- **Beschreibungs-Tab**: Statische Textblöcke erstellen (oberhalb/unterhalb), Vorschau, manuelles Aktualisieren
-- **Statistiken-Tab**: Antwortquote & Ja/Nein/Vielleicht/Offen pro Mitglied — nur abgeschlossene Umfragen
-- **Gruppen-Übersicht** (DEV_MODE): Footer-Tab zeigt alle WhatsApp-Gruppen mit ID und Kopieren-Button — zum einfachen Nachschlagen der `GROUP_CHAT_ID`
-- **Erinnerungen** (konfigurierbar pro Event):
-  - 2x Abstimmungs-Erinnerung: Standard 120 Min + 15 Min vor Fristablauf an alle Nicht-Voter (privat)
-  - Start-Erinnerung: Standard 60 Min vor Event an alle Zusager (privat, mit Event-Name + dynamischer Zeitangabe)
-- **Zu-spät-Benachrichtigung**: Wer nach Fristablauf abstimmt, wird per PN informiert dass die Abstimmung beendet ist
-- **Manuelle Stimmkorrektur**: Admin kann Stimmen im Dashboard ändern (auch bei archivierten Umfragen) — Mitglied wird per PN benachrichtigt, Statistiken werden aktualisiert
-- **Neu senden (Reset)**: Aktive Umfragen können komplett zurückgesetzt und als neue WhatsApp-Umfrage neu gesendet werden — alle bisherigen Stimmen werden gelöscht
-- **Kompakte Umfrage-Übersicht**: In der Gruppenbeschreibung wird das nächste Event voll detailliert angezeigt, weitere aktive Umfragen als kompakter Einzeiler mit Emoji-Counts (✅X ❌X 🤷X)
+- geschuetztes Dashboard mit Login und Passwortwechsel beim ersten Start
+- einmalige und wiederkehrende Events
+- automatische native WhatsApp-Polls in der Gruppe
+- private Follow-up-Nachrichten nach `Ja`, `Nein` und `Vielleicht`
+- Kommentare/Gruende innerhalb von 5 Minuten
+- automatische Erinnerungen und Event-Reminder
+- Ergebnis-Post als Text plus Chart-Bild
+- automatische Gruppenbeschreibung
+- DEV-Gruppenuebersicht zum Nachschlagen der `GROUP_CHAT_ID`
 
-## Tech Stack
+## Stack
 
-- **Backend**: Node.js + Express
-- **Frontend**: Vanilla HTML/CSS/JS (leichtgewichtig, kein Build-Step)
-- **Datenbank**: SQLite (via libsql)
-- **WhatsApp**: WAHA (WhatsApp HTTP API)
-- **Scheduler**: node-cron für zeitgesteuerte Nachrichten
-- **Auth**: bcrypt + express-session
+- Backend: Node.js 24 + Express 5
+- Frontend: Vanilla HTML/CSS/JS
+- Datenbank: SQLite via `libsql`
+- Scheduler: `node-cron`
+- WhatsApp: Evolution API v2
 
 ## Standard-Login
 
 | Benutzer | Passwort |
-|----------|----------|
-| `admin`  | `admin`  |
+|---|---|
+| `admin` | `admin` |
 
-> Beim ersten Login **muss** das Passwort geändert werden. Der Benutzername kann optional angepasst werden.
+Beim ersten Login muss das Passwort geaendert werden.
 
-## Umgebungsvariablen
+## Wichtige Umgebungsvariablen
 
-| Variable | Beschreibung | Beispiel |
+| Variable | Bedeutung | Beispiel |
 |---|---|---|
-| `PORT` | Server-Port | `3000` |
-| `SESSION_SECRET` | Session-Verschlüsselung (zufälliger String) | `a1b2c3d4e5...` |
-| `WAHA_API_URL` | URL der WAHA-Instanz | `http://localhost:3001` |
-| `WAHA_API_KEY` | API-Key für WAHA | `your-api-key` |
-| `WAHA_SESSION` | WAHA Session-Name | `default` |
-| `GROUP_CHAT_ID` | WhatsApp Gruppen-ID für Ergebnis-Posts | `120363xxx@g.us` |
-| `DEV_MODE` | Zeigt Gruppen-Tab im Footer (zum ID-Nachschlagen) | `false` |
+| `PORT` | HTTP-Port von TeamPulse | `3000` |
+| `SESSION_SECRET` | zufaelliger Secret-String fuer Sessions | `change-me` |
+| `EVOLUTION_API_URL` | Basis-URL der Evolution API | `http://10.0.0.20:8080` |
+| `EVOLUTION_API_KEY` | globaler API-Key der Evolution API | `replace-me` |
+| `EVOLUTION_INSTANCE` | Name der WhatsApp-Instanz in Evolution | `teampulse` |
+| `EVOLUTION_TIMEOUT_MS` | Timeout fuer Provider-Requests | `20000` |
+| `GROUP_CHAT_ID` | WhatsApp-Gruppen-JID | `120363xxxx@g.us` |
+| `DEV_MODE` | Gruppen-Tab im Footer anzeigen | `false` |
 
----
+## Lokale Entwicklung
 
-## Produktiv-Installation auf Debian 13 (Trixie)
+```bash
+git clone https://github.com/niklask52t/TeamPulse.git
+cd TeamPulse
+npm install
+cp .env.example .env
+npm run dev
+```
 
-Komplette Schritt-für-Schritt-Anleitung für eine produktive Installation mit Autostart.
+## TeamPulse auf Debian 13 installieren
 
 ### 1. System vorbereiten
 
 ```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y curl git build-essential python3
+apt update && apt upgrade -y
+apt install -y curl git ca-certificates build-essential python3
 ```
 
-### 2. Node.js 24 LTS installieren
+### 2. Node.js 24 installieren
 
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
-sudo apt install -y nodejs
-node -v  # sollte v24.x zeigen
+curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
+apt install -y nodejs
+node -v
 ```
 
 ### 3. Systembenutzer anlegen
 
 ```bash
-sudo useradd -r -m -s /bin/bash teampulse
+useradd -r -m -s /bin/bash teampulse
 ```
 
-### 4. Git-Credentials speichern
-
-Damit beim `git pull` nicht jedes Mal Benutzername und Passwort (bzw. Token) abgefragt werden:
-
-```bash
-# Credentials dauerhaft auf dem Server speichern
-sudo -u teampulse git config --global credential.helper store
-```
-
-> Beim ersten `git clone` oder `git pull` werden die Zugangsdaten abgefragt und danach in `~/.git-credentials` gespeichert. Für private Repos einen **Personal Access Token** (PAT) statt Passwort verwenden:
->
-> GitHub -> Settings -> Developer settings -> Personal access tokens -> Tokens (classic) -> Generate new token (Scope: `repo`)
->
-> Beim Login dann den Token als Passwort eingeben.
-
-### 5. TeamPulse klonen und installieren
+### 4. Repo klonen
 
 ```bash
 sudo -u teampulse bash -c '
@@ -117,66 +88,49 @@ sudo -u teampulse bash -c '
 '
 ```
 
-### 6. Konfiguration anpassen
+### 5. `.env` anpassen
 
 ```bash
 sudo -u teampulse nano /home/teampulse/app/.env
 ```
 
-Inhalt:
+Beispiel:
 
-```env
+```ini
 PORT=3000
-SESSION_SECRET=HIER_EINEN_LANGEN_ZUFAELLIGEN_STRING_EINSETZEN
-WAHA_API_URL=http://localhost:3001
-WAHA_API_KEY=dein-waha-api-key
-WAHA_SESSION=default
-GROUP_CHAT_ID=120363xxx@g.us
+SESSION_SECRET=HIER_EINEN_LANGEN_ZUFAELLIGEN_STRING
+EVOLUTION_API_URL=http://EVOLUTION-VM:8080
+EVOLUTION_API_KEY=DEIN_EVOLUTION_API_KEY
+EVOLUTION_INSTANCE=teampulse
+EVOLUTION_TIMEOUT_MS=20000
+GROUP_CHAT_ID=120363xxxxxxxx@g.us
+DEV_MODE=false
 ```
 
-> **Tipp:** `WAHA_API_URL` ist die URL der laufenden WAHA-Instanz. TeamPulse und WAHA dürfen nicht denselben Port belegen. Wenn TeamPulse auf `3000` läuft, nutze für WAHA z.B. `http://localhost:3001` oder die echte IP/den echten Port deiner WAHA-Instanz.
-
-#### GROUP_CHAT_ID herausfinden
-
-**Am einfachsten:** Im TeamPulse-Dashboard auf den **Gruppen**-Tab im Footer klicken — dort werden alle WhatsApp-Gruppen mit Name und ID angezeigt. Die gewünschte ID kopieren und in die `.env` eintragen.
-
-Alternativ per CLI:
+`SESSION_SECRET` kannst du so erzeugen:
 
 ```bash
-curl http://<WAHA-IP>:3000/api/default/groups
-```
-
-Die gesuchte ID hat immer das Format `120363xxxxxxxxx@g.us`.
-
-#### SESSION_SECRET generieren
-
-Einfach einen der folgenden Befehle ausführen und den Output in die `.env` kopieren:
-
-```bash
-# Option 1 – openssl (empfohlen)
 openssl rand -hex 32
-
-# Option 2 – Node.js
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-
-# Direkt in die .env schreiben (ersetzt den Platzhalter):
-sed -i "s/HIER_EINEN_LANGEN_ZUFAELLIGEN_STRING_EINSETZEN/$(openssl rand -hex 32)/" /home/teampulse/app/.env
 ```
 
-### 7. Kurzer Test
+### 6. Starttest
 
 ```bash
 sudo -u teampulse bash -c 'cd /home/teampulse/app && node server.js'
-# Sollte "TeamPulse running on http://0.0.0.0:3000" ausgeben
-# Mit Ctrl+C beenden
 ```
 
-### 8. Systemd-Service erstellen
+Erwartet:
+
+```text
+TeamPulse running on http://0.0.0.0:3000
+```
+
+### 7. Systemd-Service anlegen
 
 ```bash
-sudo tee /etc/systemd/system/teampulse.service > /dev/null << 'EOF'
+cat >/etc/systemd/system/teampulse.service <<'EOF'
 [Unit]
-Description=TeamPulse - WhatsApp Attendance Manager
+Description=TeamPulse
 After=network.target
 
 [Service]
@@ -194,105 +148,230 @@ WantedBy=multi-user.target
 EOF
 ```
 
-### 9. Service aktivieren und starten
+### 8. Aktivieren und starten
 
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl enable teampulse
-sudo systemctl start teampulse
+systemctl daemon-reload
+systemctl enable teampulse
+systemctl start teampulse
+systemctl status teampulse
+journalctl -u teampulse -f
 ```
 
-### 10. Status prüfen
+### 9. Firewall
 
 ```bash
-sudo systemctl status teampulse
-# Logs anschauen:
-sudo journalctl -u teampulse -f
+apt install -y ufw
+ufw allow ssh
+ufw allow 3000/tcp
+ufw enable
 ```
 
-### 11. Firewall (optional)
+## Evolution API auf separater Debian-13-VM
+
+Das ist die empfohlene Variante.
+
+### 1. VM vorbereiten
 
 ```bash
-sudo apt install -y ufw
-sudo ufw allow ssh
-sudo ufw allow 3000/tcp   # TeamPulse
-sudo ufw allow 3000/tcp   # TeamPulse (anpassen falls anderer Port)
-sudo ufw enable
+apt update && apt upgrade -y
+apt install -y curl ca-certificates gnupg2 lsb-release ufw
 ```
 
-### 12. WAHA Webhook konfigurieren
-
-Damit Abstimmungen in TeamPulse ankommen, muss WAHA Webhooks an TeamPulse senden. Im WAHA-Dashboard unter **Sessions → deine Session → Webhooks**:
-
-| Feld | Wert |
-|------|------|
-| **URL** | `http://<TeamPulse-IP>:3000/api/webhooks/waha` |
-| **Events** | `message`, `poll.vote` |
-| **Attempts** | `3` |
-| **Delay seconds** | `2` |
-| **Retry policy** | `constant` |
-| **HMAC Key** | *(leer lassen)* |
-| **Custom Headers** | *(leer lassen)* |
-
-> `<TeamPulse-IP>` durch die IP-Adresse des TeamPulse-Servers ersetzen. Wenn WAHA auf derselben Maschine läuft, `localhost` verwenden. Der Server hört auf `0.0.0.0`, ist also von allen Interfaces erreichbar.
-
-### 14. Update-Skript installieren
+### 2. Docker + Compose Plugin installieren
 
 ```bash
-sudo cp /home/teampulse/app/update.sh /usr/local/bin/teampulse-update
-sudo chmod +x /usr/local/bin/teampulse-update
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+chmod a+r /etc/apt/keyrings/docker.asc
+
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+  tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+apt update
+apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+docker --version
+docker compose version
 ```
 
-### Updates einspielen
+### 3. Arbeitsverzeichnis anlegen
 
 ```bash
-# Normales Update (Code + Dependencies)
-sudo teampulse-update
-
-# Komplett-Reset (löscht DB + alle Daten, mit doppelter Bestätigung)
-sudo teampulse-update --reset
+mkdir -p /opt/evolution-api
+cd /opt/evolution-api
 ```
 
-### Logs & Troubleshooting
+### 4. `.env` fuer Evolution anlegen
 
 ```bash
-# Live-Logs
-sudo journalctl -u teampulse -f
-
-# Service neustarten
-sudo systemctl restart teampulse
-
-# DB-Backup
-sudo cp /home/teampulse/app/teampulse.db /home/teampulse/backup_$(date +%Y%m%d).db
-
-# Passwort zurücksetzen (Notfall)
-sudo -u teampulse bash -c '
-  cd /home/teampulse/app
-  node -e "
-    const db = require(\"./db/database\");
-    const bcrypt = require(\"bcrypt\");
-    const hash = bcrypt.hashSync(\"admin\", 10);
-    db.prepare(\"UPDATE users SET password_hash = ?, must_change_password = 1 WHERE username = ?\").run(hash, \"admin\");
-    console.log(\"Passwort zurückgesetzt auf admin/admin\");
-  "
-'
+nano .env
 ```
 
----
+Beispiel:
 
-## Lokale Entwicklung
+```ini
+SERVER_TYPE=http
+SERVER_PORT=8080
+SERVER_URL=http://YOUR-EVOLUTION-VM:8080
+
+AUTHENTICATION_API_KEY=replace-with-a-random-secret
+
+DATABASE_ENABLED=true
+DATABASE_PROVIDER=postgresql
+DATABASE_CONNECTION_URI=postgresql://evolution:evolutionpass@postgres:5432/evolution
+DATABASE_CONNECTION_CLIENT_NAME=teampulse
+
+DATABASE_SAVE_DATA_INSTANCE=true
+DATABASE_SAVE_DATA_NEW_MESSAGE=true
+DATABASE_SAVE_MESSAGE_UPDATE=true
+DATABASE_SAVE_DATA_CONTACTS=true
+DATABASE_SAVE_DATA_CHATS=true
+DATABASE_SAVE_DATA_LABELS=true
+DATABASE_SAVE_DATA_HISTORIC=true
+
+CACHE_REDIS_ENABLED=true
+CACHE_REDIS_URI=redis://redis:6379/6
+CACHE_REDIS_PREFIX_KEY=evolution
+CACHE_REDIS_SAVE_INSTANCES=false
+CACHE_LOCAL_ENABLED=false
+
+WEBSOCKET_ENABLED=false
+TELEMETRY=false
+```
+
+### 5. `docker-compose.yml` anlegen
+
+```yaml
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: evolutionpass
+      POSTGRES_DB: evolution
+    volumes:
+      - evolution_postgres:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - evolution_redis:/data
+
+  evolution-api:
+    image: evoapicloud/evolution-api:v2.3.7
+    container_name: evolution_api
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    volumes:
+      - evolution_instances:/evolution/instances
+    depends_on:
+      - postgres
+      - redis
+
+volumes:
+  evolution_postgres:
+  evolution_redis:
+  evolution_instances:
+```
+
+Wenn eine neuere stabile Evolution-v2-Version verfuegbar ist, ersetze `v2.3.7` durch einen konkreten neuen Tag.
+
+### 6. Evolution starten
 
 ```bash
-git clone https://github.com/niklask52t/TeamPulse.git
-cd TeamPulse
-npm install
-cp .env.example .env
-npm run dev
+docker compose up -d
+docker compose logs -f evolution-api
 ```
+
+### 7. Firewall auf der Evolution-VM
+
+```bash
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow ssh
+ufw allow from APP_SERVER_IP to any port 8080 proto tcp
+ufw enable
+```
+
+### 8. Evolution Manager oeffnen
+
+Im Browser:
+
+- `http://YOUR-EVOLUTION-VM:8080/manager`
+
+Login mit:
+
+- `AUTHENTICATION_API_KEY`
+
+### 9. Instanz in Evolution anlegen
+
+Im Manager:
+
+1. neue Instanz erstellen, z. B. `teampulse`
+2. `Baileys` als Channel waehlen
+3. WhatsApp-Nummer im internationalen Format ohne `+` eintragen
+4. speichern
+5. QR-Code scannen
+
+Der Instanzname muss exakt mit `EVOLUTION_INSTANCE` in TeamPulse uebereinstimmen.
+
+### 10. Webhook in Evolution konfigurieren
+
+Im Evolution Manager fuer die TeamPulse-Instanz:
+
+- URL: `http://YOUR-TEAMPULSE-IP:3000/api/webhooks/evolution/messages-upsert`
+- Webhook by Events: `enabled`
+- Base64: `disabled`
+- Event: `MESSAGES_UPSERT`
+
+### 11. Gruppen-ID finden
+
+Im Evolution Manager die Gruppenliste der verbundenen Instanz oeffnen und die Zielgruppe kopieren.
+
+Format:
+
+```text
+120363xxxxxxxx@g.us
+```
+
+Diesen Wert in TeamPulse als `GROUP_CHAT_ID` eintragen.
+
+### 12. TeamPulse mit Evolution verbinden
+
+In `/home/teampulse/app/.env`:
+
+```ini
+EVOLUTION_API_URL=http://YOUR-EVOLUTION-VM:8080
+EVOLUTION_API_KEY=YOUR_API_KEY
+EVOLUTION_INSTANCE=teampulse
+GROUP_CHAT_ID=120363xxxxxxxx@g.us
+```
+
+Danach TeamPulse neu starten:
+
+```bash
+systemctl restart teampulse
+journalctl -u teampulse -f
+```
+
+## Hinweise
+
+- TeamPulse nutzt jetzt nur noch Evolution API. WAHA wird nicht mehr benoetigt.
+- Ergebnis-Bilder laufen ueber `sendMedia` der Evolution API.
+- Gruppenbeschreibung, Polls, private Erinnerungen und Ergebnis-Posts laufen ueber dieselbe Evolution-Instanz.
+- Das aktuelle TeamPulse-Verhalten bleibt auf Text + Bild fuer Ergebnis-Posts ausgelegt.
+- Message Pinning/Unpinning haengt von der verfuegbaren Evolution-API-Unterstuetzung ab. Die offiziellen v2-Dokumentationsseiten zeigen dafuer derzeit keinen separaten Endpunkt.
 
 ## Lizenz
 
 MIT
 
 ---
-_Last reviewed: 2026-04-11_
+Last reviewed: 2026-04-28

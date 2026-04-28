@@ -3,13 +3,11 @@ const router = express.Router();
 const db = require('../db/database');
 const pollManager = require('../services/pollManager');
 
-// GET count of active polls
 router.get('/active-count', (req, res) => {
     const row = db.prepare("SELECT COUNT(*) as count FROM polls WHERE status = 'active' AND archived = 0").get();
     res.json({ count: row.count });
 });
 
-// GET all polls with responses
 router.get('/', (req, res) => {
     const polls = db.prepare(`
         SELECT p.*, e.title, e.description, e.type, e.event_time
@@ -19,7 +17,6 @@ router.get('/', (req, res) => {
     res.json(polls);
 });
 
-// GET poll details with responses
 router.get('/:id', (req, res) => {
     const poll = db.prepare(`
         SELECT p.*, e.title, e.description, e.type, e.event_time, e.recurring, e.auto_cancel, e.min_participants
@@ -38,7 +35,6 @@ router.get('/:id', (req, res) => {
     res.json({ ...poll, responses });
 });
 
-// POST manually create poll for event
 router.post('/create', (req, res) => {
     const { event_id, event_date, deadline_minutes } = req.body;
     if (!event_id || !event_date) {
@@ -52,7 +48,6 @@ router.post('/create', (req, res) => {
     }
 });
 
-// POST manually send poll to group
 router.post('/:id/send', async (req, res) => {
     try {
         await pollManager.sendPoll(Number(req.params.id));
@@ -62,7 +57,6 @@ router.post('/:id/send', async (req, res) => {
     }
 });
 
-// POST manually send deadline reminder
 router.post('/:id/send-reminder', async (req, res) => {
     try {
         await pollManager.sendDeadlineReminder(Number(req.params.id));
@@ -72,7 +66,6 @@ router.post('/:id/send-reminder', async (req, res) => {
     }
 });
 
-// POST manually post results to group (does NOT close the poll)
 router.post('/:id/post-group', async (req, res) => {
     try {
         const poll = db.prepare('SELECT status FROM polls WHERE id = ?').get(Number(req.params.id));
@@ -83,11 +76,10 @@ router.post('/:id/post-group', async (req, res) => {
     }
 });
 
-// PUT extend deadline
 router.put('/:id/extend', (req, res) => {
     const minutes = Number(req.body.minutes);
     if (!minutes || minutes < 1) {
-        return res.status(400).json({ error: 'Minuten müssen > 0 sein' });
+        return res.status(400).json({ error: 'Minuten muessen > 0 sein' });
     }
     try {
         const newDeadline = pollManager.extendDeadline(Number(req.params.id), minutes);
@@ -97,7 +89,6 @@ router.put('/:id/extend', (req, res) => {
     }
 });
 
-// POST resend poll (reset all votes + send new WhatsApp poll)
 router.post('/:id/resend', async (req, res) => {
     try {
         await pollManager.resendPoll(Number(req.params.id));
@@ -107,7 +98,6 @@ router.post('/:id/resend', async (req, res) => {
     }
 });
 
-// POST manually close poll
 router.post('/:id/close', (req, res) => {
     try {
         pollManager.closePoll(Number(req.params.id));
@@ -117,7 +107,6 @@ router.post('/:id/close', (req, res) => {
     }
 });
 
-// POST manually send event reminders
 router.post('/:id/send-event-reminder', async (req, res) => {
     try {
         await pollManager.sendEventReminders(Number(req.params.id));
@@ -127,7 +116,6 @@ router.post('/:id/send-event-reminder', async (req, res) => {
     }
 });
 
-// PUT manually set a member's response (for recovering missed votes or corrections)
 router.put('/:id/response', async (req, res) => {
     const pollId = Number(req.params.id);
     const { contact_id, response } = req.body;
@@ -135,6 +123,7 @@ router.put('/:id/response', async (req, res) => {
     if (!contact_id || !validResponses.includes(response)) {
         return res.status(400).json({ error: 'contact_id und response (yes/no/maybe/null) erforderlich' });
     }
+
     const poll = db.prepare(`
         SELECT p.*, e.title, e.event_time FROM polls p JOIN events e ON p.event_id = e.id WHERE p.id = ?
     `).get(pollId);
@@ -143,159 +132,176 @@ router.put('/:id/response', async (req, res) => {
     const contact = db.prepare('SELECT * FROM contacts WHERE id = ?').get(contact_id);
     if (!contact) return res.status(404).json({ error: 'Kontakt nicht gefunden' });
 
-    // Ensure response row exists
     db.prepare('INSERT OR IGNORE INTO poll_responses (poll_id, contact_id) VALUES (?, ?)').run(pollId, contact_id);
 
     if (response) {
-        db.prepare('UPDATE poll_responses SET response = ?, responded_at = datetime(\'now\') WHERE poll_id = ? AND contact_id = ?').run(response, pollId, contact_id);
+        db.prepare("UPDATE poll_responses SET response = ?, responded_at = datetime('now') WHERE poll_id = ? AND contact_id = ?").run(response, pollId, contact_id);
     } else {
         db.prepare('UPDATE poll_responses SET response = NULL, responded_at = NULL, reason = NULL WHERE poll_id = ? AND contact_id = ?').run(pollId, contact_id);
     }
 
-    // Send private notification to the member
     if (response && contact.phone) {
-        const waha = require('../services/waha');
-        const chatId = contact.phone.replace('+', '') + '@c.us';
-        waha.sendAdminVoteNotification(chatId, poll.title, poll.event_date, response)
-            .catch(err => console.error(`[ERROR] sendAdminVoteNotification to ${contact.name}:`, err.message));
+        const evolution = require('../services/evolution');
+        evolution.sendAdminVoteNotification(contact.phone, poll.title, poll.event_date, response)
+            .catch((err) => console.error(`[ERROR] sendAdminVoteNotification to ${contact.name}:`, err.message));
     }
 
-    // Trigger group description update
     const { scheduleDescriptionUpdate } = require('../services/groupDescription');
     scheduleDescriptionUpdate();
 
     res.json({ success: true });
 });
 
-// WAHA webhook endpoint
-router.post('/webhook', async (req, res) => {
-    const { event, payload } = req.body;
+function asArray(value) {
+    if (Array.isArray(value)) return value;
+    if (value == null) return [];
+    return [value];
+}
+
+function resolveJid(raw) {
+    if (!raw) return '';
+    if (typeof raw === 'object') {
+        return raw.id || raw.remoteJid || raw.jid || raw._serialized || raw.phone || '';
+    }
+    return String(raw);
+}
+
+function extractMessages(body) {
+    const data = body?.data;
+    if (Array.isArray(data?.messages)) return data.messages;
+    if (Array.isArray(body?.messages)) return body.messages;
+    if (data?.key || data?.message) return [data];
+    if (body?.key || body?.message) return [body];
+    return [];
+}
+
+function extractMessageText(message) {
+    const content = message?.message || {};
+    return content.conversation
+        || content.extendedTextMessage?.text
+        || content.imageMessage?.caption
+        || content.videoMessage?.caption
+        || '';
+}
+
+function extractPollUpdate(message, body) {
+    return message?.message?.pollUpdateMessage
+        || message?.pollUpdateMessage
+        || body?.data?.pollUpdateMessage
+        || body?.pollUpdateMessage
+        || null;
+}
+
+function collectPollMessageIds(message, pollUpdate, body) {
+    const seen = new Set();
+    const values = [
+        pollUpdate?.pollCreationMessageKey?.id,
+        pollUpdate?.pollCreationMessageKey?._serialized,
+        pollUpdate?.pollCreationMessage?.key?.id,
+        pollUpdate?.message?.key?.id,
+        message?.messageContextInfo?.stanzaId,
+        message?.messageContextInfo?.quotedMessage?.key?.id,
+        body?.data?.message?.pollUpdateMessage?.pollCreationMessageKey?.id,
+        body?.data?.pollCreationMessageKey?.id,
+        body?.messageId,
+        body?.key?.id,
+    ];
+
+    for (const value of values) {
+        if (!value) continue;
+        seen.add(String(value));
+    }
+
+    return [...seen];
+}
+
+function collectSelectedOptions(message, pollUpdate, body) {
+    const candidates = [
+        pollUpdate?.vote?.selectedOptions,
+        pollUpdate?.selectedOptions,
+        pollUpdate?.pollUpdates,
+        message?.pollUpdates,
+        body?.data?.pollUpdates,
+        body?.pollUpdates,
+    ];
+
+    const options = [];
+    for (const candidate of candidates) {
+        for (const item of asArray(candidate)) {
+            if (!item) continue;
+            if (typeof item === 'string') {
+                options.push(item);
+                continue;
+            }
+            const text = item.optionName || item.name || item.value || item.option || item.text;
+            if (text) options.push(String(text));
+        }
+    }
+
+    return options;
+}
+
+router.post('/webhook/evolution', async (req, res) => {
+    const event = String(req.body?.event || 'MESSAGES_UPSERT').toUpperCase();
     const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
 
-    // sender can be a string JID ("49123@c.us") OR an object {id, name, ...} depending on WAHA version
-    function resolvePhone(raw) {
-        if (!raw) return '';
-        if (typeof raw === 'object') return raw.id || raw._serialized || raw.jid || raw.phone || '';
-        return String(raw);
+    if (event && event !== 'MESSAGES_UPSERT') {
+        return res.json({ ok: true });
     }
 
-    function resolveVoter(payload) {
-        const candidates = [
-            payload.vote?.voter,
-            payload.voter,
-            payload.vote?.participant,
-            payload.participant,
-            payload.sender,
-            payload.vote?.from,
-        ];
-        return candidates.map(resolvePhone).find(v => v && !v.endsWith('@g.us')) || '';
-    }
+    const messages = extractMessages(req.body);
+    console.log(`[WEBHOOK] evolution event=${event} messages=${messages.length}`);
 
-    function resolvePollGroup(payload) {
-        const candidates = [payload.from, payload.chatId, payload.poll?.from, payload.poll?.chatId, payload.vote?.from];
-        return candidates.map(resolvePhone).find(v => v && v.endsWith('@g.us')) || '';
-    }
+    for (const entry of messages) {
+        const key = entry?.key || {};
+        const remoteJid = resolveJid(key.remoteJid);
+        const participant = resolveJid(key.participant);
+        const fromMe = Boolean(key.fromMe);
+        const isGroup = remoteJid.endsWith('@g.us');
+        const text = extractMessageText(entry);
+        const pollUpdate = extractPollUpdate(entry, req.body);
 
-    function collectPollMessageIds(payload) {
-        const seen = new Set();
-        const values = [
-            payload.vote?.pollMessageId,
-            payload.vote?.parentMessageId,
-            payload.vote?.id,
-            payload.poll?.id,
-            payload.poll?.messageId,
-            payload.poll?.key?.id,
-            payload.poll?.key?._serialized,
-            payload.pollMessageId,
-            payload.messageId,
-            payload.key?.id,
-            payload.key?._serialized,
-        ];
+        if (fromMe) continue;
 
-        for (const value of values) {
-            if (value == null) continue;
-            if (typeof value === 'object') {
-                const nested = [value.id, value._serialized, value.key?.id, value.key?._serialized];
-                for (const item of nested) {
-                    if (item) seen.add(String(item));
-                }
-            } else {
-                seen.add(String(value));
-            }
-        }
-
-        return [...seen];
-    }
-
-    const senderPhone = resolvePhone(payload?.sender);
-    const fromPhone   = resolvePhone(payload?.from);
-
-    // Log every webhook so journalctl shows what WAHA is actually sending
-    console.log(`[WEBHOOK] event=${event} type=${payload?.type} from=${fromPhone} sender=${senderPhone} body=${String(payload?.body || '').slice(0, 60)}`);
-
-    // Private text messages — only for reason capture (no text-based voting)
-    if (event === 'message' && payload) {
-        const isGroup = fromPhone.endsWith('@g.us');
-
-        // Ignore ALL group text messages — votes come exclusively via poll.vote
-        if (!isGroup) {
-            const phone = fromPhone;
-            const text = payload.body;
-            if (phone && text) {
+        if (!pollUpdate) {
+            if (!isGroup && text) {
                 try {
-                    const reasonResult = pollManager.processReasonMessage(phone, text);
+                    const reasonResult = pollManager.processReasonMessage(remoteJid, text);
                     if (reasonResult) {
                         console.log(`[REASON] Saved from ${reasonResult.contactName} (poll ${reasonResult.pollId})`);
                     }
                 } catch (err) {
-                    console.error(`[ERROR] processReasonMessage failed for phone=${phone}:`, err.message);
+                    console.error(`[ERROR] processReasonMessage failed for phone=${remoteJid}:`, err.message);
                 }
             }
-        }
-    }
-
-    // Native WhatsApp poll vote — only from our group
-    if (event === 'poll.vote' && payload) {
-        // Log individual fields to avoid truncation
-        console.log(`[WEBHOOK] poll.vote keys: ${Object.keys(payload).join(', ')}`);
-        console.log(`[WEBHOOK] poll.vote.vote: ${JSON.stringify(payload.vote).slice(0, 1000)}`);
-        console.log(`[WEBHOOK] poll.vote.poll: ${JSON.stringify(payload.poll).slice(0, 1000)}`);
-        console.log(`[WEBHOOK] poll.vote voter: ${JSON.stringify(payload.vote?.voter || payload.voter || 'none')}`);
-        console.log(`[WEBHOOK] poll.vote from/sender/participant: from=${payload.from} sender=${JSON.stringify(payload.sender)} participant=${payload.participant || payload.vote?.participant}`);
-
-        const groupId = resolvePollGroup(payload);
-        if (GROUP_CHAT_ID && groupId && groupId !== GROUP_CHAT_ID) {
-            console.log(`[VOTE] poll.vote ignored from other group: ${groupId}`);
-            return res.json({ ok: true });
+            continue;
         }
 
-        const phone = resolveVoter(payload);
+        if (GROUP_CHAT_ID && remoteJid && remoteJid !== GROUP_CHAT_ID) {
+            console.log(`[VOTE] ignored poll update from other group: ${remoteJid}`);
+            continue;
+        }
 
-        // Try all known shapes for selected options
-        const selectedOptions = payload.vote?.selectedOptions
-            || payload.selectedOptions
-            || payload.poll?.selectedOptions
-            || payload.poll?.options
-            || payload.vote?.options
-            || [];
+        const phone = participant || remoteJid;
+        const optionNames = collectSelectedOptions(entry, pollUpdate, req.body);
+        const pollMsgIds = collectPollMessageIds(entry, pollUpdate, req.body);
 
-        // Extract poll message ID to match vote to the correct poll
-        const pollMsgIds = collectPollMessageIds(payload);
+        console.log(`[WEBHOOK] poll update remote=${remoteJid} participant=${participant} options=${JSON.stringify(optionNames)} pollIds=${pollMsgIds.join(',')}`);
 
-        if (phone && selectedOptions.length > 0) {
-            const optionName = selectedOptions[0]?.name || selectedOptions[0]?.value || selectedOptions[0] || '';
-            try {
-                const result = await pollManager.processResponse(phone, optionName, pollMsgIds);
-                if (result) {
-                    console.log(`[VOTE] poll.vote from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
-                } else {
-                    console.log(`[VOTE] poll.vote unmatched — phone=${phone} option=${optionName}`);
-                }
-            } catch (err) {
-                console.error(`[ERROR] processResponse failed for phone=${phone} option=${optionName}:`, err.message, err.stack);
+        if (!phone || optionNames.length === 0) {
+            console.log(`[VOTE] poll update missing data - phone=${phone} raw=${JSON.stringify(pollUpdate).slice(0, 1200)}`);
+            continue;
+        }
+
+        try {
+            const result = await pollManager.processResponse(phone, optionNames[0], pollMsgIds);
+            if (result) {
+                console.log(`[VOTE] counted from ${result.contactName}: ${result.response} (poll ${result.pollId})`);
+            } else {
+                console.log(`[VOTE] unmatched - phone=${phone} option=${optionNames[0]}`);
             }
-        } else {
-            console.log(`[VOTE] poll.vote missing data — phone=${phone} options=${JSON.stringify(selectedOptions)}`);
+        } catch (err) {
+            console.error(`[ERROR] processResponse failed for phone=${phone} option=${optionNames[0]}:`, err.message, err.stack);
         }
     }
 

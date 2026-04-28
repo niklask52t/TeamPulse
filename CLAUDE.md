@@ -1,7 +1,7 @@
 # CLAUDE.md - TeamPulse
 
 ## Project Overview
-WhatsApp-based attendance management dashboard. Users create events (recurring trainings, one-off tournaments), and TeamPulse automatically sends native WhatsApp polls to a group via WAHA. Participants from the group are auto-synced — no manual contact management. Responses are collected and posted to the group chat.
+WhatsApp-based attendance management dashboard. Users create events (recurring trainings, one-off tournaments), and TeamPulse automatically sends native WhatsApp polls to a group via Evolution. Participants from the group are auto-synced — no manual contact management. Responses are collected and posted to the group chat.
 
 ## Tech Stack
 - **Backend**: Node.js 24 LTS + Express 5 (CommonJS)
@@ -9,7 +9,7 @@ WhatsApp-based attendance management dashboard. Users create events (recurring t
 - **Database**: SQLite via libsql (better-sqlite3 compatible API), schema in `db/schema.sql`
 - **Auth**: bcrypt + express-session, default user admin/admin, force password change on first login
 - **Scheduler**: node-cron for timed messages (every minute)
-- **WhatsApp**: WAHA REST API (native polls via sendPoll + poll.vote webhook)
+- **WhatsApp**: Evolution REST API (native polls via sendPoll + poll.vote webhook)
 - **Timezone**: All times in Europe/Berlin (via services/timeUtils.js)
 
 ## Project Structure
@@ -22,11 +22,11 @@ TeamPulse/
 ├── routes/
 │   ├── auth.js        # Login, logout, password change
 │   ├── events.js      # CRUD for events (validation, no past dates)
-│   ├── polls.js       # Poll management, manual actions, WAHA webhook
+│   ├── polls.js       # Poll management, manual actions, Evolution webhook
 │   ├── stats.js       # Participation stats per contact
 │   └── descriptionBlocks.js  # CRUD for group description static text blocks
 ├── services/
-│   ├── waha.js        # WAHA API client (sendPollMessage, sendMessage, sendReminder, sendResultImage, sendMaybeFollowUp, postResultsToGroup, getGroupParticipants, getAllContacts, getGroups, updateGroupDescription)
+│   ├── evolution.js        # Evolution API client (sendPollMessage, sendMessage, sendReminder, sendResultImage, sendMaybeFollowUp, postResultsToGroup, getGroupParticipants, getAllContacts, getGroups, updateGroupDescription)
 │   ├── scheduler.js   # Cron: send/close/archive polls, reminders, group posts
 │   ├── pollManager.js # Poll lifecycle (create, send, resend, processResponse, processReasonMessage, close, extendDeadline) + extractMessageId helper
 │   ├── groupDescription.js  # Build & update WhatsApp group description (debounced)
@@ -59,11 +59,11 @@ TeamPulse/
   All files contribute to global scope (no ES modules) — app.js defines shared globals (API, apiFetch, esc, fmtDateFancy, etc.) and calls checkAuth() last
 - Poll details auto-refresh every 15s via `openPollDetails` Set + `setInterval` in polls.js
 - Footer is a sticky thin bar at the bottom; wiki/changelog/groups expand as panels above the bar
-- Server binds to `0.0.0.0` (all interfaces) so external WAHA instances can reach the webhook
+- Server binds to `0.0.0.0` (all interfaces) so external Evolution instances can reach the webhook
 
 ## Poll Lifecycle
 1. **pending** → created (immediately when event is created, for both recurring and one-off), not yet sent
-1.5. **sending** → in-memory lock via `sendingPolls` Set (not in DB) while WAHA call is in progress (prevents duplicate sends from overlapping scheduler ticks). Lock released on success or error.
+1.5. **sending** → in-memory lock via `sendingPolls` Set (not in DB) while Evolution call is in progress (prevents duplicate sends from overlapping scheduler ticks). Lock released on success or error.
 2. **active** → sent to group via WhatsApp, collecting responses
 3. **closed** → deadline passed (auto by scheduler) or manually closed
 4. **archived** → 24h after event ends, moved to archive
@@ -74,7 +74,7 @@ TeamPulse/
 - Pending polls are shown in a collapsible "Ausstehend" section in the Umfragen tab
 
 ## Group Participant Sync
-- Before sending a poll, `syncGroupParticipants()` fetches group members from WAHA
+- Before sending a poll, `syncGroupParticipants()` fetches group members from Evolution
 - Uses `GET /api/{session}/groups/{groupId}/participants/v2` for member list
 - Uses `GET /api/contacts/all?session={session}` for display names
 - Members are upserted into the `contacts` table (phone UNIQUE constraint)
@@ -90,7 +90,7 @@ TeamPulse/
 - All automatic PNs end with "🤖 Automatisch generierte Nachricht von TeamPulse"
 
 ## DEV_MODE
-- `DEV_MODE=true` in `.env` enables the "Gruppen" footer tab (shows all WhatsApp groups with IDs from WAHA)
+- `DEV_MODE=true` in `.env` enables the "Gruppen" footer tab (shows all WhatsApp groups with IDs from Evolution)
 - Exposed to frontend via `GET /api/config` → `{ devMode: true/false }`
 - Groups tab is hidden by default, only shown when DEV_MODE is true
 
@@ -120,22 +120,22 @@ TeamPulse/
 - Default user: admin/admin, must_change_password=1
 - Session-based auth via express-session (cookie, sameSite: strict)
 - `/api/auth/*` routes are public, all other `/api/*` routes require session
-- `/api/webhooks/waha` is public (machine-to-machine)
-- `/api/groups` returns WhatsApp groups from WAHA (auth-required)
+- `/api/webhooks/evolution` is public (machine-to-machine)
+- `/api/groups` returns WhatsApp groups from Evolution (auth-required)
 
 ## Groups
-- `GET /api/groups` (auth-required) fetches all WhatsApp groups from WAHA via `GET /api/{session}/groups`
+- `GET /api/groups` (auth-required) fetches all WhatsApp groups from Evolution via `GET /api/{session}/groups`
 - Displayed in a footer panel (lazy-loaded on first open) with group name, ID, and copy button
 - Useful for finding the `GROUP_CHAT_ID` needed in `.env`
 
-## WAHA Integration
-- WAHA runs as separate Docker container (can be on a different VM)
+## Evolution Integration
+- Evolution runs as separate Docker container (can be on a different VM)
 - Native WhatsApp polls via POST /api/sendPoll — sent to GROUP_CHAT_ID (not individuals)
-- Webhook at `/api/webhooks/waha` — req.url rewritten to `/webhook` before pollsRouter handles it
+- Webhook at `/api/webhooks/evolution` — req.url rewritten to `/webhook` before pollsRouter handles it
 - Handles `message` (text reply), `poll.vote` (native poll), and `buttons_response` events
 - Group messages: `payload.sender` = voter JID; private messages: `payload.from` = sender JID
 - Poll options: "Ja ✅", "Nein ❌", "Vielleicht 🤷" — matched by emoji-stripped exact match first, then keyword includes
-- Vote matching: `processResponse(phone, text, pollMessageId)` matches votes to polls by WAHA poll_message_id first, falls back to earliest-deadline active poll if no match
+- Vote matching: `processResponse(phone, text, pollMessageId)` matches votes to polls by Evolution poll_message_id first, falls back to earliest-deadline active poll if no match
 - `sendReminder` sends plain text reminder (sendButtons was removed — WA deprecated it for unofficial clients in 2024)
 - `sendResultImage` sends a PNG chart via POST /api/sendFile (multipart first, JSON base64 fallback)
 - `pinMessage` / `unpinMessage` via PUT/DELETE `/api/{session}/chats/{chatId}/messages/{messageId}/pin`
@@ -150,7 +150,7 @@ TeamPulse/
 - `services/groupDescription.js` builds description from: static blocks (above) + next event (full detail) + remaining active polls (compact one-liner with emoji counts) + pending poll + static blocks (below) + upcoming events + footer
 - Only 1 active poll shown with full vote breakdown (MAX_ACTIVE_IN_DESC=1), remaining active polls shown under "📋 Weitere aktive Umfragen:" as compact summary: `🗳 Title – Date, Time — ✅X ❌X 🤷X`
 - Footer: "Powered by TeamPulse by Niklas Kronig" + contact note
-- Updated via `PUT /api/{session}/groups/{groupId}/description` (WAHA)
+- Updated via `PUT /api/{session}/groups/{groupId}/description` (Evolution)
 - **Debounced** — 60s for votes/poll changes, 60s for text block CRUD; "In WhatsApp aktualisieren" button for immediate push
 - Triggered by: vote, reason, poll send/close, deadline extend, archive, new recurring poll
 - Static blocks stored in `group_description_blocks` table (content, position: above/below, sort_order)
@@ -169,8 +169,8 @@ TeamPulse/
 - `events.description TEXT` — optional event description shown everywhere
 - `polls.send_after TEXT` — ISO timestamp: earliest time the poll should be sent
 - `polls.reminder_2_sent INTEGER DEFAULT 0` — tracks second deadline reminder
-- `polls.poll_message_id TEXT` — WAHA message ID of the sent poll (for pinning/unpinning)
-- `polls.result_message_id TEXT` — WAHA message ID of the result post (for pinning/unpinning)
+- `polls.poll_message_id TEXT` — Evolution message ID of the sent poll (for pinning/unpinning)
+- `polls.result_message_id TEXT` — Evolution message ID of the result post (for pinning/unpinning)
 - `polls.result_unpinned INTEGER DEFAULT 0` — tracks whether result message has been unpinned after event end
 - `events.auto_cancel INTEGER DEFAULT 0` — if 1, send cancellation when yes < min_participants at deadline
 - `events.min_participants INTEGER DEFAULT 0` — minimum yes count for auto-cancel

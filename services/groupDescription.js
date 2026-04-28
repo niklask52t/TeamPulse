@@ -1,5 +1,5 @@
 const db = require('../db/database');
-const waha = require('./waha');
+const evolution = require('./evolution');
 const { parseBerlinDateTime } = require('./timeUtils');
 
 const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
@@ -198,7 +198,7 @@ async function updateGroupDescription() {
     }
     try {
         const description = buildDescription();
-        await waha.updateGroupDescription(GROUP_CHAT_ID, description);
+        await evolution.updateGroupDescription(GROUP_CHAT_ID, description);
         console.log('[INFO] Group description updated');
     } catch (err) {
         console.error('[ERROR] updateGroupDescription:', err.message);

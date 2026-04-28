@@ -12,13 +12,12 @@ const statsRouter = require('./routes/stats');
 const descBlocksRouter = require('./routes/descriptionBlocks');
 const dashboardRouter = require('./routes/dashboard');
 const { startScheduler } = require('./services/scheduler');
-const { getGroups } = require('./services/waha');
+const { getGroups } = require('./services/evolution');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 
-// Log unhandled errors so they appear in journalctl
 process.on('uncaughtException', (err) => {
     console.error('[FATAL] Uncaught Exception:', err);
     process.exit(1);
@@ -36,11 +35,10 @@ app.use(session({
     cookie: {
         httpOnly: true,
         sameSite: 'strict',
-        maxAge: 24 * 60 * 60 * 1000, // 24h
+        maxAge: 24 * 60 * 60 * 1000,
     },
 }));
 
-// Auth middleware
 function requireAuth(req, res, next) {
     if (!req.session.userId) {
         return res.status(401).json({ error: 'Nicht angemeldet' });
@@ -48,35 +46,27 @@ function requireAuth(req, res, next) {
     next();
 }
 
-// Public routes
 app.use('/api/auth', authRouter);
 
-// WAHA webhook (machine-to-machine, kein Login nötig)
-app.post('/api/webhooks/waha', (req, res, next) => {
+app.post(['/api/webhooks/evolution', '/api/webhooks/evolution/messages-upsert'], (req, res, next) => {
     req.body = req.body || {};
-    req.body.event = req.body.event || 'message';
-    req.body.payload = req.body.payload || req.body;
-    // Forward directly to the webhook handler in pollsRouter
-    req.url = '/webhook';
+    req.body.event = req.body.event || 'MESSAGES_UPSERT';
+    req.url = '/webhook/evolution';
     next();
 }, pollsRouter);
 
-// Alle anderen API-Routen benötigen Login
 app.use('/api', requireAuth);
 
-// Frontend config
 app.get('/api/config', (req, res) => {
     res.json({ devMode: process.env.DEV_MODE === 'true' });
 });
 
-// WhatsApp groups from WAHA (only useful in dev mode)
 app.get('/api/groups', async (req, res, next) => {
     try {
         const groups = await getGroups();
-        // Normalize: WAHA may return id as object with _serialized
-        const normalized = groups.map(g => ({
-            id: typeof g.id === 'object' ? (g.id._serialized || g.id.user + '@' + g.id.server || JSON.stringify(g.id)) : (g.id || ''),
-            name: g.name || g.subject || g.title || '',
+        const normalized = groups.map((g) => ({
+            id: typeof g.id === 'object' ? (g.id._serialized || `${g.id.user}@${g.id.server}` || JSON.stringify(g.id)) : (g.id || ''),
+            name: g.subject || g.name || g.title || '',
         }));
         res.json(normalized);
     } catch (err) {
@@ -91,15 +81,12 @@ app.use('/api/stats', statsRouter);
 app.use('/api/description-blocks', descBlocksRouter);
 app.use('/api/dashboard', dashboardRouter);
 
-// Statische Dateien
 app.use(express.static(path.join(__dirname, 'public')));
 
-// SPA fallback
 app.get('*splat', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Express error handler — logs to journalctl
 app.use((err, req, res, next) => {
     console.error(`[ERROR] ${req.method} ${req.url}:`, err.stack || err.message || err);
     res.status(err.status || 500).json({ error: err.message || 'Interner Serverfehler' });
@@ -112,7 +99,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
 
 server.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
-        console.error(`[FATAL] Port ${PORT} ist bereits belegt! Läuft WAHA auf dem gleichen Port?`);
+        console.error(`[FATAL] Port ${PORT} ist bereits belegt! Laeuft Evolution API oder ein anderer Dienst auf dem gleichen Port?`);
     } else {
         console.error('[FATAL] Server error:', err);
     }

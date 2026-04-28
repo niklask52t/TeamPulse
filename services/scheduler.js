@@ -121,7 +121,7 @@ async function checkDeadlineReminders() {
 // Close active polls whose deadline has passed, check auto-cancel
 async function checkAndClosePolls() {
     const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
-    const waha = require('./waha');
+    const evolution = require('./evolution');
 
     const pollsToClose = db.prepare(`
         SELECT p.id, p.event_date, e.title, e.description, e.event_time, e.end_time, e.meeting_time, e.auto_cancel, e.min_participants
@@ -140,7 +140,7 @@ async function checkAndClosePolls() {
             ).get(poll.id).cnt;
             if (yesCount < poll.min_participants) {
                 try {
-                    await waha.sendCancellationMessage(
+                    await evolution.sendCancellationMessage(
                         GROUP_CHAT_ID, poll.title, poll.event_date,
                         poll.event_time, poll.end_time, yesCount, poll.min_participants, poll.meeting_time, poll.description
                     );
@@ -276,7 +276,7 @@ async function unpinExpiredResults() {
     const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
     if (!GROUP_CHAT_ID) return;
 
-    const waha = require('./waha');
+    const evolution = require('./evolution');
     const now = new Date();
 
     const polls = db.prepare(`
@@ -291,7 +291,7 @@ async function unpinExpiredResults() {
         if (isNaN(eventEnd.getTime()) || now < eventEnd) continue;
 
         try {
-            await waha.unpinMessage(GROUP_CHAT_ID, poll.result_message_id);
+            await evolution.unpinMessage(GROUP_CHAT_ID, poll.result_message_id);
             console.log(`[INFO] Result message unpinned for poll ${poll.id}`);
         } catch (err) {
             console.error(`[ERROR] unpinMessage result ${poll.id}:`, err.message);

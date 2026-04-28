@@ -1,12 +1,12 @@
 const db = require('../db/database');
-const waha = require('./waha');
+const evolution = require('./evolution');
 const { parseBerlinDateTime, TZ } = require('./timeUtils');
 const { generateResultChart } = require('./chartGenerator');
 
 const { scheduleDescriptionUpdate } = require('./groupDescription');
 const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
 
-// Extract message ID string from WAHA response (handles various response shapes)
+// Extract message ID string from Evolution response (handles various response shapes)
 // Always returns a string or null — never undefined or objects
 function extractMessageId(result) {
     if (!result) return null;
@@ -90,7 +90,7 @@ function calculatePollSchedule(event, eventDate, deadlineMinutes, sendMinutesBef
 // In-memory lock to prevent duplicate sends from overlapping scheduler ticks
 const sendingPolls = new Set();
 
-// Sync group participants from WAHA into the local contacts table
+// Sync group participants from Evolution into the local contacts table
 async function syncGroupParticipants() {
     if (!GROUP_CHAT_ID) {
         console.warn('[WARN] GROUP_CHAT_ID not set, skipping participant sync');
@@ -98,18 +98,18 @@ async function syncGroupParticipants() {
     }
     try {
         const [participants, allContacts] = await Promise.all([
-            waha.getGroupParticipants(GROUP_CHAT_ID),
-            waha.getAllContacts(),
+            evolution.getGroupParticipants(GROUP_CHAT_ID),
+            evolution.getAllContacts(),
         ]);
 
-        // Build phone → name map and phone → lid map from WAHA contacts
+        // Build phone → name map and phone → lid map from Evolution contacts
         const nameMap = {};
         const lidMap = {}; // phone digits → lid digits
         for (const c of allContacts) {
             if (!c.id) continue;
-            const phone = c.id.replace('@c.us', '');
+            const phone = c.id.replace('@c.us', '').replace('@s.whatsapp.net', '');
             nameMap[phone] = c.name || c.pushname || c.shortName || '';
-            // WAHA may provide lid in various fields
+            // Evolution may provide lid in various fields
             const lid = c.lid || c.lidJid || c.linkedDeviceId || '';
             if (lid) {
                 const lidDigits = String(lid).replace(/@lid/g, '').replace(/\D/g, '');
@@ -139,10 +139,10 @@ async function syncGroupParticipants() {
             if (!rawId || rawId.endsWith('@g.us')) continue; // skip sub-groups / bots without phone
             // Skip LID-only participants (no real phone number)
             if (rawId.endsWith('@lid')) continue;
-            const phoneDigits = rawId.replace('@c.us', '').replace(/\D/g, '');
+            const phoneDigits = rawId.replace('@c.us', '').replace('@s.whatsapp.net', '').replace(/\D/g, '');
             if (!phoneDigits) continue;
             const phone = '+' + phoneDigits;
-            const name = nameMap[phoneDigits] || nameMap[rawId.replace('@c.us', '')] || phone;
+            const name = nameMap[phoneDigits] || nameMap[rawId.replace('@c.us', '').replace('@s.whatsapp.net', '')] || phone;
             try {
                 upsert.run(name, phone);
                 // Store LID from participant data or contact list
@@ -219,16 +219,16 @@ async function sendPoll(pollId) {
             }
         }
 
-        const pollResult = await waha.sendPollMessage(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, poll.meeting_time, poll.description);
+        const pollResult = await evolution.sendPollMessage(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, poll.meeting_time, poll.description);
 
         // Save message ID and pin the poll
-        console.log(`[DEBUG] sendPoll WAHA response: ${JSON.stringify(pollResult).slice(0, 500)}`);
+        console.log(`[DEBUG] sendPoll response: ${JSON.stringify(pollResult).slice(0, 500)}`);
         const pollMessageId = extractMessageId(pollResult);
         db.prepare('UPDATE poll_responses SET message_sent = 1 WHERE poll_id = ?').run(pollId);
         db.prepare("UPDATE polls SET status = 'active', sent_at = datetime('now'), poll_message_id = ? WHERE id = ?").run(pollMessageId, pollId);
 
         if (pollMessageId) {
-            waha.pinMessage(GROUP_CHAT_ID, pollMessageId)
+            evolution.pinMessage(GROUP_CHAT_ID, pollMessageId)
                 .catch(e => console.error('[ERROR] pinMessage poll:', e.message));
         }
         console.log(`[INFO] Poll ${pollId} sent to group ${GROUP_CHAT_ID}`);
@@ -255,33 +255,30 @@ async function processResponse(phone, text, pollMessageId) {
         }
     }
 
-    // If still not found and it's a LID, try resolving via WAHA API
+    // If still not found and it's a LID, try resolving via Evolution API
     if (!contactRow && isLid) {
         try {
-            console.log(`[INFO] Trying WAHA API to resolve LID ${normalizedPhone}...`);
-            const wahaContact = await waha.getContactById(normalizedPhone + '@lid');
-            console.log(`[INFO] WAHA getContactById result: ${JSON.stringify(wahaContact).slice(0, 500)}`);
-            if (wahaContact) {
-                // Try to extract a phone number from the WAHA contact response
-                const wahaPhone = wahaContact.id?.replace('@c.us', '')
-                    || wahaContact.phone
-                    || wahaContact.number
+            console.log(`[INFO] Trying Evolution API to resolve LID ${normalizedPhone}...`);
+            const providerContact = await evolution.getContactById(normalizedPhone + '@lid');
+            console.log(`[INFO] Evolution getContactById result: ${JSON.stringify(providerContact).slice(0, 500)}`);
+            if (providerContact) {
+                const providerPhone = providerContact.id?.replace('@c.us', '').replace('@s.whatsapp.net', '')
+                    || providerContact.phone
+                    || providerContact.number
                     || '';
-                const wahaPhoneDigits = String(wahaPhone).replace(/\D/g, '');
-                if (wahaPhoneDigits && !wahaPhoneDigits.includes(normalizedPhone)) {
-                    // Found a real phone number — look up in contacts
+                const providerPhoneDigits = String(providerPhone).replace(/\D/g, '');
+                if (providerPhoneDigits && !providerPhoneDigits.includes(normalizedPhone)) {
                     contactRow = db.prepare(`
                         SELECT * FROM contacts WHERE REPLACE(REPLACE(REPLACE(phone, '+', ''), ' ', ''), '-', '') = ?
-                    `).get(wahaPhoneDigits);
+                    `).get(providerPhoneDigits);
                     if (contactRow) {
-                        // Save LID mapping for future lookups
                         db.prepare('UPDATE contacts SET lid = ? WHERE id = ?').run(normalizedPhone, contactRow.id);
-                        console.log(`[INFO] Resolved LID ${normalizedPhone} → ${contactRow.name} (${contactRow.phone}) via WAHA API, saved mapping`);
+                        console.log(`[INFO] Resolved LID ${normalizedPhone} -> ${contactRow.name} (${contactRow.phone}) via Evolution API, saved mapping`);
                     }
                 }
             }
         } catch (err) {
-            console.error(`[WARN] WAHA LID resolution failed for ${normalizedPhone}:`, err.message);
+            console.error(`[WARN] Evolution LID resolution failed for ${normalizedPhone}:`, err.message);
         }
     }
 
@@ -362,7 +359,7 @@ async function processResponse(phone, text, pollMessageId) {
             `).get();
             if (closedPoll && contactRow.phone) {
                 const chatId = contactRow.phone.replace('+', '') + '@c.us';
-                waha.sendTooLateNotification(chatId, closedPoll.event_title, closedPoll.event_date)
+                evolution.sendTooLateNotification(chatId, closedPoll.event_title, closedPoll.event_date)
                     .catch(e => console.error('[ERROR] sendTooLateNotification:', e.message));
                 console.log(`[VOTE] Too late vote from ${contactRow.name} for ${closedPoll.event_title} — notification sent`);
             }
@@ -390,16 +387,16 @@ async function processResponse(phone, text, pollMessageId) {
     // Send follow-up for all vote types
     const chatId = contactRow.phone.replace('+', '') + '@c.us';
     if (isVoteChange) {
-        waha.sendVoteChangeFollowUp(chatId, activePoll.event_title, activePoll.event_date, response, previousResponse.reason)
+        evolution.sendVoteChangeFollowUp(chatId, activePoll.event_title, activePoll.event_date, response, previousResponse.reason)
             .catch(e => console.error('[ERROR] sendVoteChangeFollowUp:', e.message));
     } else if (response === 'yes') {
-        waha.sendYesFollowUp(chatId, activePoll.event_title, activePoll.event_date)
+        evolution.sendYesFollowUp(chatId, activePoll.event_title, activePoll.event_date)
             .catch(e => console.error('[ERROR] sendYesFollowUp:', e.message));
     } else if (response === 'maybe') {
-        waha.sendMaybeFollowUp(chatId, activePoll.event_title, activePoll.event_date)
+        evolution.sendMaybeFollowUp(chatId, activePoll.event_title, activePoll.event_date)
             .catch(e => console.error('[ERROR] sendMaybeFollowUp:', e.message));
     } else if (response === 'no') {
-        waha.sendNoFollowUp(chatId, activePoll.event_title, activePoll.event_date)
+        evolution.sendNoFollowUp(chatId, activePoll.event_title, activePoll.event_date)
             .catch(e => console.error('[ERROR] sendNoFollowUp:', e.message));
     }
 
@@ -456,7 +453,7 @@ async function sendDeadlineReminder(pollId, isSecond) {
     for (const r of pending) {
         try {
             const chatId = r.phone.replace('+', '') + '@c.us';
-            await waha.sendReminder(chatId, poll.title, poll.event_date, poll.event_time, poll.end_time, deadlineTime, poll.meeting_time, poll.description);
+            await evolution.sendReminder(chatId, poll.title, poll.event_date, poll.event_time, poll.end_time, deadlineTime, poll.meeting_time, poll.description);
         } catch (err) {
             console.error(`Failed to send reminder to ${r.name}:`, err.message);
         }
@@ -492,7 +489,7 @@ async function postGroupResults(pollId, cancelInfo, options = {}) {
     const maybe = responses.filter(r => r.response === 'maybe').map(r => ({ name: r.name, reason: r.reason }));
     const pending = responses.filter(r => !r.response).map(r => ({ name: r.name }));
 
-    const resultResponse = await waha.postResultsToGroup(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, yes, no, maybe, pending, poll.meeting_time, cancelInfo, poll.description);
+    const resultResponse = await evolution.postResultsToGroup(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, yes, no, maybe, pending, poll.meeting_time, cancelInfo, poll.description);
 
     // Save result message ID and pin it
     const resultMessageId = extractMessageId(resultResponse);
@@ -501,7 +498,7 @@ async function postGroupResults(pollId, cancelInfo, options = {}) {
     try {
         const imageBuffer = generateResultChart(poll.title, poll.event_date, yes.length, no.length, maybe.length, pending.length);
         const fmtDate = (d) => { const [y,m,dd] = d.split('-'); return `${dd}.${m}.${y}`; };
-        await waha.sendResultImage(GROUP_CHAT_ID, imageBuffer, `📊 Abstimmung: ${poll.title} – ${fmtDate(poll.event_date)}`);
+        await evolution.sendResultImage(GROUP_CHAT_ID, imageBuffer, `📊 Abstimmung: ${poll.title} – ${fmtDate(poll.event_date)}`);
     } catch (err) {
         console.error('[ERROR] sendResultImage:', err.message);
     }
@@ -514,7 +511,7 @@ async function postGroupResults(pollId, cancelInfo, options = {}) {
     }
 
     if (resultMessageId) {
-        waha.pinMessage(GROUP_CHAT_ID, resultMessageId)
+        evolution.pinMessage(GROUP_CHAT_ID, resultMessageId)
             .catch(e => console.error('[ERROR] pinMessage result:', e.message));
     }
     scheduleDescriptionUpdate();
@@ -561,7 +558,7 @@ async function resendPoll(pollId) {
 
     // Unpin old poll message
     if (poll.poll_message_id) {
-        waha.unpinMessage(GROUP_CHAT_ID, poll.poll_message_id)
+        evolution.unpinMessage(GROUP_CHAT_ID, poll.poll_message_id)
             .catch(e => console.error('[ERROR] unpinMessage old poll:', e.message));
     }
 
@@ -585,13 +582,13 @@ async function resendPoll(pollId) {
     }
 
     // Send new WhatsApp poll
-    const pollResult = await waha.sendPollMessage(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, poll.meeting_time, poll.description);
+    const pollResult = await evolution.sendPollMessage(GROUP_CHAT_ID, poll.title, poll.event_date, poll.event_time, poll.end_time, poll.meeting_time, poll.description);
     const pollMessageId = extractMessageId(pollResult);
 
     db.prepare("UPDATE polls SET poll_message_id = ?, sent_at = datetime('now') WHERE id = ?").run(pollMessageId, pollId);
 
     if (pollMessageId) {
-        waha.pinMessage(GROUP_CHAT_ID, pollMessageId)
+        evolution.pinMessage(GROUP_CHAT_ID, pollMessageId)
             .catch(e => console.error('[ERROR] pinMessage resend:', e.message));
     }
 
@@ -608,7 +605,7 @@ function closePoll(pollId) {
     if (poll?.poll_message_id) {
         const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
         if (GROUP_CHAT_ID) {
-            waha.unpinMessage(GROUP_CHAT_ID, poll.poll_message_id)
+            evolution.unpinMessage(GROUP_CHAT_ID, poll.poll_message_id)
                 .catch(e => console.error('[ERROR] unpinMessage poll:', e.message));
         }
     }
@@ -647,7 +644,7 @@ async function sendEventReminders(pollId) {
     for (const r of yesResponses) {
         try {
             const chatId = r.phone.replace('+', '') + '@c.us';
-            await waha.sendEventReminder(chatId, poll.title, poll.event_time, poll.end_time, poll.meeting_time, poll.description, minutes);
+            await evolution.sendEventReminder(chatId, poll.title, poll.event_time, poll.end_time, poll.meeting_time, poll.description, minutes);
         } catch (err) {
             console.error(`Failed to send event reminder to ${r.name}:`, err.message);
         }

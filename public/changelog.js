@@ -2,20 +2,21 @@
 
 const CHANGELOG = [
     {
-        version: '2.3.1',
+        version: '2.4.0',
         date: '2026-04-28',
         changes: [
-            { type: 'fix', text: 'Poll-Votes nach manuell frueh gestarteten Umfragen werden jetzt deutlich robuster der richtigen aktiven Umfrage zugeordnet' },
-            { type: 'fix', text: 'Webhook sammelt jetzt mehrere Poll-Message-ID-Kandidaten aus dem WAHA-Payload statt sich auf ein einzelnes Feld zu verlassen' },
-            { type: 'improvement', text: 'Wenn genau eine Umfrage aktiv ist, koennen Votes bei fehlender oder anders serialisierter Poll-ID kontrolliert ueber einen sicheren Fallback trotzdem gezaehlt werden' },
-            { type: 'improvement', text: 'Debug-Logs zeigen jetzt klarer, welche aktive Poll-ID gespeichert war und warum ein eingehender Vote gematcht oder verworfen wurde' },
+            { type: 'feature', text: 'WhatsApp-Provider komplett von WAHA auf Evolution API v2 umgestellt' },
+            { type: 'fix', text: 'Webhook-Handling auf Evolution MESSAGES_UPSERT umgebaut; private Antworten und Poll-Votes werden ueber die neue Payload verarbeitet' },
+            { type: 'fix', text: 'Gruppen, Kontakte, Gruppenmitglieder, Poll-Versand, Textnachrichten, Ergebnis-Bilder und Gruppenbeschreibung laufen jetzt ueber Evolution-Endpunkte' },
+            { type: 'improvement', text: 'README komplett auf Evolution-Betrieb aktualisiert, inklusive TeamPulse-Setup und separater Debian-13-Evolution-VM' },
+            { type: 'improvement', text: 'UI-Hilfe und Konfig-Hinweise auf Evolution API und den neuen Webhook-Pfad aktualisiert' },
         ]
     },
     {
         version: '2.3.0',
         date: '2026-04-20',
         changes: [
-            { type: 'fix', text: 'WAHA-Aufrufe haben jetzt Timeouts, damit der Bot bei hängender WAHA-Verbindung nicht dauerhaft stehen bleibt' },
+            { type: 'fix', text: 'Evolution-Aufrufe haben jetzt Timeouts, damit der Bot bei hängender Evolution-Verbindung nicht dauerhaft stehen bleibt' },
             { type: 'fix', text: 'Scheduler läuft nicht mehr parallel überlappend; lange Läufe überspringen den nächsten Tick sauber statt Aktionen doppelt auszuführen' },
             { type: 'fix', text: 'Poll-Votes werden robuster dem echten Voter und der richtigen WhatsApp-Gruppe zugeordnet' },
             { type: 'fix', text: 'Stimmen ohne eindeutige Poll-Message-ID werden nicht mehr automatisch der falschen aktiven Umfrage zugeschlagen' },
@@ -36,7 +37,7 @@ const CHANGELOG = [
             { type: 'feature', text: 'Kompakte Umfrage-Zusammenfassung in Gruppenbeschreibung: aktive Umfragen nach dem Haupt-Event werden als Einzeiler mit Emoji-Counts angezeigt (✅X ❌X 🤷X)' },
             { type: 'feature', text: 'Neu senden (Reset): aktive Umfragen können mit einem Klick zurückgesetzt und neu in die Gruppe gesendet werden — alle Stimmen werden gelöscht' },
             { type: 'improvement', text: 'Sortierung: aktive und ausstehende Umfragen zeigen nächstes Event oben, Archiv zeigt neustes oben' },
-            { type: 'fix', text: 'SQLite-Binding-Fehler behoben: WAHA-Antworten mit unerwarteter Struktur (Objekt statt String) werden jetzt korrekt verarbeitet' },
+            { type: 'fix', text: 'SQLite-Binding-Fehler behoben: Evolution-Antworten mit unerwarteter Struktur (Objekt statt String) werden jetzt korrekt verarbeitet' },
             { type: 'fix', text: 'Stimmen-Zuordnung bei mehreren aktiven Umfragen: Stimmen werden jetzt per Poll-Message-ID der richtigen Umfrage zugeordnet (vorher immer der ersten)' },
             { type: 'improvement', text: 'Gruppenbeschreibung: kompakte Umfragen haben jetzt die Überschrift "Weitere aktive Umfragen"' },
             { type: 'improvement', text: 'Gruppenbeschreibung: Aktualisierung nur noch alle 60 Sekunden statt 15 (weniger API-Last)' },
@@ -72,7 +73,7 @@ const CHANGELOG = [
             { type: 'fix', text: 'Statistiken und Dashboard basieren jetzt ausschließlich auf abgeschlossenen Umfragen (nicht mehr auf aktiven)' },
             { type: 'fix', text: 'Tab-Wechsel lädt Daten jetzt immer neu — kein leerer Tab mehr nach Navigation' },
             { type: 'fix', text: 'Webhook-Fehlerbehandlung: Stimmen werden jetzt auch nach Server-Neustart zuverlässig verarbeitet (try/catch für poll.vote-Handler)' },
-            { type: 'improvement', text: 'Gruppenbeschreibung: automatische Wiederholung bei WAHA-Fehler (Store-Cache-Problem nach Neustart)' },
+            { type: 'improvement', text: 'Gruppenbeschreibung: automatische Wiederholung bei Evolution-Fehler (Store-Cache-Problem nach Neustart)' },
             { type: 'feature', text: 'Manuelle Stimmkorrektur: Klick auf Mitgliedername in Umfrage-Details → Stimme ändern (✅/❌/🤷/⏳)' },
             { type: 'improvement', text: 'Gruppenbeschreibung wechselt automatisch zum nächsten Event sobald das aktuelle Event endet (end_time) bzw. beginnt (event_time falls kein Ende gesetzt)' },
             { type: 'feature', text: 'Zu-spät-Benachrichtigung: Wer nach Fristablauf abstimmt, bekommt eine PN dass die Abstimmung bereits beendet ist' },
@@ -102,7 +103,7 @@ const CHANGELOG = [
             { type: 'feature', text: '"In WhatsApp aktualisieren" Button für sofortiges Update der Gruppenbeschreibung' },
             { type: 'fix', text: 'Wiederkehrende Events am gleichen Wochentag erstellen jetzt Poll für heute statt nächste Woche' },
             { type: 'fix', text: '"Noch keine Umfragen vorhanden" wird nicht mehr angezeigt wenn ausstehende Polls existieren' },
-            { type: 'fix', text: 'LID-Auflösung: unbekannte WhatsApp Linked IDs werden jetzt per WAHA-API aufgelöst und gecacht' },
+            { type: 'fix', text: 'LID-Auflösung: unbekannte WhatsApp Linked IDs werden jetzt per Evolution-API aufgelöst und gecacht' },
         ]
     },
     {
@@ -157,8 +158,8 @@ const CHANGELOG = [
         version: '1.7.5',
         date: '2026-03-14',
         changes: [
-            { type: 'feature', text: 'Gruppen-Tab im Footer: zeigt alle WhatsApp-Gruppen mit ID und Kopieren-Button (von WAHA abgerufen)' },
-            { type: 'fix', text: 'Server hört jetzt auf 0.0.0.0 statt localhost — Webhooks von externen WAHA-Instanzen funktionieren' },
+            { type: 'feature', text: 'Gruppen-Tab im Footer: zeigt alle WhatsApp-Gruppen mit ID und Kopieren-Button (von Evolution abgerufen)' },
+            { type: 'fix', text: 'Server hört jetzt auf 0.0.0.0 statt localhost — Webhooks von externen Evolution-Instanzen funktionieren' },
             { type: 'fix', text: '"Noch keine Events erstellt" wird nicht mehr angezeigt, während das Event-Formular offen ist' },
             { type: 'fix', text: 'Events laden: Fehlerbehandlung hinzugefügt — bei API-Fehler wird jetzt eine Fehlermeldung statt leerer Liste angezeigt' },
         ]
@@ -176,9 +177,9 @@ const CHANGELOG = [
         version: '1.7.3',
         date: '2026-03-14',
         changes: [
-            { type: 'fix', text: 'Webhook: Button-Taps wurden nie als Votes erkannt — WAHA sendet sie als message-Event mit type=buttons_response, jetzt korrekt abgefangen' },
+            { type: 'fix', text: 'Webhook: Button-Taps wurden nie als Votes erkannt — Evolution sendet sie als message-Event mit type=buttons_response, jetzt korrekt abgefangen' },
             { type: 'fix', text: 'Webhook: Alle eingehenden Events werden jetzt geloggt (journalctl → [WEBHOOK] Zeilen)' },
-            { type: 'fix', text: 'Ergebnis-Bild: Multipart/form-data statt JSON Base64 (WAHA /api/sendFile), mit JSON-Fallback' },
+            { type: 'fix', text: 'Ergebnis-Bild: Multipart/form-data statt JSON Base64 (Evolution /api/sendFile), mit JSON-Fallback' },
             { type: 'feature', text: 'Fristen überall in Stunden statt Minuten (UI: h statt min, Eingabe 24h / 1h Standard)' },
         ]
     },
@@ -199,7 +200,7 @@ const CHANGELOG = [
             { type: 'feature', text: 'Button-Antworten (buttons_response) werden im Webhook erkannt und als Stimmabgabe verarbeitet' },
             { type: 'feature', text: '"Erinnerung senden" → "⏰ Abstimmungs-Erinnerung" (an Nicht-Voter mit Frist-Hinweis)' },
             { type: 'feature', text: '"Event-Erinnerung" → "🏃 Start-Erinnerung (Zusager)" (an Ja-Voter, Event beginnt in 1h)' },
-            { type: 'fix', text: 'sendResultImage: base64 als Data-URI (data:image/png;base64,...) für WAHA sendImage' },
+            { type: 'fix', text: 'sendResultImage: base64 als Data-URI (data:image/png;base64,...) für Evolution sendImage' },
         ]
     },
     {
@@ -216,7 +217,7 @@ const CHANGELOG = [
         version: '1.6.0',
         date: '2026-03-14',
         changes: [
-            { type: 'feature', text: 'Erinnerungen mit Tap-Buttons (Ja/Nein/Vielleicht) — Fallback auf Text wenn WAHA kein sendButtons unterstützt' },
+            { type: 'feature', text: 'Erinnerungen mit Tap-Buttons (Ja/Nein/Vielleicht) — Fallback auf Text wenn Evolution kein sendButtons unterstützt' },
             { type: 'feature', text: 'Ergebnis-Post sendet zusätzlich Chart-Bild in die Gruppe (PNG via @napi-rs/canvas)' },
             { type: 'feature', text: 'Abstimmungsfrist verlängern — direkt im Poll-Detail (beliebige Minuten)' },
             { type: 'feature', text: 'Statistiken-Tab: Antwortquote & Ja/Nein/Vielleicht/Offen pro Mitglied' },
@@ -237,13 +238,13 @@ const CHANGELOG = [
         date: '2026-03-14',
         changes: [
             { type: 'feature', text: 'Umfrage wird in die Gruppe geschickt (statt Einzelnachrichten)' },
-            { type: 'feature', text: 'Teilnehmer automatisch aus WAHA-Gruppe synchronisiert' },
+            { type: 'feature', text: 'Teilnehmer automatisch aus Evolution-Gruppe synchronisiert' },
             { type: 'feature', text: 'Manuelle Funktion "Umfrage schließen"' },
             { type: 'feature', text: 'Ergebnis posten schließt Umfrage NICHT mehr — mehrfach möglich' },
             { type: 'feature', text: 'Erinnerung zeigt jetzt genaue Uhrzeit der Abstimmungsfrist' },
             { type: 'fix', text: 'Poll-Votes aus Gruppe wurden nicht aufgezeichnet (payload.sender)' },
             { type: 'fix', text: 'Footer jetzt immer am Seitenende' },
-            { type: 'delete', text: 'Kontakte-Tab entfernt — Teilnehmer kommen aus der WAHA-Gruppe' },
+            { type: 'delete', text: 'Kontakte-Tab entfernt — Teilnehmer kommen aus der Evolution-Gruppe' },
         ]
     },
     {
@@ -254,7 +255,7 @@ const CHANGELOG = [
             { type: 'feature', text: 'Sticky Header mit Logo' },
             { type: 'feature', text: 'Kalender-Datumskarten bei Events und Umfragen' },
             { type: 'feature', text: 'Wiki und Changelog im Footer statt als Tabs' },
-            { type: 'fix', text: 'WAHA Webhook-Route wurde nie erreicht (kritischer Routing-Bug)' },
+            { type: 'fix', text: 'Evolution Webhook-Route wurde nie erreicht (kritischer Routing-Bug)' },
             { type: 'fix', text: 'Antwort-Erkennung: Einzelbuchstaben "n"/"j" matchten fälschlicherweise' },
         ]
     },
@@ -283,7 +284,7 @@ const CHANGELOG = [
         date: '2026-03-13',
         changes: [
             { type: 'feature', text: 'Events erstellen (einmalig & wiederkehrend)' },
-            { type: 'feature', text: 'Automatische WhatsApp-Umfragen via WAHA' },
+            { type: 'feature', text: 'Automatische WhatsApp-Umfragen via Evolution' },
             { type: 'feature', text: 'Antwort-Erkennung, Gruppen-Post, Erinnerungen, Update-Script' },
         ]
     }
