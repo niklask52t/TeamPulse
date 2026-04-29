@@ -2,6 +2,7 @@
 const API = '';
 const TZ = 'Europe/Berlin';
 let headerClockTimer = null;
+let csrfToken = '';
 
 // ===== DATE / TIME HELPERS =====
 
@@ -62,6 +63,7 @@ function checkDirtyAndClose() {
 
 async function checkAuth() {
     try {
+        await refreshCsrfToken();
         const res = await fetch(`${API}/api/auth/me`);
         if (!res.ok) { showLogin(); return; }
         const data = await res.json();
@@ -73,6 +75,15 @@ async function checkAuth() {
     } catch {
         showLogin();
     }
+}
+
+async function refreshCsrfToken() {
+    const res = await fetch(`${API}/api/auth/csrf`);
+    if (!res.ok) {
+        throw new Error(`CSRF ${res.status}`);
+    }
+    const data = await res.json();
+    csrfToken = data.csrfToken || '';
 }
 
 function showLogin() {
@@ -112,9 +123,13 @@ async function doLogin(e) {
     const password = document.getElementById('login-password').value;
     const errorEl  = document.getElementById('login-error');
 
+    if (!csrfToken) await refreshCsrfToken();
     const res = await fetch(`${API}/api/auth/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'x-csrf-token': csrfToken,
+        },
         body: JSON.stringify({ username, password }),
     });
 
@@ -145,9 +160,13 @@ async function doChangePassword(e) {
         return;
     }
 
+    if (!csrfToken) await refreshCsrfToken();
     const res = await fetch(`${API}/api/auth/change-password`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'x-csrf-token': csrfToken,
+        },
         body: JSON.stringify({ newPassword, newUsername: newUsername || undefined }),
     });
 
@@ -162,12 +181,34 @@ async function doChangePassword(e) {
 }
 
 async function doLogout() {
-    await fetch(`${API}/api/auth/logout`, { method: 'POST' });
+    if (!csrfToken) await refreshCsrfToken();
+    await fetch(`${API}/api/auth/logout`, {
+        method: 'POST',
+        headers: { 'x-csrf-token': csrfToken },
+    });
     showLogin();
 }
 
 async function apiFetch(url, options) {
-    const res = await fetch(url, options);
+    const init = { ...(options || {}) };
+    const method = (init.method || 'GET').toUpperCase();
+    if (method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+        if (!csrfToken) await refreshCsrfToken();
+        init.headers = {
+            ...(init.headers || {}),
+            'x-csrf-token': csrfToken,
+        };
+    }
+
+    let res = await fetch(url, init);
+    if (res.status === 403 && method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS') {
+        await refreshCsrfToken();
+        init.headers = {
+            ...(init.headers || {}),
+            'x-csrf-token': csrfToken,
+        };
+        res = await fetch(url, init);
+    }
     if (res.status === 401) {
         showLogin();
         throw new Error('Nicht angemeldet');
@@ -226,10 +267,11 @@ async function loadGroups() {
         const rows = groups.map(g => {
             const id = g.id || g._id || g.chatId || '';
             const name = g.name || g.subject || g.title || id;
+            const encodedId = encodeURIComponent(String(id));
             return '<tr>'
                 + '<td class="stats-name">' + esc(name) + '</td>'
                 + '<td style="font-family:monospace;font-size:0.82rem;color:var(--text-secondary);user-select:all">' + esc(id) + '</td>'
-                + '<td><button class="btn btn-secondary btn-sm" onclick="copyGroupId(\'' + esc(id).replace(/'/g, "\\'") + '\', this)">Kopieren</button></td>'
+                + '<td><button class="btn btn-secondary btn-sm" data-group-id="' + esc(encodedId) + '" onclick="copyGroupId(decodeURIComponent(this.dataset.groupId), this)">Kopieren</button></td>'
                 + '</tr>';
         }).join('');
         list.innerHTML = '<table class="stats-table">'

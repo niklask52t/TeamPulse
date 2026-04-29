@@ -271,7 +271,7 @@ router.post('/webhook/evolution', async (req, res) => {
                         console.log(`[REASON] Saved from ${reasonResult.contactName} (poll ${reasonResult.pollId})`);
                     }
                 } catch (err) {
-                    console.error(`[ERROR] processReasonMessage failed for phone=${remoteJid}:`, err.message);
+                    console.error('[ERROR] processReasonMessage failed for phone=%s:', remoteJid, err.message);
                 }
             }
             continue;
@@ -301,7 +301,7 @@ router.post('/webhook/evolution', async (req, res) => {
                 console.log(`[VOTE] unmatched - phone=${phone} option=${optionNames[0]}`);
             }
         } catch (err) {
-            console.error(`[ERROR] processResponse failed for phone=${phone} option=${optionNames[0]}:`, err.message, err.stack);
+            console.error('[ERROR] processResponse failed for phone=%s option=%s:', phone, optionNames[0], err.stack || err.message);
         }
     }
 

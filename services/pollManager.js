@@ -273,12 +273,12 @@ async function processResponse(phone, text, pollMessageId) {
                     `).get(providerPhoneDigits);
                     if (contactRow) {
                         db.prepare('UPDATE contacts SET lid = ? WHERE id = ?').run(normalizedPhone, contactRow.id);
-                        console.log(`[INFO] Resolved LID ${normalizedPhone} -> ${contactRow.name} (${contactRow.phone}) via Evolution API, saved mapping`);
+                        console.log('[INFO] Resolved LID %s -> %s (%s) via Evolution API, saved mapping', normalizedPhone, contactRow.name, contactRow.phone);
                     }
                 }
             }
         } catch (err) {
-            console.error(`[WARN] Evolution LID resolution failed for ${normalizedPhone}:`, err.message);
+            console.error('[WARN] Evolution LID resolution failed for %s:', normalizedPhone, err.message);
         }
     }
 

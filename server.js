@@ -3,6 +3,8 @@ const express = require('express');
 const path = require('path');
 const session = require('express-session');
 const crypto = require('crypto');
+const csrf = require('csurf');
+const { rateLimit } = require('express-rate-limit');
 
 const authRouter = require('./routes/auth');
 const contactsRouter = require('./routes/contacts');
@@ -17,6 +19,28 @@ const { getGroups } = require('./services/evolution');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+const isProduction = process.env.NODE_ENV === 'production';
+const pageLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 300,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+});
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 50,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+});
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 1200,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+});
+const csrfProtection = csrf({
+    value: (req) => req.get('x-csrf-token') || req.body?._csrf || '',
+});
 
 process.on('uncaughtException', (err) => {
     console.error('[FATAL] Uncaught Exception:', err);
@@ -27,6 +51,7 @@ process.on('unhandledRejection', (err) => {
 });
 
 app.use(express.json());
+app.set('trust proxy', 1);
 
 app.use(session({
     secret: SESSION_SECRET,
@@ -36,6 +61,7 @@ app.use(session({
         httpOnly: true,
         sameSite: 'strict',
         maxAge: 24 * 60 * 60 * 1000,
+        secure: isProduction,
     },
 }));
 
@@ -46,7 +72,7 @@ function requireAuth(req, res, next) {
     next();
 }
 
-app.use('/api/auth', authRouter);
+app.use('/api/auth', authLimiter);
 
 app.post(['/api/webhooks/evolution', '/api/webhooks/evolution/messages-upsert'], (req, res, next) => {
     req.body = req.body || {};
@@ -55,7 +81,11 @@ app.post(['/api/webhooks/evolution', '/api/webhooks/evolution/messages-upsert'],
     next();
 }, pollsRouter);
 
+app.use(csrfProtection);
+
+app.use('/api/auth', authRouter);
 app.use('/api', requireAuth);
+app.use('/api', apiLimiter);
 
 app.get('/api/config', (req, res) => {
     res.json({ devMode: process.env.DEV_MODE === 'true' });
@@ -81,14 +111,17 @@ app.use('/api/stats', statsRouter);
 app.use('/api/description-blocks', descBlocksRouter);
 app.use('/api/dashboard', dashboardRouter);
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(pageLimiter, express.static(path.join(__dirname, 'public')));
 
-app.get('*splat', (req, res) => {
+app.get('*splat', pageLimiter, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.use((err, req, res, next) => {
-    console.error(`[ERROR] ${req.method} ${req.url}:`, err.stack || err.message || err);
+    if (err && err.code === 'EBADCSRFTOKEN') {
+        return res.status(403).json({ error: 'Ungueltiger oder fehlender CSRF-Token' });
+    }
+    console.error('[ERROR] %s %s:', req.method, req.url, err.stack || err.message || err);
     res.status(err.status || 500).json({ error: err.message || 'Interner Serverfehler' });
 });
 

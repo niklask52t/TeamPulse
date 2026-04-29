@@ -3,6 +3,10 @@ const bcrypt = require('bcrypt');
 const router = express.Router();
 const db = require('../db/database');
 
+router.get('/csrf', (req, res) => {
+    res.json({ csrfToken: req.csrfToken() });
+});
+
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
     const { username, password } = req.body;
