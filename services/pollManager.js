@@ -2,7 +2,7 @@ const db = require('../db/database');
 const evolution = require('./evolution');
 const { parseBerlinDateTime, TZ } = require('./timeUtils');
 const { generateResultChart } = require('./chartGenerator');
-const { scheduleDescriptionUpdate } = require('./groupDescription');
+const { scheduleDescriptionUpdate, updateGroupDescription } = require('./groupDescription');
 
 const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
 
@@ -239,6 +239,9 @@ function createPollForEvent(eventId, eventDate, deadlineMinutes, sendMinutesBefo
         insertResponse.run(pollId, contact.id);
     }
 
+    updateGroupDescription().catch((err) => {
+        console.error('[ERROR] updateGroupDescription after createPollForEvent:', err.message);
+    });
     return pollId;
 }
 
@@ -293,7 +296,7 @@ async function sendPoll(pollId) {
                 .catch((err) => console.error('[ERROR] pinMessage poll:', err.message));
         }
         console.log(`[INFO] Poll ${pollId} sent to group ${GROUP_CHAT_ID}`);
-        scheduleDescriptionUpdate();
+        await updateGroupDescription();
     } finally {
         sendingPolls.delete(pollId);
     }
@@ -587,7 +590,7 @@ async function postGroupResults(pollId, cancelInfo, options = {}) {
         evolution.pinMessage(GROUP_CHAT_ID, resultMessageId)
             .catch((err) => console.error('[ERROR] pinMessage result:', err.message));
     }
-    scheduleDescriptionUpdate();
+    await updateGroupDescription();
 }
 
 function refreshOpenPollScheduleForEvent(eventId) {
@@ -677,7 +680,9 @@ function closePoll(pollId) {
         evolution.unpinMessage(GROUP_CHAT_ID, poll.poll_message_id)
             .catch((err) => console.error('[ERROR] unpinMessage poll:', err.message));
     }
-    scheduleDescriptionUpdate();
+    updateGroupDescription().catch((err) => {
+        console.error('[ERROR] updateGroupDescription after closePoll:', err.message);
+    });
 }
 
 function extendDeadline(pollId, minutes) {

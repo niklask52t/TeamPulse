@@ -302,7 +302,11 @@ async function saveEvent(e) {
             const acRes = await apiFetch(`${API}/api/polls/active-count`);
             const { count } = await acRes.json();
             if (count >= 2) {
-                if (!confirm('Es sind bereits ' + count + ' Umfragen aktiv. Die neue Umfrage wird erstellt, erscheint aber erst in der Gruppenbeschreibung, sobald wieder Platz ist. Trotzdem erstellen?')) return;
+                const confirmed = await showConfirmDialog(
+                    'Es sind bereits ' + count + ' Umfragen aktiv. Die neue Umfrage wird erstellt, erscheint aber erst in der Gruppenbeschreibung, sobald wieder Platz ist. Trotzdem erstellen?',
+                    { title: 'Viele aktive Umfragen', confirmText: 'Ja', cancelText: 'Nein' }
+                );
+                if (!confirmed) return;
             }
         } catch (_) { /* ignore, proceed */ }
     }
@@ -432,3 +436,25 @@ async function removeException(eventId, exceptionId) {
         if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
     }
 }
+
+deleteEvent = async function(id) {
+    const confirmed = await showConfirmDialog('Event wirklich löschen? Alle zugehörigen Umfragen werden ebenfalls gelöscht.', {
+        title: 'Event löschen',
+        confirmText: 'Ja',
+        cancelText: 'Nein',
+    });
+    if (!confirmed) return;
+
+    try {
+        const res = await apiFetch(`${API}/api/events/${id}`, { method: 'DELETE' });
+        if (!res.ok) {
+            const err = await res.json();
+            alert('Fehler: ' + (err.error || 'Unbekannter Fehler'));
+            return;
+        }
+        loadEvents();
+        loadPolls();
+    } catch (err) {
+        if (err.message !== 'Nicht angemeldet') alert('Fehler beim Löschen: ' + err.message);
+    }
+};

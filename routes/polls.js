@@ -150,8 +150,10 @@ router.put('/:id/response', async (req, res) => {
             .catch((err) => console.error(`[ERROR] sendAdminVoteNotification to ${contact.name}:`, err.message));
     }
 
-    const { scheduleDescriptionUpdate } = require('../services/groupDescription');
-    scheduleDescriptionUpdate();
+    const { updateGroupDescription } = require('../services/groupDescription');
+    updateGroupDescription().catch((err) => {
+        console.error('[ERROR] updateGroupDescription after admin vote change:', err.message);
+    });
 
     res.json({ success: true });
 });

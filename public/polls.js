@@ -312,7 +312,12 @@ async function closePollWithPrompt(id) {
 }
 
 async function pollAction(id, action, confirmMsg) {
-    if (!confirm(confirmMsg)) return;
+    const confirmed = await showConfirmDialog(confirmMsg, {
+        title: 'Aktion bestätigen',
+        confirmText: 'Ja',
+        cancelText: 'Nein',
+    });
+    if (!confirmed) return;
     try {
         const res = await apiFetch(`${API}/api/polls/${id}/${action}`, { method: 'POST' });
         if (!res.ok) {

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
 const pollManager = require('../services/pollManager');
+const { updateGroupDescription } = require('../services/groupDescription');
 const { berlinToday, parseBerlinDateTime, TZ } = require('../services/timeUtils');
 
 // GET all events (with next poll date for recurring events)
@@ -126,6 +127,10 @@ router.post('/', (req, res) => {
         }
     }
 
+    updateGroupDescription().catch((err) => {
+        console.error('[ERROR] updateGroupDescription after event create:', err.message);
+    });
+
     res.status(201).json(event);
 });
 
@@ -178,6 +183,10 @@ router.put('/:id', (req, res) => {
     } catch (err) {
         console.error('[ERROR] refreshOpenPollScheduleForEvent:', err.message);
     }
+    updateGroupDescription().catch((err) => {
+        console.error('[ERROR] updateGroupDescription after event update:', err.message);
+    });
+
     res.json(event);
 });
 

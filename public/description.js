@@ -141,3 +141,24 @@ async function triggerDescriptionUpdate() {
         if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
     }
 }
+
+deleteDescBlock = async function(id) {
+    const confirmed = await showConfirmDialog('Textblock wirklich löschen?', {
+        title: 'Textblock löschen',
+        confirmText: 'Ja',
+        cancelText: 'Nein',
+    });
+    if (!confirmed) return;
+
+    try {
+        const res = await apiFetch(`${API}/api/description-blocks/${id}`, { method: 'DELETE' });
+        if (!res.ok) {
+            const err = await res.json();
+            alert('Fehler: ' + (err.error || 'Unbekannter Fehler'));
+            return;
+        }
+        loadDescriptionBlocks();
+    } catch (err) {
+        if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
+    }
+};

@@ -2,7 +2,7 @@ const cron = require('node-cron');
 const db = require('../db/database');
 const pollManager = require('./pollManager');
 const { parseBerlinDateTime, TZ } = require('./timeUtils');
-const { scheduleDescriptionUpdate } = require('./groupDescription');
+const { updateGroupDescription } = require('./groupDescription');
 
 // Returns current date string (YYYY-MM-DD) in Europe/Berlin timezone
 function berlinDateStr() {
@@ -157,7 +157,9 @@ async function checkAndClosePolls() {
             }
         }
     }
-    if (pollsToClose.length > 0) scheduleDescriptionUpdate();
+    if (pollsToClose.length > 0) {
+        await updateGroupDescription();
+    }
 }
 
 // Post group results immediately for closed polls
@@ -272,7 +274,7 @@ async function archiveOldPolls() {
         if (now >= archiveTime) {
             db.prepare('UPDATE polls SET archived = 1 WHERE id = ?').run(poll.id);
             console.log(`Poll ${poll.id} archived`);
-            scheduleDescriptionUpdate();
+            await updateGroupDescription();
         }
     }
 }
@@ -331,7 +333,7 @@ async function checkDescriptionEventSwitch() {
     // If the "current" poll changed, trigger a description update
     if (lastDescriptionPollId !== null && currentPollId !== lastDescriptionPollId) {
         console.log(`[INFO] Description event switch: poll ${lastDescriptionPollId} → ${currentPollId}`);
-        scheduleDescriptionUpdate();
+        await updateGroupDescription();
     }
     lastDescriptionPollId = currentPollId;
 }

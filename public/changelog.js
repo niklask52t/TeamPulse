@@ -2,6 +2,14 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.4',
+        date: '2026-04-30',
+        changes: [
+            { type: 'fix', text: 'Weitere Browser-Confirm-Stellen durch den internen Ja/Nein-Dialog ersetzt, damit Poll-, Event- und Textblock-Aktionen nicht mehr browserabhaengig wirken' },
+            { type: 'fix', text: 'Gruppenbeschreibung wird bei Poll-Senden, Poll-Schliessen, Admin-Stimmaenderungen und automatischen Event-Wechseln jetzt direkt aktualisiert statt erst nach zusaetzlicher Debounce-Verzoegerung' },
+        ]
+    },
+    {
         version: '2.5.3',
         date: '2026-04-30',
         changes: [
