@@ -326,3 +326,35 @@ async function pollAction(id, action, confirmMsg) {
         if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
     }
 }
+
+closePollWithPrompt = async function(id) {
+    const shouldClose = await showConfirmDialog('Umfrage jetzt manuell schließen?', {
+        title: 'Umfrage schließen',
+        confirmText: 'Ja',
+        cancelText: 'Nein',
+    });
+    if (!shouldClose) return;
+
+    const postResults = await showConfirmDialog('Soll das Ergebnis jetzt auch direkt in die Gruppe gepostet werden?', {
+        title: 'Ergebnis posten',
+        confirmText: 'Ja',
+        cancelText: 'Nein',
+    });
+
+    try {
+        const res = await apiFetch(`${API}/api/polls/${id}/close`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ postResults }),
+        });
+        if (!res.ok) {
+            const data = await res.json();
+            alert('Fehler: ' + (data.error || 'Unbekannter Fehler'));
+            return;
+        }
+        await renderPollDetail(id);
+        loadPolls();
+    } catch (err) {
+        if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
+    }
+};

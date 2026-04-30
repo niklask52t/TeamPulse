@@ -1,8 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
+const { syncGroupParticipants } = require('../services/pollManager');
 
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
+    try {
+        await syncGroupParticipants();
+    } catch (err) {
+        console.error('[WARN] dashboard sync failed:', err.message);
+    }
+
     // Next upcoming event
     const nextEvent = db.prepare(`
         SELECT p.id as poll_id, p.event_date, p.deadline, p.status, e.title, e.description, e.event_time, e.end_time, e.meeting_time, e.type, e.auto_cancel, e.min_participants

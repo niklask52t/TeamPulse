@@ -13,6 +13,16 @@ const AUTO_HINT = '_🤖 Automatisch generierte Nachricht von TeamPulse_';
 
 function normalizeRecipient(value) {
     if (!value) return '';
+    if (typeof value === 'object') {
+        const nested = value._serialized
+            || value.id
+            || value.jid
+            || value.remoteJid
+            || value.user
+            || (value.user && value.server ? `${value.user}@${value.server}` : '')
+            || '';
+        return normalizeRecipient(nested);
+    }
     const text = String(value).trim();
     if (text.endsWith('@g.us') || text.endsWith('@s.whatsapp.net') || text.endsWith('@lid')) {
         return text;
@@ -297,14 +307,68 @@ async function sendTooLateNotification(chatId, eventTitle, eventDate) {
     return sendMessage(chatId, text);
 }
 
-function extractRecords(data) {
+function extractRecords(data, seen = new Set()) {
+    if (!data || seen.has(data)) return [];
     if (Array.isArray(data)) return data;
-    if (Array.isArray(data?.participants)) return data.participants;
-    if (Array.isArray(data?.contacts)) return data.contacts;
-    if (Array.isArray(data?.data)) return data.data;
-    if (Array.isArray(data?.result)) return data.result;
-    if (Array.isArray(data?.groups)) return data.groups;
+    if (typeof data !== 'object') return [];
+
+    seen.add(data);
+
+    const directKeys = [
+        'participants',
+        'participant',
+        'members',
+        'groupParticipants',
+        'contacts',
+        'groups',
+        'records',
+        'rows',
+        'data',
+        'result',
+        'response',
+        'payload',
+    ];
+
+    for (const key of directKeys) {
+        if (Array.isArray(data[key])) return data[key];
+    }
+
+    const nestedKeys = ['data', 'result', 'response', 'payload'];
+    for (const key of nestedKeys) {
+        const nested = data[key];
+        const extracted = extractRecords(nested, seen);
+        if (extracted.length) return extracted;
+    }
+
     return [];
+}
+
+function extractGroupId(entry) {
+    if (!entry) return '';
+    if (typeof entry === 'string') return entry;
+    return normalizeRecipient(
+        entry.id
+        || entry.jid
+        || entry.remoteJid
+        || entry.groupJid
+        || entry.subjectOwner
+        || entry.key?.remoteJid
+        || entry.key?.id
+        || entry._serialized
+        || ''
+    );
+}
+
+function extractParticipantsFromGroup(entry) {
+    if (!entry || typeof entry !== 'object') return [];
+    return extractRecords(
+        entry.participants
+        || entry.members
+        || entry.groupParticipants
+        || entry.data
+        || entry.result
+        || entry
+    );
 }
 
 async function getGroupParticipants(groupId) {
@@ -315,8 +379,9 @@ async function getGroupParticipants(groupId) {
     if (directParticipants.length) return directParticipants;
 
     const groups = await getGroups(true);
-    const group = groups.find((entry) => normalizeRecipient(entry?.id) === normalizeRecipient(groupId));
-    return extractRecords(group?.participants);
+    const normalizedGroupId = normalizeRecipient(groupId);
+    const group = groups.find((entry) => extractGroupId(entry) === normalizedGroupId);
+    return extractParticipantsFromGroup(group);
 }
 
 async function getAllContacts() {

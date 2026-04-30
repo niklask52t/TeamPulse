@@ -63,11 +63,20 @@ function normalizeDigits(value) {
 function extractParticipantId(entry) {
     if (!entry) return '';
     if (typeof entry === 'string') return entry;
-    return entry.id
+    return entry.id?._serialized
+        || (entry.id?.user && entry.id?.server ? `${entry.id.user}@${entry.id.server}` : '')
+        || entry.id
+        || entry.jid?._serialized
         || entry.jid
+        || entry.phoneNumber
+        || entry.phone
+        || entry.number
+        || entry.mobile
         || entry.user
         || entry.wuid
         || entry.remoteJid
+        || entry.userJid
+        || entry.memberId
         || entry.participant
         || entry.key?.participant
         || entry.key?.remoteJid
@@ -147,6 +156,8 @@ async function syncGroupParticipants() {
             evolution.getAllContacts(),
         ]);
 
+        console.log(`[SYNC] Group participant fetch returned ${participants.length} entries; contact fetch returned ${allContacts.length} entries`);
+
         const nameMap = {};
         const lidMap = {};
         for (const entry of allContacts) {
@@ -178,9 +189,12 @@ async function syncGroupParticipants() {
         let synced = 0;
         for (const participant of participants) {
             const rawId = extractParticipantId(participant);
-            if (!rawId || rawId.endsWith('@g.us') || rawId.endsWith('@lid')) continue;
+            const resolvedId = rawId && !rawId.endsWith('@lid')
+                ? rawId
+                : (participant.phoneNumber || participant.phone || participant.number || participant.mobile || '');
+            if (!resolvedId || resolvedId.endsWith('@g.us')) continue;
 
-            const phoneDigits = normalizeDigits(rawId || participant.phone || participant.number);
+            const phoneDigits = normalizeDigits(resolvedId);
             if (!phoneDigits) continue;
 
             const phone = '+' + phoneDigits;

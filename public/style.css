@@ -1005,12 +1005,44 @@ main {
     gap: 0.75rem;
 }
 
+.confirm-dialog-content {
+    max-width: 460px;
+}
+
+.confirm-dialog-message {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--text-primary);
+}
+
+.confirm-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding: 0 1.5rem 1.5rem;
+}
+
 @media (max-width: 700px) {
     .overlay-content {
         width: 100%;
         max-height: 100vh;
         border-radius: 0;
     }
+
+    .confirm-dialog-content {
+        max-width: none;
+    }
+
+    .confirm-dialog-actions {
+        padding: 0 1rem 1rem;
+        flex-direction: column-reverse;
+    }
+
+    .confirm-dialog-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
     .overlay-body.wiki-content {
         grid-template-columns: 1fr;
     }

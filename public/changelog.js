@@ -2,6 +2,15 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.1',
+        date: '2026-04-30',
+        changes: [
+            { type: 'fix', text: 'Gruppenmitglieder aus Evolution werden jetzt auch dann korrekt synchronisiert, wenn Teilnehmer als @lid kommen und die echte Nummer in phoneNumber steckt' },
+            { type: 'fix', text: 'Dashboard stoesst den Gruppen-Sync jetzt selbst an, damit Mitgliederzahlen nicht erst nach Poll-Aktionen erscheinen' },
+            { type: 'improvement', text: 'Beim manuellen Schliessen einer Umfrage nutzt die UI jetzt einen eigenen Ja/Nein-Dialog statt Browser-OK/Abbrechen' },
+        ]
+    },
+    {
         version: '2.5.0',
         date: '2026-04-30',
         changes: [

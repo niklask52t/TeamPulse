@@ -258,6 +258,51 @@ function closeOverlay(name) {
     document.body.style.overflow = '';
 }
 
+function showConfirmDialog(message, options = {}) {
+    const overlay = document.getElementById('confirm-dialog');
+    const titleEl = document.getElementById('confirm-dialog-title');
+    const messageEl = document.getElementById('confirm-dialog-message');
+    const cancelBtn = document.getElementById('confirm-dialog-cancel');
+    const confirmBtn = document.getElementById('confirm-dialog-confirm');
+    if (!overlay || !titleEl || !messageEl || !cancelBtn || !confirmBtn) {
+        return Promise.resolve(confirm(message));
+    }
+
+    const title = options.title || 'Bestätigung';
+    const confirmText = options.confirmText || 'Ja';
+    const cancelText = options.cancelText || 'Nein';
+
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+    confirmBtn.textContent = confirmText;
+    cancelBtn.textContent = cancelText;
+
+    overlay.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+
+    return new Promise((resolve) => {
+        const cleanup = (result) => {
+            overlay.classList.add('hidden');
+            document.body.style.overflow = '';
+            cancelBtn.removeEventListener('click', onCancel);
+            confirmBtn.removeEventListener('click', onConfirm);
+            document.removeEventListener('keydown', onKeydown);
+            resolve(result);
+        };
+
+        const onCancel = () => cleanup(false);
+        const onConfirm = () => cleanup(true);
+        const onKeydown = (event) => {
+            if (event.key === 'Escape') cleanup(false);
+        };
+
+        cancelBtn.addEventListener('click', onCancel);
+        confirmBtn.addEventListener('click', onConfirm);
+        document.addEventListener('keydown', onKeydown);
+        confirmBtn.focus();
+    });
+}
+
 // Close overlay on Escape key
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
