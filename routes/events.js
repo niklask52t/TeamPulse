@@ -64,7 +64,7 @@ router.post('/', (req, res) => {
     }
 
     const deadlineMin = poll_deadline_at ? 60 : (poll_deadline_minutes || 60);
-    const sendMin = poll_send_at ? 1440 : (poll_send_minutes_before || 1440);
+    const sendMin = poll_send_at ? 2160 : (poll_send_minutes_before || 2160);
 
     const result = db.prepare(`
         INSERT INTO events (title, description, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_at, poll_send_minutes_before, poll_deadline_at, poll_deadline_minutes, group_post_minutes_before, auto_cancel, min_participants, event_reminder_minutes, deadline_reminder_1_minutes, deadline_reminder_2_minutes)
@@ -149,7 +149,7 @@ router.put('/:id', (req, res) => {
     }
 
     const deadlineMin = poll_deadline_at ? 60 : (poll_deadline_minutes || 60);
-    const sendMin = poll_send_at ? 1440 : (poll_send_minutes_before || 1440);
+    const sendMin = poll_send_at ? 2160 : (poll_send_minutes_before || 2160);
 
     const result = db.prepare(`
         UPDATE events SET title = ?, description = ?, type = ?, event_date = ?, event_time = ?, end_time = ?, meeting_time = ?,

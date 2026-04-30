@@ -16,7 +16,7 @@ async function loadEvents() {
             const endStr = e.end_time ? ` - ${e.end_time}` : '';
             const sendInfo = e.poll_send_at
                 ? `Versand: ${e.poll_send_at.replace('T', ' ')}`
-                : `Versand: ${fmtHours(e.poll_send_minutes_before || 1440)} vor Event`;
+                : `Versand: ${fmtHours(e.poll_send_minutes_before || 2160)} vor Event`;
             const deadlineInfo = e.poll_deadline_at
                 ? `Frist: ${e.poll_deadline_at.replace('T', ' ')}`
                 : `Frist: ${fmtHours(e.poll_deadline_minutes)} vor Event`;
@@ -58,7 +58,7 @@ function showEventForm() {
     document.getElementById('event-date').value = '';
     document.getElementById('event-date').min = todayStr();
     document.getElementById('event-recurring').checked = false;
-    document.getElementById('event-send-before').value = '24';
+    document.getElementById('event-send-before').value = '36';
     document.getElementById('event-deadline').value = '1';
     document.getElementById('send-mode-before').checked = true;
     document.getElementById('event-send-date').value = '';
@@ -161,10 +161,10 @@ async function editEvent(id) {
         const [sendDate, sendTime] = e.poll_send_at.split('T');
         document.getElementById('event-send-date').value = sendDate || '';
         document.getElementById('event-send-time').value = sendTime || '';
-        document.getElementById('event-send-before').value = '24';
+        document.getElementById('event-send-before').value = '36';
     } else {
         document.getElementById('send-mode-before').checked = true;
-        document.getElementById('event-send-before').value = (e.poll_send_minutes_before || 1440) / 60;
+        document.getElementById('event-send-before').value = (e.poll_send_minutes_before || 2160) / 60;
         document.getElementById('event-send-date').value = '';
         document.getElementById('event-send-time').value = '';
     }

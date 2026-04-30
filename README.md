@@ -10,9 +10,8 @@ TeamPulse ist ein WhatsApp-basiertes Anwesenheits-Management fuer Teams. Das Pro
 - private Follow-up-Nachrichten nach `Ja`, `Nein` und `Vielleicht`
 - Kommentare/Gruende innerhalb von 5 Minuten
 - automatische Erinnerungen und Event-Reminder
-- Ergebnis-Post als Text plus Chart-Bild
+- Ergebnis-Post als Text, Bild oder beides
 - automatische Gruppenbeschreibung
-- DEV-Gruppenuebersicht zum Nachschlagen der `GROUP_CHAT_ID`
 
 ## Stack
 
@@ -41,7 +40,6 @@ Beim ersten Login muss das Passwort geaendert werden.
 | `EVOLUTION_INSTANCE` | Name der WhatsApp-Instanz in Evolution | `teampulse` |
 | `EVOLUTION_TIMEOUT_MS` | Timeout fuer Provider-Requests | `20000` |
 | `GROUP_CHAT_ID` | WhatsApp-Gruppen-JID | `120363xxxx@g.us` |
-| `DEV_MODE` | Gruppen-Tab im Footer anzeigen | `false` |
 
 ## Lokale Entwicklung
 
@@ -104,7 +102,6 @@ EVOLUTION_API_KEY=DEIN_EVOLUTION_API_KEY
 EVOLUTION_INSTANCE=teampulse
 EVOLUTION_TIMEOUT_MS=20000
 GROUP_CHAT_ID=120363xxxxxxxx@g.us
-DEV_MODE=false
 ```
 
 `SESSION_SECRET` kannst du so erzeugen:
@@ -366,7 +363,7 @@ journalctl -u teampulse -f
 - TeamPulse nutzt jetzt nur noch Evolution API. WAHA wird nicht mehr benoetigt.
 - Ergebnis-Bilder laufen ueber `sendMedia` der Evolution API.
 - Gruppenbeschreibung, Polls, private Erinnerungen und Ergebnis-Posts laufen ueber dieselbe Evolution-Instanz.
-- Das aktuelle TeamPulse-Verhalten bleibt auf Text + Bild fuer Ergebnis-Posts ausgelegt.
+- Der Ergebnisversand laesst sich in der UI unter `Einstellungen` auf `Text`, `Bild` oder `Text + Bild` umstellen.
 - Message Pinning/Unpinning haengt von der verfuegbaren Evolution-API-Unterstuetzung ab. Die offiziellen v2-Dokumentationsseiten zeigen dafuer derzeit keinen separaten Endpunkt.
 
 ## Lizenz
@@ -374,4 +371,4 @@ journalctl -u teampulse -f
 MIT
 
 ---
-Last reviewed: 2026-04-28
+Last reviewed: 2026-04-30

@@ -64,6 +64,7 @@
                 <button class="nav-btn" data-tab="events">Events</button>
                 <button class="nav-btn" data-tab="polls">Umfragen</button>
                 <button class="nav-btn" data-tab="stats">Statistiken</button>
+                <button class="nav-btn" data-tab="settings">Einstellungen</button>
                 <button class="nav-btn" data-tab="description">Beschreibung</button>
             </nav>
             <div class="header-right">
@@ -158,7 +159,7 @@
                             </div>
                         </div>
                         <div id="send-before-field" class="form-group">
-                            <input type="number" id="event-send-before" value="24" min="0.5" step="0.5" required>
+                            <input type="number" id="event-send-before" value="36" min="0.5" step="0.5" required>
                         </div>
                         <div id="send-fixed-field" class="form-group hidden">
                             <div style="display:flex;gap:0.5rem">
@@ -241,6 +242,40 @@
                 <div id="stats-list" class="card-list"></div>
             </section>
 
+            <!-- Settings Tab -->
+            <section id="settings" class="tab">
+                <div class="section-header">
+                    <h2>Einstellungen</h2>
+                </div>
+
+                <div class="form-card">
+                    <h3>Ergebnisversand</h3>
+                    <form id="settings-form" onsubmit="saveSettings(event)">
+                        <div class="form-group">
+                            <label>Was soll beim Ergebnispost in WhatsApp verschickt werden?</label>
+                            <div style="display:flex;flex-direction:column;gap:0.6rem;margin-top:0.75rem">
+                                <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+                                    <input type="radio" name="result-post-mode" value="text">
+                                    Nur Text
+                                </label>
+                                <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+                                    <input type="radio" name="result-post-mode" value="image">
+                                    Nur Bild
+                                </label>
+                                <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+                                    <input type="radio" name="result-post-mode" value="both" checked>
+                                    Text + Bild
+                                </label>
+                            </div>
+                        </div>
+                        <div id="settings-status" class="error-msg hidden"></div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Speichern</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
             <!-- Polls Tab -->
             <section id="polls" class="tab">
                 <div class="section-header">
@@ -297,12 +332,6 @@
 
         <!-- Footer -->
         <footer class="app-footer">
-            <!-- Groups panel (expands upward, DEV_MODE only) -->
-            <div id="footer-groups" class="footer-panel hidden">
-                <div class="footer-panel-inner">
-                    <div id="groups-list" class="card-list"></div>
-                </div>
-            </div>
             <!-- Thin footer bar -->
             <div class="footer-bar">
                 <span class="footer-brand">
@@ -316,9 +345,6 @@
                     </button>
                     <button class="footer-link-btn" onclick="openOverlay('changelog')" id="changelog-toggle-btn">
                         Changelog
-                    </button>
-                    <button class="footer-link-btn hidden" onclick="toggleFooterSection('groups')" id="groups-toggle-btn">
-                        Gruppen <span id="groups-chevron" class="footer-chevron-btn">&#x25B2;</span>
                     </button>
                 </div>
             </div>
@@ -357,7 +383,7 @@
                         <p><strong>Uhrzeit:</strong> Wann das Event beginnt (z.B. 19:00).</p>
                         <p><strong>Treffenszeit:</strong> Optional — wann sich das Team trifft (z.B. 18:30). Muss vor der Event-Uhrzeit liegen.</p>
                         <p><strong>Ende:</strong> Optional — wann das Event endet (z.B. 20:30). Muss nach der Event-Uhrzeit liegen.</p>
-                        <p><strong>Umfrage senden:</strong> Entweder "X Stunden vor Event" (Standard: 24h) oder ein festes Datum+Uhrzeit. Bei wiederkehrenden Events ist nur "Stunden vorher" verfügbar.</p>
+                        <p><strong>Umfrage senden:</strong> Entweder "X Stunden vor Event" (Standard: 36h) oder ein festes Datum+Uhrzeit. Bei wiederkehrenden Events ist nur "Stunden vorher" verfügbar.</p>
                         <p><strong>Abstimmungsfrist:</strong> Entweder "X Stunden vor Event" (Standard: 1h) oder ein festes Datum+Uhrzeit. Bei wiederkehrenden Events ist nur "Stunden vorher" verfügbar.</p>
                         <p><strong>Start-Erinnerung:</strong> Minuten vor Event-Beginn — Privatnachricht an alle Zusager mit dem Event-Namen. Standard: 60 Min.</p>
                         <p><strong>Abstimmungs-Erinnerungen:</strong> Zwei Erinnerungen an Nicht-Abstimmer, konfigurierbar in Minuten vor der Frist. Standard: 120 Min (1. Erinnerung) und 15 Min (2. Erinnerung).</p>
@@ -374,7 +400,7 @@
                             <li><strong>Geschlossen</strong> — Frist abgelaufen oder manuell geschlossen</li>
                             <li><strong>Archiviert</strong> — 24h nach Event-Ende, wandert ins Archiv</li>
                         </ol>
-                        <p>Automatisches Schließen passiert, sobald die Abstimmungsfrist abläuft. Ergebnisse werden als Text + Bild-Chart in die Gruppe gepostet.</p>
+                        <p>Automatisches Schließen passiert, sobald die Abstimmungsfrist abläuft. Ob dann Text, Bild oder beides gepostet wird, stellst du im Tab <strong>Einstellungen</strong> ein.</p>
                         <p><strong>Auto-Pin:</strong> Aktive Umfragen werden automatisch in der Gruppe angepinnt und beim Schließen entpinnt. Ergebnis-Posts werden angepinnt und nach Event-Ende (end_time, sonst event_time) automatisch entpinnt.</p>
                     </div>
                     <div class="wiki-section">
@@ -408,7 +434,7 @@
                             <li><strong>Frist abgelaufen</strong> — automatisch schließen</li>
                             <li><strong>Ergebnis posten</strong> — sofort nach Schließung</li>
                             <li><strong>Event-Erinnerung</strong> — 1h vor Event an alle Zusager (privat)</li>
-                            <li><strong>Wiederkehrend</strong> — nächste Woche neue Umfrage erstellen</li>
+                            <li><strong>Wiederkehrend</strong> — beim Schließen wird direkt die nächste ausstehende Umfrage angelegt</li>
                             <li><strong>Archivieren</strong> — 24h nach Event-Ende</li>
                             <li><strong>Ergebnis entpinnen</strong> — nach Event-Ende (end_time oder event_time)</li>
                         </ol>
@@ -439,7 +465,7 @@
                         <p><code>EVOLUTION_API_KEY</code> — API-Key für Evolution-Authentifizierung</p>
                         <p><code>GROUP_CHAT_ID</code> — WhatsApp-Gruppen-ID (Format: 120363xxx@g.us)</p>
                         <p><code>SESSION_SECRET</code> — Zufälliger String für Session-Verschlüsselung</p>
-                        <p><code>DEV_MODE</code> — Bei "true" wird der Gruppen-Tab im Footer sichtbar (zum Nachschlagen von Gruppen-IDs)</p>
+                        <p><strong>Hinweis:</strong> Ergebnis-Posts (Text, Bild oder beides) werden direkt im Tab <strong>Einstellungen</strong> konfiguriert.</p>
                     </div>
                     <div class="wiki-section">
                         <h3>Evolution Webhook</h3>
@@ -451,7 +477,7 @@
                     <div class="wiki-section">
                         <h3>Fehlerbehebung</h3>
                         <p><strong>Stimmen werden nicht erkannt:</strong> Prüfe ob Evolution-Webhooks korrekt konfiguriert sind. Logs: <code>journalctl -u teampulse -f</code></p>
-                        <p><strong>Gruppen-ID finden:</strong> <code>DEV_MODE=true</code> in .env setzen, dann im Footer-Tab "Gruppen" nachschauen.</p>
+                        <p><strong>Gruppen-ID finden:</strong> Die Gruppen-ID findest du direkt in Evolution oder in deiner bestehenden <code>.env</code>.</p>
                         <p><strong>Erinnerung kam nicht:</strong> Erinnerungen werden automatisch 2x gesendet (Standard: 120 und 15 Min vor Frist). Zeitpunkte sind pro Event konfigurierbar.</p>
                         <p><strong>Passwort vergessen:</strong> Auf dem Server mit Node.js das Passwort zurücksetzen (siehe README).</p>
                     </div>
@@ -474,12 +500,13 @@
         </div>
     </div>
 
-    <!-- Load order: changelog → dashboard → events → polls → stats → description → app (app defines globals + calls checkAuth) -->
+    <!-- Load order: changelog → dashboard → events → polls → stats → settings → description → app -->
     <script src="changelog.js"></script>
     <script src="dashboard.js"></script>
     <script src="events.js"></script>
     <script src="polls.js"></script>
     <script src="stats.js"></script>
+    <script src="settings.js"></script>
     <script src="description.js"></script>
     <script src="app.js"></script>
 </body>

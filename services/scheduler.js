@@ -23,6 +23,7 @@ function addDays(dateStr, days) {
 
 function startScheduler() {
     let isRunning = false;
+    let lastParticipantSyncAt = 0;
 
     cron.schedule('* * * * *', async () => {
         if (isRunning) {
@@ -32,6 +33,10 @@ function startScheduler() {
 
         isRunning = true;
         try {
+            if (Date.now() - lastParticipantSyncAt >= 5 * 60 * 1000) {
+                await pollManager.syncGroupParticipants();
+                lastParticipantSyncAt = Date.now();
+            }
             await checkAndSendPolls();
             await checkDeadlineReminders();
             await checkAndClosePolls();
@@ -124,13 +129,14 @@ async function checkAndClosePolls() {
     const evolution = require('./evolution');
 
     const pollsToClose = db.prepare(`
-        SELECT p.id, p.event_date, e.title, e.description, e.event_time, e.end_time, e.meeting_time, e.auto_cancel, e.min_participants
+        SELECT p.id, p.event_id, p.event_date, e.title, e.description, e.event_time, e.end_time, e.meeting_time, e.auto_cancel, e.min_participants
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.status = 'active' AND datetime(p.deadline) <= datetime('now')
     `).all();
 
     for (const poll of pollsToClose) {
         pollManager.closePoll(poll.id);
+        pollManager.ensureNextRecurringPoll(poll.event_id, poll.event_date);
         console.log(`Poll ${poll.id} closed (deadline passed)`);
 
         // Check auto-cancel

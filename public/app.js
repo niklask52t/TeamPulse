@@ -107,12 +107,6 @@ function showApp(username) {
     document.getElementById('current-user').textContent = username;
     startClock();
     renderChangelog();
-    apiFetch(`${API}/api/config`).then(r => r.json()).then(cfg => {
-        if (cfg.devMode) {
-            const btn = document.getElementById('groups-toggle-btn');
-            if (btn) btn.classList.remove('hidden');
-        }
-    }).catch(() => {});
     const savedTab = localStorage.getItem('activeTab') || 'dashboard';
     activateTab(savedTab);
 }
@@ -227,6 +221,7 @@ async function activateTab(tabId) {
     if (tabId === 'events') await loadEvents();
     if (tabId === 'polls') await loadPolls();
     if (tabId === 'stats') await loadStats();
+    if (tabId === 'settings' && typeof loadSettings === 'function') await loadSettings();
     if (tabId === 'description' && typeof loadDescriptionBlocks === 'function') await loadDescriptionBlocks();
 
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -246,56 +241,6 @@ function hideAllForms() {
 document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => activateTab(btn.dataset.tab));
 });
-
-// ===== GROUPS =====
-
-let groupsLoaded = false;
-
-async function loadGroups() {
-    const list = document.getElementById('groups-list');
-    if (!list) return;
-    list.innerHTML = '<p style="color:var(--text-secondary)">Gruppen werden geladen...</p>';
-    try {
-        const res = await apiFetch(`${API}/api/groups`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const groups = await res.json();
-        if (!groups.length) {
-            list.innerHTML = '<p style="color:var(--text-secondary)">Keine Gruppen gefunden.</p>';
-            return;
-        }
-        const currentGroup = '${API}' ? '' : (document.cookie || '');
-        const rows = groups.map(g => {
-            const id = g.id || g._id || g.chatId || '';
-            const name = g.name || g.subject || g.title || id;
-            const encodedId = encodeURIComponent(String(id));
-            return '<tr>'
-                + '<td class="stats-name">' + esc(name) + '</td>'
-                + '<td style="font-family:monospace;font-size:0.82rem;color:var(--text-secondary);user-select:all">' + esc(id) + '</td>'
-                + '<td><button class="btn btn-secondary btn-sm" data-group-id="' + esc(encodedId) + '" onclick="copyGroupId(decodeURIComponent(this.dataset.groupId), this)">Kopieren</button></td>'
-                + '</tr>';
-        }).join('');
-        list.innerHTML = '<table class="stats-table">'
-            + '<thead><tr><th>Gruppenname</th><th>Gruppen-ID</th><th></th></tr></thead>'
-            + '<tbody>' + rows + '</tbody></table>';
-        groupsLoaded = true;
-    } catch (err) {
-        if (err.message !== 'Nicht angemeldet') {
-            list.innerHTML = '<p style="color:var(--red)">Fehler beim Laden: ' + esc(err.message) + '</p>';
-        }
-    }
-}
-
-function copyGroupId(id, btn) {
-    navigator.clipboard.writeText(id).then(() => {
-        if (!btn) return;
-        const orig = btn.textContent;
-        btn.textContent = 'Kopiert!';
-        btn.classList.add('btn-copy-success');
-        setTimeout(() => { btn.textContent = orig; btn.classList.remove('btn-copy-success'); }, 1500);
-    }).catch(() => {
-        prompt('Gruppen-ID:', id);
-    });
-}
 
 // ===== OVERLAYS =====
 
@@ -333,8 +278,6 @@ function toggleFooterSection(section) {
     const isHidden = panel.classList.toggle('hidden');
     if (chevron) chevron.innerHTML = isHidden ? '&#x25B2;' : '&#x25BC;';
     if (btn) btn.classList.toggle('footer-link-btn--active', !isHidden);
-    // Lazy-load groups on first open
-    if (section === 'groups' && !isHidden && !groupsLoaded) loadGroups();
 }
 
 // ===== UTILS =====

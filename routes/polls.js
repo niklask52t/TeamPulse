@@ -98,10 +98,14 @@ router.post('/:id/resend', async (req, res) => {
     }
 });
 
-router.post('/:id/close', (req, res) => {
+router.post('/:id/close', async (req, res) => {
     try {
-        pollManager.closePoll(Number(req.params.id));
-        res.json({ success: true });
+        const postResults = req.body?.postResults === true;
+        const result = await pollManager.finalizeClosedPoll(Number(req.params.id), {
+            postResults,
+            suppressAutoPost: !postResults,
+        });
+        res.json({ success: true, ...result });
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
@@ -161,7 +165,7 @@ function asArray(value) {
 function resolveJid(raw) {
     if (!raw) return '';
     if (typeof raw === 'object') {
-        return raw.id || raw.remoteJid || raw.jid || raw._serialized || raw.phone || '';
+        return raw.id || raw.remoteJid || raw.jid || raw._serialized || raw.phone || raw.user || raw.participant || '';
     }
     return String(raw);
 }
@@ -186,9 +190,14 @@ function extractMessageText(message) {
 
 function extractPollUpdate(message, body) {
     return message?.message?.pollUpdateMessage
+        || message?.message?.pollCreationMessageV3?.pollUpdateMessage
+        || message?.message?.pollCreationMessage?.pollUpdateMessage
         || message?.pollUpdateMessage
+        || message?.pollUpdates
         || body?.data?.pollUpdateMessage
+        || body?.data?.pollUpdates
         || body?.pollUpdateMessage
+        || body?.pollUpdates
         || null;
 }
 
@@ -197,12 +206,23 @@ function collectPollMessageIds(message, pollUpdate, body) {
     const values = [
         pollUpdate?.pollCreationMessageKey?.id,
         pollUpdate?.pollCreationMessageKey?._serialized,
+        pollUpdate?.pollCreationMessageKey?.remoteJid,
         pollUpdate?.pollCreationMessage?.key?.id,
+        pollUpdate?.messageKey?.id,
+        pollUpdate?.parentMessageKey?.id,
+        pollUpdate?.stanzaId,
+        pollUpdate?.message?.messageContextInfo?.stanzaId,
         pollUpdate?.message?.key?.id,
         message?.messageContextInfo?.stanzaId,
         message?.messageContextInfo?.quotedMessage?.key?.id,
+        message?.message?.messageContextInfo?.stanzaId,
+        message?.message?.messageContextInfo?.quotedMessage?.pollCreationMessage?.key?.id,
+        message?.message?.pollUpdateMessage?.pollCreationMessageKey?.id,
+        message?.message?.pollUpdateMessage?.message?.key?.id,
         body?.data?.message?.pollUpdateMessage?.pollCreationMessageKey?.id,
         body?.data?.pollCreationMessageKey?.id,
+        body?.data?.key?.id,
+        body?.data?.messageId,
         body?.messageId,
         body?.key?.id,
     ];
@@ -218,10 +238,15 @@ function collectPollMessageIds(message, pollUpdate, body) {
 function collectSelectedOptions(message, pollUpdate, body) {
     const candidates = [
         pollUpdate?.vote?.selectedOptions,
+        pollUpdate?.vote?.votes,
         pollUpdate?.selectedOptions,
         pollUpdate?.pollUpdates,
         message?.pollUpdates,
+        message?.message?.pollUpdateMessage?.vote?.selectedOptions,
+        message?.message?.pollUpdateMessage?.vote?.votes,
+        message?.message?.pollUpdateMessage?.selectedOptions,
         body?.data?.pollUpdates,
+        body?.data?.message?.pollUpdateMessage?.vote?.selectedOptions,
         body?.pollUpdates,
     ];
 
@@ -233,12 +258,26 @@ function collectSelectedOptions(message, pollUpdate, body) {
                 options.push(item);
                 continue;
             }
-            const text = item.optionName || item.name || item.value || item.option || item.text;
+            const text = item.optionName || item.name || item.value || item.option || item.text || item.displayName || item.vote;
             if (text) options.push(String(text));
         }
     }
 
     return options;
+}
+
+function collectParticipantCandidates(entry, body) {
+    return [
+        resolveJid(entry?.key?.participant),
+        resolveJid(entry?.participant),
+        resolveJid(entry?.message?.messageContextInfo?.participant),
+        resolveJid(entry?.message?.pollUpdateMessage?.senderTimestampMs ? entry?.key?.participant : ''),
+        resolveJid(entry?.message?.pollUpdateMessage?.vote?.voter),
+        resolveJid(entry?.message?.pollUpdateMessage?.voter),
+        resolveJid(body?.data?.key?.participant),
+        resolveJid(body?.data?.participant),
+        resolveJid(body?.participant),
+    ].filter(Boolean);
 }
 
 router.post('/webhook/evolution', async (req, res) => {
@@ -255,7 +294,8 @@ router.post('/webhook/evolution', async (req, res) => {
     for (const entry of messages) {
         const key = entry?.key || {};
         const remoteJid = resolveJid(key.remoteJid);
-        const participant = resolveJid(key.participant);
+        const participantCandidates = collectParticipantCandidates(entry, req.body);
+        const participant = participantCandidates.find((candidate) => candidate && candidate !== remoteJid) || resolveJid(key.participant);
         const fromMe = Boolean(key.fromMe);
         const isGroup = remoteJid.endsWith('@g.us');
         const text = extractMessageText(entry);

@@ -2,6 +2,18 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.0',
+        date: '2026-04-30',
+        changes: [
+            { type: 'feature', text: 'Neuer Tab "Einstellungen": Ergebnisposts koennen jetzt global auf Nur Text, Nur Bild oder Text + Bild gestellt werden' },
+            { type: 'improvement', text: 'Ergebnisbild komplett neu gestaltet: deutlich groesser, schaerfer und uebersichtlicher mit Karten, Prozenten und sauberem Layout' },
+            { type: 'feature', text: 'Beim manuellen Schliessen einer Umfrage fragt die UI jetzt direkt, ob das Ergebnis sofort in die Gruppe gepostet werden soll' },
+            { type: 'feature', text: 'Wiederkehrende Events erzeugen beim Schliessen sofort die naechste ausstehende Umfrage statt erst spaeter im Scheduler' },
+            { type: 'improvement', text: 'Standard fuer den Umfrage-Versand auf 36 Stunden vor Event umgestellt' },
+            { type: 'delete', text: 'DEV_MODE komplett entfernt, inklusive Footer-Gruppenansicht und zugehoeriger Konfig' },
+        ]
+    },
+    {
         version: '2.4.0',
         date: '2026-04-28',
         changes: [

@@ -31,9 +31,23 @@ try { db.exec('ALTER TABLE polls ADD COLUMN reminder_2_sent INTEGER DEFAULT 0');
 try { db.exec('ALTER TABLE polls ADD COLUMN poll_message_id TEXT'); } catch { /* already exists */ }
 try { db.exec('ALTER TABLE polls ADD COLUMN result_message_id TEXT'); } catch { /* already exists */ }
 try { db.exec('ALTER TABLE polls ADD COLUMN result_unpinned INTEGER DEFAULT 0'); } catch { /* already exists */ }
+try { db.exec(`
+    CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT DEFAULT (datetime('now'))
+    )
+`); } catch { /* ignore */ }
 
 // Fix any polls stuck with invalid status from failed migration
 try { db.exec("UPDATE polls SET status = 'pending' WHERE status NOT IN ('pending', 'active', 'closed') OR status IS NULL"); } catch { /* ignore */ }
+try {
+    db.prepare(`
+        INSERT INTO app_settings (key, value)
+        VALUES ('result_post_mode', 'both')
+        ON CONFLICT(key) DO NOTHING
+    `).run();
+} catch { /* ignore */ }
 
 // Seed default admin user if no users exist
 const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;

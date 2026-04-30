@@ -1,9 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
+const { syncGroupParticipants } = require('../services/pollManager');
 
 // GET all contacts
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
+    try {
+        await syncGroupParticipants();
+    } catch (err) {
+        console.error('[WARN] contact sync before GET /contacts failed:', err.message);
+    }
     const contacts = db.prepare('SELECT * FROM contacts ORDER BY name').all();
     res.json(contacts);
 });

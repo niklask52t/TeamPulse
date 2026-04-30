@@ -3,7 +3,6 @@ const express = require('express');
 const path = require('path');
 const session = require('express-session');
 const crypto = require('crypto');
-const csrf = require('csurf');
 const { rateLimit } = require('express-rate-limit');
 
 const authRouter = require('./routes/auth');
@@ -11,6 +10,7 @@ const contactsRouter = require('./routes/contacts');
 const eventsRouter = require('./routes/events');
 const pollsRouter = require('./routes/polls');
 const statsRouter = require('./routes/stats');
+const settingsRouter = require('./routes/settings');
 const descBlocksRouter = require('./routes/descriptionBlocks');
 const dashboardRouter = require('./routes/dashboard');
 const { startScheduler } = require('./services/scheduler');
@@ -38,10 +38,6 @@ const apiLimiter = rateLimit({
     standardHeaders: 'draft-8',
     legacyHeaders: false,
 });
-const csrfProtection = csrf({
-    value: (req) => req.get('x-csrf-token') || req.body?._csrf || '',
-});
-
 process.on('uncaughtException', (err) => {
     console.error('[FATAL] Uncaught Exception:', err);
     process.exit(1);
@@ -65,6 +61,18 @@ app.use(session({
     },
 }));
 
+function getOrCreateCsrfToken(req) {
+    if (!req.session.csrfToken) {
+        req.session.csrfToken = crypto.randomBytes(32).toString('hex');
+    }
+    return req.session.csrfToken;
+}
+
+app.use((req, res, next) => {
+    req.csrfToken = () => getOrCreateCsrfToken(req);
+    next();
+});
+
 function requireAuth(req, res, next) {
     if (!req.session.userId) {
         return res.status(401).json({ error: 'Nicht angemeldet' });
@@ -81,15 +89,22 @@ app.post(['/api/webhooks/evolution', '/api/webhooks/evolution/messages-upsert'],
     next();
 }, pollsRouter);
 
-app.use(csrfProtection);
+app.use((req, res, next) => {
+    const method = req.method.toUpperCase();
+    if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
+        return next();
+    }
+    const incomingToken = req.get('x-csrf-token') || req.body?._csrf || '';
+    const sessionToken = getOrCreateCsrfToken(req);
+    if (!incomingToken || incomingToken !== sessionToken) {
+        return res.status(403).json({ error: 'Ungueltiger oder fehlender CSRF-Token' });
+    }
+    next();
+});
 
 app.use('/api/auth', authRouter);
 app.use('/api', requireAuth);
 app.use('/api', apiLimiter);
-
-app.get('/api/config', (req, res) => {
-    res.json({ devMode: process.env.DEV_MODE === 'true' });
-});
 
 app.get('/api/groups', async (req, res, next) => {
     try {
@@ -108,6 +123,7 @@ app.use('/api/contacts', contactsRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/polls', pollsRouter);
 app.use('/api/stats', statsRouter);
+app.use('/api/settings', settingsRouter);
 app.use('/api/description-blocks', descBlocksRouter);
 app.use('/api/dashboard', dashboardRouter);
 
@@ -118,9 +134,6 @@ app.get('*splat', pageLimiter, (req, res) => {
 });
 
 app.use((err, req, res, next) => {
-    if (err && err.code === 'EBADCSRFTOKEN') {
-        return res.status(403).json({ error: 'Ungueltiger oder fehlender CSRF-Token' });
-    }
     console.error('[ERROR] %s %s:', req.method, req.url, err.stack || err.message || err);
     res.status(err.status || 500).json({ error: err.message || 'Interner Serverfehler' });
 });
