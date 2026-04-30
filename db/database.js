@@ -38,6 +38,16 @@ try { db.exec(`
         updated_at TEXT DEFAULT (datetime('now'))
     )
 `); } catch { /* ignore */ }
+try { db.exec(`
+    CREATE TABLE IF NOT EXISTS sessions (
+        sid TEXT PRIMARY KEY,
+        sess TEXT NOT NULL,
+        expires_at INTEGER NOT NULL,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+    )
+`); } catch { /* ignore */ }
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)'); } catch { /* ignore */ }
 
 // Fix any polls stuck with invalid status from failed migration
 try { db.exec("UPDATE polls SET status = 'pending' WHERE status NOT IN ('pending', 'active', 'closed') OR status IS NULL"); } catch { /* ignore */ }

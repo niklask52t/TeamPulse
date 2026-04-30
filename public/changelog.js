@@ -2,6 +2,14 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.2',
+        date: '2026-04-30',
+        changes: [
+            { type: 'fix', text: 'Produktions-Session-Store von MemoryStore auf persistente SQLite/libsql-Sessions umgestellt; die Production-Warnung verschwindet und Sessions ueberleben Neustarts sauberer' },
+            { type: 'feature', text: 'Event-Datumsfelder, fixe Versand-/Frist-Daten und Ausnahme-Termine nutzen jetzt einen echten Kalender-Picker mit deutscher Anzeige' },
+        ]
+    },
+    {
         version: '2.5.1',
         date: '2026-04-30',
         changes: [

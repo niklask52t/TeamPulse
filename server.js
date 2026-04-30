@@ -4,6 +4,7 @@ const path = require('path');
 const session = require('express-session');
 const crypto = require('crypto');
 const { rateLimit } = require('express-rate-limit');
+const SQLiteSessionStore = require('./services/sessionStore');
 
 const authRouter = require('./routes/auth');
 const contactsRouter = require('./routes/contacts');
@@ -20,6 +21,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 const isProduction = process.env.NODE_ENV === 'production';
+const sessionStore = new SQLiteSessionStore({
+    ttlMs: 24 * 60 * 60 * 1000,
+    cleanupEveryMs: 15 * 60 * 1000,
+});
 const pageLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 300,
@@ -50,6 +55,7 @@ app.use(express.json());
 app.set('trust proxy', 1);
 
 app.use(session({
+    store: sessionStore,
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
@@ -127,6 +133,7 @@ app.use('/api/settings', settingsRouter);
 app.use('/api/description-blocks', descBlocksRouter);
 app.use('/api/dashboard', dashboardRouter);
 
+app.use('/vendor/flatpickr', pageLimiter, express.static(path.join(__dirname, 'node_modules', 'flatpickr', 'dist')));
 app.use(pageLimiter, express.static(path.join(__dirname, 'public')));
 
 app.get('*splat', pageLimiter, (req, res) => {

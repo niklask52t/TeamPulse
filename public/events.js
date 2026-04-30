@@ -1,5 +1,44 @@
 // ===== EVENTS =====
 
+const eventDatePickers = new Map();
+
+function destroyEventDatePicker(selector) {
+    const existing = eventDatePickers.get(selector);
+    if (existing) {
+        existing.destroy();
+        eventDatePickers.delete(selector);
+    }
+}
+
+function initDatePicker(selector, options = {}) {
+    const input = document.querySelector(selector);
+    if (!input || typeof flatpickr !== 'function') return null;
+
+    destroyEventDatePicker(selector);
+
+    const minDate = options.allowPast ? null : (options.minDate || todayStr());
+    const picker = flatpickr(input, {
+        locale: (window.flatpickr && window.flatpickr.l10ns && window.flatpickr.l10ns.de) ? window.flatpickr.l10ns.de : 'de',
+        dateFormat: 'Y-m-d',
+        altInput: true,
+        altFormat: 'd.m.Y',
+        allowInput: false,
+        disableMobile: true,
+        minDate,
+        clickOpens: true,
+        ...options,
+    });
+
+    eventDatePickers.set(selector, picker);
+    return picker;
+}
+
+function initEventDatePickers(options = {}) {
+    initDatePicker('#event-date', { allowPast: !!options.allowPastEventDate });
+    initDatePicker('#event-send-date');
+    initDatePicker('#event-deadline-date');
+}
+
 async function loadEvents() {
     const list = document.getElementById('events-list');
     try {
@@ -77,6 +116,7 @@ function showEventForm() {
     toggleDeadlineMode();
     toggleRecurring();
     hideExceptionsSection();
+    initEventDatePickers({ allowPastEventDate: false });
     attachFormListeners('event-form-el');
     document.getElementById('event-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -190,6 +230,7 @@ async function editEvent(id) {
     toggleAutoCancel();
     toggleSendMode();
     toggleRecurring();
+    initEventDatePickers({ allowPastEventDate: true });
     // Load exceptions for recurring events
     if (e.recurring) {
         loadEventExceptions(e.id);
@@ -335,6 +376,7 @@ async function loadEventExceptions(eventId) {
         <div id="exceptions-list"></div>
     `;
     form.querySelector('.form-actions').before(section);
+    initDatePicker('#exception-date');
 
     try {
         const res = await apiFetch(`${API}/api/events/${eventId}/exceptions`);

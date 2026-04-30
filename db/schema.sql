@@ -88,3 +88,13 @@ CREATE TABLE IF NOT EXISTS app_settings (
     value TEXT NOT NULL,
     updated_at TEXT DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS sessions (
+    sid TEXT PRIMARY KEY,
+    sess TEXT NOT NULL,
+    expires_at INTEGER NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
