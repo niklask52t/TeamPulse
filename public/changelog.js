@@ -2,6 +2,13 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.3',
+        date: '2026-04-30',
+        changes: [
+            { type: 'fix', text: 'Reset-Skript verwirft bei --reset jetzt zuerst lokale Repo-Aenderungen und untracked Dateien, damit der Git-Checkout nicht mehr an package-lock.json oder aehnlichen Server-Diffs haengen bleibt' },
+        ]
+    },
+    {
         version: '2.5.2',
         date: '2026-04-30',
         changes: [

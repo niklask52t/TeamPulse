@@ -74,6 +74,10 @@ do_reset() {
     rm -f "$APP_DIR/teampulse.db" "$APP_DIR/teampulse.db-wal" "$APP_DIR/teampulse.db-shm"
     rm -f "$APP_DIR"/teampulse*.db "$APP_DIR"/teampulse*.db-wal "$APP_DIR"/teampulse*.db-shm
 
+    echo "Lokale Repo-Änderungen verwerfen..."
+    sudo -u "$APP_USER" bash -c "cd $APP_DIR && git reset --hard"
+    sudo -u "$APP_USER" bash -c "cd $APP_DIR && git clean -fd"
+
     echo "Code aktualisieren..."
     sudo -u "$APP_USER" bash -c "cd $APP_DIR && git fetch origin && git checkout -B main origin/main"
 
