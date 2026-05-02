@@ -2,6 +2,13 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.6',
+        date: '2026-05-02',
+        changes: [
+            { type: 'improvement', text: 'WhatsApp-Nachrichten lesbarer formatiert: weniger Vollfett, klarere Absaetze, gezieltere Hervorhebungen und ruhigere Event-/Ergebnis-Bloecke' },
+        ]
+    },
+    {
         version: '2.5.5',
         date: '2026-05-02',
         changes: [
