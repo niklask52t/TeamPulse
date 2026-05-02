@@ -6,6 +6,8 @@ async function loadSettings() {
     if (!form) return;
 
     status.textContent = '';
+    status.classList.remove('success-msg');
+    status.classList.add('error-msg');
     status.classList.add('hidden');
 
     try {
@@ -43,10 +45,14 @@ async function saveSettings(event) {
             throw new Error(data.error || 'Unbekannter Fehler');
         }
         status.textContent = 'Einstellungen gespeichert.';
+        status.classList.remove('error-msg');
+        status.classList.add('success-msg');
         status.classList.remove('hidden');
     } catch (err) {
         if (err.message !== 'Nicht angemeldet') {
             status.textContent = 'Fehler beim Speichern: ' + err.message;
+            status.classList.remove('success-msg');
+            status.classList.add('error-msg');
             status.classList.remove('hidden');
         }
     }

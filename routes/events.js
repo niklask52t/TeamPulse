@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
 const pollManager = require('../services/pollManager');
-const { updateGroupDescription } = require('../services/groupDescription');
+const { scheduleDescriptionUpdate } = require('../services/groupDescription');
 const { berlinToday, parseBerlinDateTime, TZ } = require('../services/timeUtils');
 
 // GET all events (with next poll date for recurring events)
@@ -127,9 +127,7 @@ router.post('/', (req, res) => {
         }
     }
 
-    updateGroupDescription().catch((err) => {
-        console.error('[ERROR] updateGroupDescription after event create:', err.message);
-    });
+    scheduleDescriptionUpdate();
 
     res.status(201).json(event);
 });
@@ -183,9 +181,7 @@ router.put('/:id', (req, res) => {
     } catch (err) {
         console.error('[ERROR] refreshOpenPollScheduleForEvent:', err.message);
     }
-    updateGroupDescription().catch((err) => {
-        console.error('[ERROR] updateGroupDescription after event update:', err.message);
-    });
+    scheduleDescriptionUpdate();
 
     res.json(event);
 });
@@ -210,9 +206,7 @@ router.post('/:id/exceptions', (req, res) => {
         db.prepare(
             "DELETE FROM polls WHERE event_id = ? AND event_date = ? AND status = 'pending'"
         ).run(req.params.id, exception_date);
-        updateGroupDescription().catch((error) => {
-            console.error('[ERROR] updateGroupDescription after exception create:', error.message);
-        });
+        scheduleDescriptionUpdate();
         res.status(201).json({ id: result.lastInsertRowid });
     } catch (err) {
         if (err.message?.includes('UNIQUE')) {
@@ -228,9 +222,7 @@ router.delete('/:id/exceptions/:exceptionId', (req, res) => {
         'DELETE FROM event_exceptions WHERE id = ? AND event_id = ?'
     ).run(req.params.exceptionId, req.params.id);
     if (result.changes === 0) return res.status(404).json({ error: 'Ausnahme nicht gefunden' });
-    updateGroupDescription().catch((error) => {
-        console.error('[ERROR] updateGroupDescription after exception delete:', error.message);
-    });
+    scheduleDescriptionUpdate();
     res.json({ success: true });
 });
 
@@ -243,9 +235,7 @@ router.delete('/:id', (req, res) => {
     });
     const result = deleteAll(req.params.id);
     if (result.changes === 0) return res.status(404).json({ error: 'Event nicht gefunden' });
-    updateGroupDescription().catch((error) => {
-        console.error('[ERROR] updateGroupDescription after event delete:', error.message);
-    });
+    scheduleDescriptionUpdate();
     res.json({ success: true });
 });
 

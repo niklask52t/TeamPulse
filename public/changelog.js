@@ -2,6 +2,14 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.8',
+        date: '2026-05-02',
+        changes: [
+            { type: 'fix', text: 'Gruppenbeschreibung wieder konsequent auf 30-Sekunden-Sammelupdate gestellt, damit mehrere Stimmen gebuendelt werden und WhatsApp nicht bei jeder Einzelaktion sofort aktualisiert wird' },
+            { type: 'fix', text: 'Einstellungs-Speichern zeigt Erfolg jetzt gruen statt irrtuemlich im roten Fehlerstil' },
+        ]
+    },
+    {
         version: '2.5.7',
         date: '2026-05-02',
         changes: [

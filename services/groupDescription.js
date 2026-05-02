@@ -169,26 +169,28 @@ function buildDescription() {
     return result;
 }
 
+const DESCRIPTION_DEBOUNCE_MS = 30 * 1000;
+
 // Debounce timers for different contexts
 let voteTimer = null;
 let blockTimer = null;
 
-// 60s debounce for votes/poll changes
+// 30s debounce for votes/poll changes
 function scheduleDescriptionUpdate() {
     if (voteTimer) clearTimeout(voteTimer);
     voteTimer = setTimeout(() => {
         voteTimer = null;
         updateGroupDescription();
-    }, 60000);
+    }, DESCRIPTION_DEBOUNCE_MS);
 }
 
-// 60s debounce for text block changes
+// 30s debounce for text block changes
 function scheduleBlockDescriptionUpdate() {
     if (blockTimer) clearTimeout(blockTimer);
     blockTimer = setTimeout(() => {
         blockTimer = null;
         updateGroupDescription();
-    }, 60000);
+    }, DESCRIPTION_DEBOUNCE_MS);
 }
 
 async function updateGroupDescription() {

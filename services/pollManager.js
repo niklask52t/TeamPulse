@@ -2,7 +2,7 @@ const db = require('../db/database');
 const evolution = require('./evolution');
 const { parseBerlinDateTime, TZ } = require('./timeUtils');
 const { generateResultChart } = require('./chartGenerator');
-const { scheduleDescriptionUpdate, updateGroupDescription } = require('./groupDescription');
+const { scheduleDescriptionUpdate } = require('./groupDescription');
 
 const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
 
@@ -239,9 +239,7 @@ function createPollForEvent(eventId, eventDate, deadlineMinutes, sendMinutesBefo
         insertResponse.run(pollId, contact.id);
     }
 
-    updateGroupDescription().catch((err) => {
-        console.error('[ERROR] updateGroupDescription after createPollForEvent:', err.message);
-    });
+    scheduleDescriptionUpdate();
     return pollId;
 }
 
@@ -296,7 +294,7 @@ async function sendPoll(pollId) {
                 .catch((err) => console.error('[ERROR] pinMessage poll:', err.message));
         }
         console.log(`[INFO] Poll ${pollId} sent to group ${GROUP_CHAT_ID}`);
-        await updateGroupDescription();
+        scheduleDescriptionUpdate();
     } finally {
         sendingPolls.delete(pollId);
     }
@@ -439,9 +437,7 @@ async function processResponse(phone, text, pollMessageId) {
             .catch((err) => console.error('[ERROR] sendNoFollowUp:', err.message));
     }
 
-    updateGroupDescription().catch((err) => {
-        console.error('[ERROR] updateGroupDescription after vote:', err.message);
-    });
+    scheduleDescriptionUpdate();
     return { contactName: contactRow.name, response, pollId: activePoll.poll_id };
 }
 
@@ -466,9 +462,7 @@ function processReasonMessage(phone, text) {
 
     db.prepare('UPDATE poll_responses SET reason = ? WHERE id = ?').run(String(text || '').trim(), pendingReason.id);
     console.log(`[INFO] Reason saved for ${contact.name} (${pendingReason.response}): "${String(text || '').trim()}" (poll ${pendingReason.poll_id})`);
-    updateGroupDescription().catch((err) => {
-        console.error('[ERROR] updateGroupDescription after reason:', err.message);
-    });
+    scheduleDescriptionUpdate();
     return { pollId: pendingReason.poll_id, contactName: contact.name };
 }
 
@@ -594,7 +588,7 @@ async function postGroupResults(pollId, cancelInfo, options = {}) {
         evolution.pinMessage(GROUP_CHAT_ID, resultMessageId)
             .catch((err) => console.error('[ERROR] pinMessage result:', err.message));
     }
-    await updateGroupDescription();
+    scheduleDescriptionUpdate();
 }
 
 function refreshOpenPollScheduleForEvent(eventId) {
@@ -684,9 +678,7 @@ function closePoll(pollId) {
         evolution.unpinMessage(GROUP_CHAT_ID, poll.poll_message_id)
             .catch((err) => console.error('[ERROR] unpinMessage poll:', err.message));
     }
-    updateGroupDescription().catch((err) => {
-        console.error('[ERROR] updateGroupDescription after closePoll:', err.message);
-    });
+    scheduleDescriptionUpdate();
 }
 
 function extendDeadline(pollId, minutes) {
