@@ -2,6 +2,14 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.9',
+        date: '2026-05-02',
+        changes: [
+            { type: 'docs', text: 'README um konkreten Evolution-v2.3.7-Webhook-Workaround erweitert, falls der Manager oder der normale Set-Webhook-Body den Webhook trotz Erfolgsmeldung nicht wirklich aktiviert' },
+            { type: 'docs', text: 'Webhook-Konfiguration in der Installationsanleitung auf Basis-URL plus MESSAGES_UPSERT und MESSAGES_UPDATE aktualisiert' },
+        ]
+    },
+    {
         version: '2.5.8',
         date: '2026-05-02',
         changes: [

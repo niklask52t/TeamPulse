@@ -323,10 +323,66 @@ Der Instanzname muss exakt mit `EVOLUTION_INSTANCE` in TeamPulse uebereinstimmen
 
 Im Evolution Manager fuer die TeamPulse-Instanz:
 
-- URL: `http://YOUR-TEAMPULSE-IP:3000/api/webhooks/evolution/messages-upsert`
+- URL: `http://YOUR-TEAMPULSE-IP:3000/api/webhooks/evolution`
 - Webhook by Events: `enabled`
 - Base64: `disabled`
-- Event: `MESSAGES_UPSERT`
+- Events:
+  - `MESSAGES_UPSERT`
+  - `MESSAGES_UPDATE`
+
+Wichtig:
+
+- Der Instanzname in Evolution muss exakt zu `EVOLUTION_INSTANCE` in TeamPulse passen.
+- Mit `Webhook by Events = enabled` haengt Evolution die Event-Route selbst an, also z. B. `/messages-upsert` oder `/messages-update`.
+- TeamPulse akzeptiert beide Event-Routen.
+
+#### Temporaerer Workaround fuer Evolution API v2.3.7
+
+Bei Evolution API `v2.3.7` kann das Speichern des Webhooks im Manager oder per normalem API-Body fehlschlagen, obwohl kurz eine Erfolgsmeldung erscheint. Typische Symptome:
+
+- der Slider springt wieder auf `aus`
+- `GET /webhook/find/{instance}` zeigt `enabled: false`
+- `events` bleibt leer
+- ein normaler `POST /webhook/set/{instance}` mit Top-Level-Feldern liefert `instance requires property "webhook"`
+
+In dem Fall den Webhook einmal direkt per API mit verschachteltem `webhook`-Objekt setzen:
+
+```bash
+curl --request POST \
+  --url "http://YOUR-EVOLUTION-VM:8080/webhook/set/teampulse" \
+  --header "Content-Type: application/json" \
+  --header "apikey: YOUR_API_KEY" \
+  --data '{
+    "webhook": {
+      "enabled": true,
+      "url": "http://YOUR-TEAMPULSE-IP:3000/api/webhooks/evolution",
+      "webhookByEvents": true,
+      "webhookBase64": false,
+      "events": [
+        "MESSAGES_UPSERT",
+        "MESSAGES_UPDATE"
+      ]
+    }
+  }'
+```
+
+Danach immer pruefen:
+
+```bash
+curl --request GET \
+  --url "http://YOUR-EVOLUTION-VM:8080/webhook/find/teampulse" \
+  --header "apikey: YOUR_API_KEY"
+```
+
+Erwartet:
+
+```json
+{
+  "enabled": true,
+  "url": "http://YOUR-TEAMPULSE-IP:3000/api/webhooks/evolution",
+  "events": ["MESSAGES_UPSERT", "MESSAGES_UPDATE"]
+}
+```
 
 ### 11. Gruppen-ID finden
 
