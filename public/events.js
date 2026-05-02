@@ -247,15 +247,20 @@ async function saveEvent(e) {
     const id = document.getElementById('event-id').value;
     const isFixed = document.getElementById('send-mode-fixed').checked;
     const isDeadlineFixed = document.getElementById('deadline-mode-fixed').checked;
+    const title = document.getElementById('event-title').value.trim();
+    const type = document.getElementById('event-type').value;
+    const eventTime = document.getElementById('event-time').value;
+    const recurring = document.getElementById('event-recurring').checked;
+    const eventDate = document.getElementById('event-date').value || null;
     const data = {
-        title: document.getElementById('event-title').value,
-        type: document.getElementById('event-type').value,
-        event_time: document.getElementById('event-time').value,
+        title,
+        type,
+        event_time: eventTime,
         end_time: document.getElementById('event-end-time').value || null,
         meeting_time: document.getElementById('event-meeting-time').value || null,
-        recurring: document.getElementById('event-recurring').checked,
+        recurring,
         recurrence_day: Number(document.getElementById('event-recurrence-day').value),
-        event_date: document.getElementById('event-date').value || null,
+        event_date: eventDate,
         poll_deadline_minutes: Math.round(Number(document.getElementById('event-deadline').value) * 60),
         description: document.getElementById('event-description').value || null,
         event_reminder_minutes: Number(document.getElementById('event-event-reminder-min').value) || 60,
@@ -264,6 +269,28 @@ async function saveEvent(e) {
         auto_cancel: document.getElementById('event-auto-cancel').checked,
         min_participants: Number(document.getElementById('event-min-participants').value) || 0,
     };
+
+    if (!title) {
+        alert('Titel ist erforderlich.');
+        document.getElementById('event-title').focus();
+        return;
+    }
+    if (!type) {
+        alert('Typ ist erforderlich.');
+        document.getElementById('event-type').focus();
+        return;
+    }
+    if (!eventTime) {
+        alert('Uhrzeit ist erforderlich.');
+        document.getElementById('event-time').focus();
+        return;
+    }
+    if (!recurring && !eventDate) {
+        alert('Datum ist erforderlich.');
+        const eventDateInput = document.querySelector('#event-date') || document.getElementById('event-date');
+        eventDateInput?.focus();
+        return;
+    }
 
     // Time validation
     if (data.meeting_time && data.meeting_time >= data.event_time) {

@@ -2,6 +2,15 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.5',
+        date: '2026-05-02',
+        changes: [
+            { type: 'fix', text: 'Update-Skript komplett auf robustes ASCII/Bash-Handling umgestellt; keine kaputten Shell-Zeilen mehr und Update/Reset ziehen den Repo-Stand jetzt sauber hart auf origin/main' },
+            { type: 'fix', text: 'Event-Formular nutzt jetzt explizite JavaScript-Validierung statt stiller Browser-Blockaden, damit Speichern in Firefox nicht mehr scheinbar kommentarlos haengen bleibt' },
+            { type: 'fix', text: 'Weitere Beschreibungs-Refreshes nach Event-Loeschungen und Ausnahme-Aenderungen sofort nachgezogen, damit die WhatsApp-Gruppenbeschreibung nicht auf altem Stand kleben bleibt' },
+        ]
+    },
+    {
         version: '2.5.4',
         date: '2026-04-30',
         changes: [
