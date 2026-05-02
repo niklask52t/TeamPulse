@@ -39,7 +39,7 @@ do_update() {
     reset_repo_to_origin_main
 
     echo "Dependencies installieren..."
-    sudo -u "$APP_USER" bash -lc "cd '$APP_DIR' && npm install --omit=dev"
+    sudo -u "$APP_USER" bash -lc "cd '$APP_DIR' && npm ci --omit=dev"
 
     echo "Script aktualisieren..."
     install -m 755 "$APP_DIR/update.sh" /usr/local/bin/teampulse-update
@@ -86,7 +86,7 @@ do_reset() {
     reset_repo_to_origin_main
 
     echo "Dependencies installieren..."
-    sudo -u "$APP_USER" bash -lc "cd '$APP_DIR' && rm -rf node_modules && npm install --omit=dev"
+    sudo -u "$APP_USER" bash -lc "cd '$APP_DIR' && rm -rf node_modules && npm ci --omit=dev"
 
     echo "Script aktualisieren..."
     install -m 755 "$APP_DIR/update.sh" /usr/local/bin/teampulse-update

@@ -2,6 +2,15 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.7',
+        date: '2026-05-02',
+        changes: [
+            { type: 'fix', text: 'Update-Skript nutzt jetzt npm ci statt npm install, damit package-lock.json auf dem Server bei Updates und Resets nicht dauernd lokal dirty wird' },
+            { type: 'fix', text: 'Evolution-Webhooks verarbeiten jetzt neben MESSAGES_UPSERT auch MESSAGES_UPDATE robuster, damit Poll-Votes je nach Evolution-Eventform nicht mehr unter den Tisch fallen' },
+            { type: 'fix', text: 'Stimmen und Begruendungen ziehen die WhatsApp-Gruppenbeschreibung jetzt sofort nach statt erst zeitverzoegert' },
+        ]
+    },
+    {
         version: '2.5.6',
         date: '2026-05-02',
         changes: [

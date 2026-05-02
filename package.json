@@ -1,6 +1,6 @@
 {
   "name": "teampulse",
-  "version": "2.5.6",
+  "version": "2.5.7",
   "description": "WhatsApp-based attendance management for teams via Evolution API",
   "main": "server.js",
   "engines": {

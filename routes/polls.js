@@ -174,7 +174,12 @@ function resolveJid(raw) {
 
 function extractMessages(body) {
     const data = body?.data;
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(body)) return body;
     if (Array.isArray(data?.messages)) return data.messages;
+    if (Array.isArray(data?.message)) return data.message;
+    if (Array.isArray(data?.messagesUpdate)) return data.messagesUpdate;
+    if (Array.isArray(body?.messagesUpdate)) return body.messagesUpdate;
     if (Array.isArray(body?.messages)) return body.messages;
     if (data?.key || data?.message) return [data];
     if (body?.key || body?.message) return [body];
@@ -286,7 +291,7 @@ router.post('/webhook/evolution', async (req, res) => {
     const event = String(req.body?.event || 'MESSAGES_UPSERT').toUpperCase();
     const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
 
-    if (event && event !== 'MESSAGES_UPSERT') {
+    if (event && event !== 'MESSAGES_UPSERT' && event !== 'MESSAGES_UPDATE') {
         return res.json({ ok: true });
     }
 

@@ -88,9 +88,9 @@ function requireAuth(req, res, next) {
 
 app.use('/api/auth', authLimiter);
 
-app.post(['/api/webhooks/evolution', '/api/webhooks/evolution/messages-upsert'], (req, res, next) => {
+app.post(['/api/webhooks/evolution', '/api/webhooks/evolution/messages-upsert', '/api/webhooks/evolution/messages-update'], (req, res, next) => {
     req.body = req.body || {};
-    req.body.event = req.body.event || 'MESSAGES_UPSERT';
+    req.body.event = req.body.event || (req.path.endsWith('messages-update') ? 'MESSAGES_UPDATE' : 'MESSAGES_UPSERT');
     req.url = '/webhook/evolution';
     next();
 }, pollsRouter);

@@ -439,7 +439,9 @@ async function processResponse(phone, text, pollMessageId) {
             .catch((err) => console.error('[ERROR] sendNoFollowUp:', err.message));
     }
 
-    scheduleDescriptionUpdate();
+    updateGroupDescription().catch((err) => {
+        console.error('[ERROR] updateGroupDescription after vote:', err.message);
+    });
     return { contactName: contactRow.name, response, pollId: activePoll.poll_id };
 }
 
@@ -464,7 +466,9 @@ function processReasonMessage(phone, text) {
 
     db.prepare('UPDATE poll_responses SET reason = ? WHERE id = ?').run(String(text || '').trim(), pendingReason.id);
     console.log(`[INFO] Reason saved for ${contact.name} (${pendingReason.response}): "${String(text || '').trim()}" (poll ${pendingReason.poll_id})`);
-    scheduleDescriptionUpdate();
+    updateGroupDescription().catch((err) => {
+        console.error('[ERROR] updateGroupDescription after reason:', err.message);
+    });
     return { pollId: pendingReason.poll_id, contactName: contact.name };
 }
 
