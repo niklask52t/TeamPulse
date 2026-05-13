@@ -40,6 +40,7 @@ function formatCountdown(targetIso) {
 }
 
 function buildPollScheduleInfo(poll) {
+    const isPending = poll.status === 'pending';
     const lines = [
         { label: 'Geplanter Versand', value: formatPollDateTime(poll.send_after), iso: poll.send_after },
         { label: 'Abstimmungsfrist', value: formatPollDateTime(poll.deadline), iso: poll.deadline },
@@ -58,7 +59,7 @@ function buildPollScheduleInfo(poll) {
     if (eventReminderAt && Number(poll.event_reminder_minutes || 0) > 0) {
         lines.push({ label: 'Event-Erinnerung an Zusager', value: `${formatPollDateTime(eventReminderAt)} (${poll.event_reminder_minutes} Min vorher)`, iso: eventReminderAt });
     }
-    if (poll.sent_at) {
+    if (!isPending && poll.sent_at) {
         lines.push({ label: 'Tatsaechlich gesendet', value: formatPollDateTime(poll.sent_at), iso: poll.sent_at });
     }
 
@@ -196,9 +197,7 @@ async function renderPollDetail(id) {
             ${renderReasonGroup('Vielleicht', maybe, 'maybe', poll.id, true)}
             ${renderResponseGroup('Noch ausstehend', pending, 'pending', poll.id, true)}
     `;
-    const pendingHintHtml = isPending
-        ? `<div class="response-group"><div class="response-group-label">Teilnehmer</div><div class="response-names">Wird beim Aktivwerden aus den aktuellen Gruppenmitgliedern gefuellt.</div></div>`
-        : '';
+    const pendingHintHtml = '';
 
     detail.innerHTML = `
         <div class="poll-actions">${actions}</div>
@@ -292,7 +291,7 @@ async function setVote(pollId, contactId, response) {
 function buildActionButtons(poll) {
     const buttons = [];
 
-    if (poll.status === 'pending' && !poll.sent_at) {
+    if (poll.status === 'pending') {
         buttons.push(`<button class="btn btn-primary btn-sm" onclick="pollAction(${poll.id}, 'send', 'Umfrage in Gruppe senden?')">Jetzt Umfrage senden</button>`);
     }
     if (poll.status === 'active') {

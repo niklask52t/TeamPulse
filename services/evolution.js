@@ -9,7 +9,7 @@ const jsonHeaders = {
 };
 
 let warnedAboutPinning = false;
-const AUTO_HINT = '_Automatisch generierte Nachricht von TeamPulse_ 🤖';
+const AUTO_HINT = '_Automatisch generierte Nachricht von TeamPulse_ \uD83E\uDD16';
 
 function normalizeRecipient(value) {
     if (!value) return '';
@@ -250,7 +250,7 @@ async function sendCancellationMessage(chatId, eventTitle, eventDate, eventTime,
 
 async function sendMaybeFollowUp(chatId, eventTitle, eventDate) {
     const text = [
-        `Du hast fuer *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} mit _Vielleicht_ abgestimmt.`,
+        `Du hast f\u00FCr *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} mit _Vielleicht_ abgestimmt.`,
         '',
         'Optional: Schreib innerhalb von _5 Minuten_ kurz warum oder ignoriere diese Nachricht.',
         '',
@@ -261,7 +261,7 @@ async function sendMaybeFollowUp(chatId, eventTitle, eventDate) {
 
 async function sendNoFollowUp(chatId, eventTitle, eventDate) {
     const text = [
-        `Du hast fuer *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} abgesagt.`,
+        `Du hast f\u00FCr *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} abgesagt.`,
         '',
         'Optional: Schreib innerhalb von _5 Minuten_ kurz den Grund oder ignoriere diese Nachricht.',
         '',
@@ -272,7 +272,7 @@ async function sendNoFollowUp(chatId, eventTitle, eventDate) {
 
 async function sendYesFollowUp(chatId, eventTitle, eventDate) {
     const text = [
-        `Du hast fuer *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} zugesagt.`,
+        `Du hast f\u00FCr *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} zugesagt.`,
         '',
         'Optional: Schreib innerhalb von _5 Minuten_ einen Kommentar oder ignoriere diese Nachricht.',
         '',
@@ -284,7 +284,7 @@ async function sendYesFollowUp(chatId, eventTitle, eventDate) {
 async function sendVoteChangeFollowUp(chatId, eventTitle, eventDate, newResponse, oldReason) {
     const labels = { yes: 'Zusage', no: 'Absage', maybe: 'Vielleicht' };
     const label = labels[newResponse] || newResponse;
-    let text = `Du hast deine Stimme fuer *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} zu *${label}* geaendert.`;
+    let text = `Du hast deine Stimme f\u00FCr *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} zu *${label}* ge\u00E4ndert.`;
     if (oldReason) {
         text += `\n\nDein vorheriger Kommentar war: _"${oldReason}"_`;
     }
@@ -296,7 +296,7 @@ async function sendAdminVoteNotification(chatId, eventTitle, eventDate, newRespo
     const labels = { yes: 'Zusage', no: 'Absage', maybe: 'Vielleicht' };
     const label = labels[newResponse] || newResponse;
     const text = [
-        `Deine Stimme fuer *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} wurde vom Admin zu *${label}* geaendert.`,
+        `Deine Stimme f\u00FCr *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} wurde vom Admin zu *${label}* ge\u00E4ndert.`,
         '',
         'Optional: Schreib innerhalb von _5 Minuten_ einen Kommentar oder ignoriere diese Nachricht.',
         '',
@@ -307,10 +307,10 @@ async function sendAdminVoteNotification(chatId, eventTitle, eventDate, newRespo
 
 async function sendTooLateNotification(chatId, eventTitle, eventDate) {
     const text = [
-        `Die Abstimmung fuer *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} ist bereits beendet.`,
+        `Die Abstimmung f\u00FCr *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} ist bereits beendet.`,
         '',
-        'Deine Stimme konnte leider nicht mehr gezaehlt werden.',
-        'Falls du doch anwesend warst, wende dich an *Niklas Kronig* - er kann deine Stimme nachtraeglich anpassen.',
+        'Deine Stimme konnte leider nicht mehr gez\u00E4hlt werden.',
+        'Falls du doch anwesend warst, wende dich an *Niklas Kronig* - er kann deine Stimme nachtr\u00E4glich anpassen.',
         '',
         AUTO_HINT,
     ].join('\n');

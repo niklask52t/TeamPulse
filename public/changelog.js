@@ -2,6 +2,14 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.22',
+        date: '2026-05-13',
+        changes: [
+            { type: 'fix', text: 'Ausstehende Umfragen zeigen jetzt weder Noch-ausstehend noch eine Teilnehmer-Hinweisbox und blenden Tatsaechlich gesendet konsequent aus, auch wenn alte sent_at-Werte vorhanden sind' },
+            { type: 'improvement', text: 'WhatsApp-Texte nutzen bei den zuletzt angefassten Follow-up- und Hinweisnachrichten wieder echte Umlaute statt ae/oe/ue und der automatische TeamPulse-Hinweis endet sauber mit dem Roboter-Emoji' },
+        ]
+    },
+    {
         version: '2.5.21',
         date: '2026-05-13',
         changes: [
