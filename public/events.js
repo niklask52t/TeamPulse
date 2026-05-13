@@ -49,6 +49,16 @@ function initEventDatePickers(options = {}) {
     initDatePicker('#event-deadline-date');
 }
 
+function matchesRecurrenceDay(dateStr, recurrenceDay) {
+    if (!dateStr || recurrenceDay == null) return false;
+    return new Date(dateStr + 'T12:00:00Z').getUTCDay() === Number(recurrenceDay);
+}
+
+function recurringDayLabel(recurrenceDay) {
+    const labels = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+    return labels[Number(recurrenceDay)] || 'diesem Wochentag';
+}
+
 async function loadEvents() {
     const list = document.getElementById('events-list');
     try {
@@ -250,7 +260,7 @@ async function editEvent(id) {
     initEventDatePickers({ allowPastEventDate: true });
     // Load exceptions for recurring events
     if (e.recurring) {
-        loadEventExceptions(e.id);
+        loadEventExceptions(e.id, e.recurrence_day);
     } else {
         hideExceptionsSection();
     }
@@ -407,16 +417,21 @@ function hideExceptionsSection() {
     if (section) section.remove();
 }
 
-async function loadEventExceptions(eventId) {
+async function loadEventExceptions(eventId, recurrenceDay = null) {
     hideExceptionsSection();
     const form = document.getElementById('event-form');
     if (!form) return;
+
+    const restrictionNote = recurrenceDay != null
+        ? `<small style="color:var(--text-secondary)">Es können nur ${recurringDayLabel(recurrenceDay)}-Termine ausgesetzt werden.</small>`
+        : '';
 
     const section = document.createElement('div');
     section.id = 'event-exceptions-section';
     section.className = 'exceptions-section';
     section.innerHTML = `
         <h4>Ausnahmen (Termine aussetzen)</h4>
+        ${restrictionNote}
         <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;align-items:end">
             <div class="form-group" style="margin:0;flex:1">
                 <label>Datum</label>
@@ -426,12 +441,14 @@ async function loadEventExceptions(eventId) {
                 <label>Grund (optional)</label>
                 <input type="text" id="exception-reason" placeholder="z.B. Feiertag">
             </div>
-            <button type="button" class="btn btn-secondary btn-sm" onclick="addException(${eventId})">Aussetzen</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addException(${eventId}, ${recurrenceDay == null ? 'null' : recurrenceDay})">Aussetzen</button>
         </div>
         <div id="exceptions-list"></div>
     `;
     form.querySelector('.form-actions').before(section);
-    initDatePicker('#exception-date');
+    initDatePicker('#exception-date', recurrenceDay != null ? {
+        enable: [(date) => date.getDay() === Number(recurrenceDay)],
+    } : {});
 
     try {
         const res = await apiFetch(`${API}/api/events/${eventId}/exceptions`);
@@ -452,10 +469,14 @@ async function loadEventExceptions(eventId) {
     } catch { /* ignore */ }
 }
 
-async function addException(eventId) {
+async function addException(eventId, recurrenceDay = null) {
     const date = document.getElementById('exception-date').value;
     const reason = document.getElementById('exception-reason').value;
     if (!date) { alert('Datum ist erforderlich'); return; }
+    if (recurrenceDay != null && !matchesRecurrenceDay(date, recurrenceDay)) {
+        alert(`Fehler: Für dieses wiederkehrende Event können nur ${recurringDayLabel(recurrenceDay)}-Termine ausgesetzt werden.`);
+        return;
+    }
     try {
         const res = await apiFetch(`${API}/api/events/${eventId}/exceptions`, {
             method: 'POST',

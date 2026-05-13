@@ -2,6 +2,14 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.28',
+        date: '2026-05-14',
+        changes: [
+            { type: 'feature', text: 'Beim Bearbeiten wiederkehrender Events ist der Ausnahmen-Kalender jetzt auf echte Event-Tage eingeschränkt, damit z.B. ein Freitags-Training nicht auf einen Donnerstag ausgesetzt werden kann' },
+            { type: 'fix', text: 'Backend validiert Ausnahme-Daten jetzt ebenfalls hart und gibt eine klare Fehlermeldung zurück, falls ein Datum gewählt wird, an dem das Event gar nicht stattfindet' },
+        ]
+    },
+    {
         version: '2.5.27',
         date: '2026-05-14',
         changes: [

@@ -342,6 +342,20 @@ router.get('/:id/exceptions', (req, res) => {
 router.post('/:id/exceptions', (req, res) => {
     const { exception_date, reason } = req.body;
     if (!exception_date) return res.status(400).json({ error: 'Datum ist erforderlich' });
+
+    const event = db.prepare('SELECT id, recurring, recurrence_day, event_date FROM events WHERE id = ?').get(req.params.id);
+    if (!event) return res.status(404).json({ error: 'Event nicht gefunden' });
+
+    if (event.recurring) {
+        const selectedDay = new Date(exception_date + 'T12:00:00Z').getUTCDay();
+        if (selectedDay !== Number(event.recurrence_day)) {
+            const dayLabels = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+            return res.status(400).json({ error: `Für dieses wiederkehrende Event können nur Termine am ${dayLabels[Number(event.recurrence_day)]} ausgesetzt werden` });
+        }
+    } else if (event.event_date && event.event_date !== exception_date) {
+        return res.status(400).json({ error: 'Für einmalige Events kann nur das tatsächliche Event-Datum ausgesetzt werden' });
+    }
+
     try {
         const result = db.prepare(
             'INSERT INTO event_exceptions (event_id, exception_date, reason) VALUES (?, ?, ?)'
