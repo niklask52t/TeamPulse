@@ -61,6 +61,7 @@ async function loadEvents() {
 
         list.innerHTML = events.map(e => {
             const recurring = e.recurring ? `<span class="badge badge-recurring">Jeden ${dayNames[e.recurrence_day]}</span>` : '';
+            const inactive = !e.active ? `<span class="badge badge-closed">Deaktiviert</span>` : '';
             const dateDisplay = fmtDateFancy(e.next_event_date || e.event_date);
             const endStr = e.end_time ? ` - ${e.end_time}` : '';
             const sendInfo = e.poll_send_at
@@ -75,7 +76,7 @@ async function loadEvents() {
             <div class="card" id="event-card-${e.id}">
                 ${dateDisplay}
                 <div class="card-info">
-                    <h3>${esc(e.title)} <span class="badge badge-${e.type}">${typeLabels[e.type]}</span> ${recurring}</h3>
+                    <h3>${esc(e.title)} <span class="badge badge-${e.type}">${typeLabels[e.type]}</span> ${recurring} ${inactive}</h3>
                     <p>${e.event_time}${endStr} Uhr${e.meeting_time ? ' | Treffen: ' + e.meeting_time + ' Uhr' : ''} | ${sendInfo} | ${deadlineInfo}${cancelInfo}</p>
                     ${descInfo}
                 </div>
@@ -107,6 +108,7 @@ function showEventForm() {
     document.getElementById('event-date').value = '';
     document.getElementById('event-date').min = todayStr();
     document.getElementById('event-recurring').checked = false;
+    document.getElementById('event-active').checked = true;
     document.getElementById('event-send-before').value = '36';
     document.getElementById('event-deadline').value = '1';
     document.getElementById('send-mode-before').checked = true;
@@ -207,6 +209,7 @@ async function editEvent(id) {
     document.getElementById('event-date').value = e.event_date || '';
     document.getElementById('event-date').min = '';
     document.getElementById('event-recurring').checked = !!e.recurring;
+    document.getElementById('event-active').checked = !!e.active;
     document.getElementById('event-recurrence-day').value = e.recurrence_day ?? 1;
     if (e.poll_send_at) {
         document.getElementById('send-mode-fixed').checked = true;
@@ -273,6 +276,7 @@ async function saveEvent(e) {
         end_time: document.getElementById('event-end-time').value || null,
         meeting_time: document.getElementById('event-meeting-time').value || null,
         recurring,
+        active: document.getElementById('event-active').checked,
         recurrence_day: Number(document.getElementById('event-recurrence-day').value),
         event_date: eventDate,
         poll_deadline_minutes: Math.round(Number(document.getElementById('event-deadline').value) * 60),

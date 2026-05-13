@@ -122,6 +122,13 @@
                         </div>
                         <div class="form-group">
                             <label>
+                                <input type="checkbox" id="event-active" checked>
+                                Event aktiv
+                            </label>
+                            <small style="color:var(--text-secondary)">Deaktivierte Events bleiben erhalten, erzeugen aber keine Umfragen und entfernen offene aktive/ausstehende Umfragen.</small>
+                        </div>
+                        <div class="form-group">
+                            <label>
                                 <input type="checkbox" id="event-recurring" onchange="toggleRecurring()">
                                 Wiederkehrend
                             </label>

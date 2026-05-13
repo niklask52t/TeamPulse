@@ -4,6 +4,72 @@ const db = require('../db/database');
 const pollManager = require('../services/pollManager');
 const { scheduleDescriptionUpdate } = require('../services/groupDescription');
 const { berlinToday, parseBerlinDateTime, TZ } = require('../services/timeUtils');
+const evolution = require('../services/evolution');
+
+async function deleteOpenPollsForEvent(eventId) {
+    const openPolls = db.prepare(`
+        SELECT id, poll_message_id, result_message_id
+        FROM polls
+        WHERE event_id = ? AND archived = 0 AND status IN ('pending', 'active')
+    `).all(eventId);
+
+    const groupChatId = process.env.GROUP_CHAT_ID || '';
+    for (const poll of openPolls) {
+        if (groupChatId && poll.poll_message_id) {
+            evolution.unpinMessage(groupChatId, poll.poll_message_id).catch(() => {});
+        }
+        if (groupChatId && poll.result_message_id) {
+            evolution.unpinMessage(groupChatId, poll.result_message_id).catch(() => {});
+        }
+    }
+
+    if (openPolls.length > 0) {
+        db.prepare('DELETE FROM poll_responses WHERE poll_id IN (SELECT id FROM polls WHERE event_id = ? AND archived = 0 AND status IN (\'pending\', \'active\'))').run(eventId);
+        db.prepare("DELETE FROM polls WHERE event_id = ? AND archived = 0 AND status IN ('pending', 'active')").run(eventId);
+    }
+
+    return openPolls.length;
+}
+
+function ensureOpenPollForEvent(event) {
+    if (!event?.active) return null;
+
+    const existingOpenPoll = db.prepare(`
+        SELECT id FROM polls
+        WHERE event_id = ? AND archived = 0 AND status IN ('pending', 'active')
+        ORDER BY id DESC LIMIT 1
+    `).get(event.id);
+    if (existingOpenPoll) return existingOpenPoll.id;
+
+    const deadlineMin = event.poll_deadline_at ? 60 : (event.poll_deadline_minutes || 60);
+    const sendMin = event.poll_send_at ? 2160 : (event.poll_send_minutes_before || 2160);
+
+    if (!event.recurring && event.event_date) {
+        const eventUtc = parseBerlinDateTime(event.event_date, event.event_time);
+        if (!isNaN(eventUtc.getTime()) && new Date() < eventUtc) {
+            return pollManager.createPollForEvent(event.id, event.event_date, deadlineMin, sendMin);
+        }
+        return null;
+    }
+
+    if (event.recurring && event.recurrence_day != null) {
+        const todayStr = berlinToday();
+        const todayDow = new Date(new Date().toLocaleString('sv-SE', { timeZone: TZ })).getDay();
+        let daysAhead = (event.recurrence_day - todayDow + 7) % 7;
+        if (daysAhead === 0) {
+            const eventUtc = parseBerlinDateTime(todayStr, event.event_time);
+            if (!isNaN(eventUtc.getTime()) && new Date() >= eventUtc) {
+                daysAhead = 7;
+            }
+        }
+        const d = new Date(todayStr + 'T12:00:00Z');
+        d.setUTCDate(d.getUTCDate() + daysAhead);
+        const nextDate = d.toISOString().split('T')[0];
+        return pollManager.createPollForEvent(event.id, nextDate, deadlineMin, sendMin);
+    }
+
+    return null;
+}
 
 // GET all events (with next poll date for recurring events)
 router.get('/', (req, res) => {
@@ -32,7 +98,7 @@ router.get('/:id', (req, res) => {
 
 // POST create event
 router.post('/', (req, res) => {
-    const { title, description, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_minutes_before, poll_send_at, poll_deadline_minutes, poll_deadline_at, auto_cancel, min_participants, event_reminder_minutes, deadline_reminder_1_minutes, deadline_reminder_2_minutes } = req.body;
+    const { title, description, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_minutes_before, poll_send_at, poll_deadline_minutes, poll_deadline_at, active, auto_cancel, min_participants, event_reminder_minutes, deadline_reminder_1_minutes, deadline_reminder_2_minutes } = req.body;
 
     if (!title || !type || !event_time) {
         return res.status(400).json({ error: 'Titel, Typ und Uhrzeit sind erforderlich' });
@@ -68,8 +134,8 @@ router.post('/', (req, res) => {
     const sendMin = poll_send_at ? 2160 : (poll_send_minutes_before || 2160);
 
     const result = db.prepare(`
-        INSERT INTO events (title, description, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_at, poll_send_minutes_before, poll_deadline_at, poll_deadline_minutes, group_post_minutes_before, auto_cancel, min_participants, event_reminder_minutes, deadline_reminder_1_minutes, deadline_reminder_2_minutes)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO events (title, description, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_at, poll_send_minutes_before, poll_deadline_at, poll_deadline_minutes, group_post_minutes_before, active, auto_cancel, min_participants, event_reminder_minutes, deadline_reminder_1_minutes, deadline_reminder_2_minutes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
         title, description || null, type,
         event_date || '',
@@ -83,6 +149,7 @@ router.post('/', (req, res) => {
         poll_deadline_at || null,
         deadlineMin,
         deadlineMin,
+        active !== undefined ? (active ? 1 : 0) : 1,
         auto_cancel ? 1 : 0,
         min_participants || 0,
         event_reminder_minutes ?? 60,
@@ -93,7 +160,7 @@ router.post('/', (req, res) => {
     const event = db.prepare('SELECT * FROM events WHERE id = ?').get(result.lastInsertRowid);
 
     // For non-recurring events, create poll immediately
-    if (!recurring && event_date) {
+    if ((active !== false) && !recurring && event_date) {
         try {
             const pollId = pollManager.createPollForEvent(event.id, event_date, deadlineMin, sendMin);
             event.pollId = pollId;
@@ -103,7 +170,7 @@ router.post('/', (req, res) => {
     }
 
     // For recurring events, create the first poll for the next occurrence immediately
-    if (recurring && recurrence_day != null) {
+    if ((active !== false) && recurring && recurrence_day != null) {
         try {
             const todayStr = berlinToday();
             const todayDow = new Date(new Date().toLocaleString('sv-SE', { timeZone: TZ })).getDay();
@@ -133,7 +200,7 @@ router.post('/', (req, res) => {
 });
 
 // PUT update event
-router.put('/:id', (req, res) => {
+router.put('/:id', async (req, res) => {
     const { title, description, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_minutes_before, poll_send_at, poll_deadline_minutes, poll_deadline_at, active, auto_cancel, min_participants, event_reminder_minutes, deadline_reminder_1_minutes, deadline_reminder_2_minutes } = req.body;
 
     if (!title || !type || !event_time) {
@@ -173,6 +240,25 @@ router.put('/:id', (req, res) => {
 
     if (result.changes === 0) return res.status(404).json({ error: 'Event nicht gefunden' });
     const event = db.prepare('SELECT * FROM events WHERE id = ?').get(req.params.id);
+    if (!event.active) {
+        try {
+            const removed = await deleteOpenPollsForEvent(event.id);
+            if (removed > 0) {
+                console.log(`[INFO] Removed ${removed} open poll(s) after deactivating event ${event.id}`);
+            }
+        } catch (err) {
+            console.error('[ERROR] deleteOpenPollsForEvent:', err.message);
+        }
+    } else {
+        try {
+            const ensuredPollId = ensureOpenPollForEvent(event);
+            if (ensuredPollId) {
+                console.log(`[INFO] Ensured open poll ${ensuredPollId} for active event ${event.id}`);
+            }
+        } catch (err) {
+            console.error('[ERROR] ensureOpenPollForEvent:', err.message);
+        }
+    }
     try {
         const updatedPolls = pollManager.refreshOpenPollScheduleForEvent(event.id);
         if (updatedPolls > 0) {

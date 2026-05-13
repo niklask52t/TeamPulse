@@ -2,6 +2,14 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.23',
+        date: '2026-05-13',
+        changes: [
+            { type: 'feature', text: 'Events koennen jetzt im Formular deaktiviert werden; deaktivierte Events bleiben erhalten, erzeugen keine neuen Umfragen und loeschen beim Abschalten alle noch offenen aktiven/ausstehenden Umfragen dieses Events' },
+            { type: 'improvement', text: 'Event-Liste markiert deaktivierte Eintraege jetzt sichtbar und beim erneuten Aktivieren wird bei Bedarf wieder genau eine passende offene Umfrage erzeugt' },
+        ]
+    },
+    {
         version: '2.5.22',
         date: '2026-05-13',
         changes: [
