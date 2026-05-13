@@ -2,6 +2,13 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.14',
+        date: '2026-05-13',
+        changes: [
+            { type: 'fix', text: 'Evolution-Poll-Votes werden jetzt auch dann verarbeitet, wenn der Webhook sie mit key.fromMe=true liefert, solange der echte Gruppen-Teilnehmer im participant-Feld steckt' },
+        ]
+    },
+    {
         version: '2.5.13',
         date: '2026-05-13',
         changes: [

@@ -341,9 +341,8 @@ router.post('/webhook/evolution', async (req, res) => {
         const text = extractMessageText(entry);
         const pollUpdate = extractPollUpdate(entry, req.body);
 
-        if (fromMe) continue;
-
         if (!pollUpdate) {
+            if (fromMe) continue;
             if (!isGroup && text) {
                 try {
                     const reasonResult = pollManager.processReasonMessage(remoteJid, text);
@@ -355,6 +354,10 @@ router.post('/webhook/evolution', async (req, res) => {
                 }
             }
             continue;
+        }
+
+        if (fromMe) {
+            console.log(`[WEBHOOK] processing poll update despite fromMe=true remote=${remoteJid} participant=${participant}`);
         }
 
         if (GROUP_CHAT_ID && remoteJid && remoteJid !== GROUP_CHAT_ID) {
