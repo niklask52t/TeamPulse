@@ -75,6 +75,12 @@ function buildDescription() {
         SELECT p.*, e.title, e.description, e.event_time, e.end_time, e.meeting_time
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.archived = 0 AND p.status IN ('pending', 'active', 'closed')
+        AND NOT (
+            p.status = 'pending' AND EXISTS (
+                SELECT 1 FROM event_exceptions ex
+                WHERE ex.event_id = p.event_id AND ex.exception_date = p.event_date
+            )
+        )
         ORDER BY p.event_date ASC, e.event_time ASC
     `).all();
 
@@ -132,6 +138,12 @@ function buildDescription() {
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.archived = 0
         AND p.event_date >= date('now')
+        AND NOT (
+            p.status = 'pending' AND EXISTS (
+                SELECT 1 FROM event_exceptions ex
+                WHERE ex.event_id = p.event_id AND ex.exception_date = p.event_date
+            )
+        )
         ORDER BY p.event_date ASC, e.event_time ASC
     `).all();
     const upcomingEvents = upcomingCandidates.filter(p => {

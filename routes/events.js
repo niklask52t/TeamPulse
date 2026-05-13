@@ -116,7 +116,14 @@ function applySkipNextPoll(eventId) {
 router.get('/', (req, res) => {
     const events = db.prepare('SELECT * FROM events ORDER BY event_date DESC, event_time DESC').all();
     const nextPollDate = db.prepare(`
-        SELECT event_date FROM polls WHERE event_id = ? AND archived = 0
+        SELECT event_date FROM polls
+        WHERE event_id = ? AND archived = 0
+        AND NOT (
+            status = 'pending' AND EXISTS (
+                SELECT 1 FROM event_exceptions ex
+                WHERE ex.event_id = polls.event_id AND ex.exception_date = polls.event_date
+            )
+        )
         ORDER BY event_date ASC LIMIT 1
     `);
     for (const e of events) {

@@ -15,6 +15,12 @@ router.get('/', async (req, res) => {
         SELECT p.id as poll_id, p.event_date, p.deadline, p.status, e.title, e.description, e.event_time, e.end_time, e.meeting_time, e.type, e.auto_cancel, e.min_participants
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.archived = 0 AND p.status IN ('pending', 'active')
+        AND NOT (
+            p.status = 'pending' AND EXISTS (
+                SELECT 1 FROM event_exceptions ex
+                WHERE ex.event_id = p.event_id AND ex.exception_date = p.event_date
+            )
+        )
         ORDER BY p.event_date ASC, e.event_time ASC LIMIT 1
     `).get() || null;
 

@@ -33,6 +33,7 @@ function startScheduler() {
 
         isRunning = true;
         try {
+            cleanupExceptedPendingPolls();
             if (Date.now() - lastParticipantSyncAt >= 5 * 60 * 1000) {
                 await pollManager.syncGroupParticipants();
                 lastParticipantSyncAt = Date.now();
@@ -54,6 +55,33 @@ function startScheduler() {
     });
 
     console.log('Scheduler started');
+}
+
+function cleanupExceptedPendingPolls() {
+    const stalePolls = db.prepare(`
+        SELECT p.id, p.event_date, p.event_id
+        FROM polls p
+        WHERE p.status = 'pending' AND p.archived = 0
+        AND EXISTS (
+            SELECT 1
+            FROM event_exceptions ex
+            WHERE ex.event_id = p.event_id AND ex.exception_date = p.event_date
+        )
+    `).all();
+
+    if (stalePolls.length === 0) return 0;
+
+    const remove = db.transaction((polls) => {
+        for (const poll of polls) {
+            db.prepare('DELETE FROM poll_responses WHERE poll_id = ?').run(poll.id);
+            db.prepare('DELETE FROM polls WHERE id = ?').run(poll.id);
+        }
+    });
+    remove(stalePolls);
+
+    console.log(`[INFO] Cleaned up ${stalePolls.length} excepted pending poll(s) before scheduler processing`);
+    scheduleDescriptionUpdate();
+    return stalePolls.length;
 }
 
 async function checkAndSendPolls() {

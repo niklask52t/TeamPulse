@@ -2,6 +2,14 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.29',
+        date: '2026-05-14',
+        changes: [
+            { type: 'fix', text: 'Ausgesetzte Umfragen werden jetzt konsequent aus Gruppenbeschreibung, Dashboard und Umfragen-Liste herausgefiltert, selbst wenn noch eine alte ausstehende Poll-Zeile im Speicher steht' },
+            { type: 'improvement', text: 'Der Scheduler räumt ausnahme-markierte ausstehende Polls jetzt zusätzlich proaktiv weg, bevor irgendetwas gesendet wird, damit solche Termine weder gepostet noch weiter als pending mitgeschleppt werden' },
+        ]
+    },
+    {
         version: '2.5.28',
         date: '2026-05-14',
         changes: [

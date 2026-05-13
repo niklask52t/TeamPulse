@@ -12,6 +12,12 @@ router.get('/', (req, res) => {
     const polls = db.prepare(`
         SELECT p.*, e.title, e.description, e.type, e.event_time
         FROM polls p JOIN events e ON p.event_id = e.id
+        WHERE NOT (
+            p.status = 'pending' AND EXISTS (
+                SELECT 1 FROM event_exceptions ex
+                WHERE ex.event_id = p.event_id AND ex.exception_date = p.event_date
+            )
+        )
         ORDER BY p.event_date DESC
     `).all();
     res.json(polls);
