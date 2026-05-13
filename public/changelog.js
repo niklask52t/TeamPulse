@@ -2,6 +2,16 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.10',
+        date: '2026-05-13',
+        changes: [
+            { type: 'fix', text: 'Event-Formular blockiert Doppelklicks auf Speichern jetzt sauber, damit einmalige Mehrfachanlagen desselben Events nicht mehr passieren' },
+            { type: 'improvement', text: 'WhatsApp-Nachrichten ruhiger neu formatiert: oben direkt der Eventname, danach Datum/Zeit/Treffen klarer gestaffelt und der automatische Hinweis dezent kursiv' },
+            { type: 'fix', text: 'Evolution-Poll-Webhook verarbeitet jetzt zusaetzliche update-/messages.update-Payload-Formen robuster, damit Stimmen auch bei abweichender Evolution-Eventstruktur erkannt werden' },
+            { type: 'fix', text: 'Abhaengigkeiten auf sicheren Stand gezogen: express-rate-limit, dotenv, libsql und @napi-rs/canvas aktualisiert; npm audit meldet jetzt 0 Vulnerabilities' },
+        ]
+    },
+    {
         version: '2.5.9',
         date: '2026-05-02',
         changes: [

@@ -9,7 +9,7 @@ const jsonHeaders = {
 };
 
 let warnedAboutPinning = false;
-const AUTO_HINT = '_🤖 Automatisch generierte Nachricht von TeamPulse_';
+const AUTO_HINT = '_Automatisch generierte Nachricht von TeamPulse_';
 
 function normalizeRecipient(value) {
     if (!value) return '';
@@ -79,11 +79,6 @@ function cleanLine(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
 }
 
-function maybePush(lines, prefix, value) {
-    const clean = cleanLine(value);
-    if (clean) lines.push(`${prefix}${clean}`);
-}
-
 function pushField(lines, label, value, options = {}) {
     const clean = cleanLine(value);
     if (!clean) return;
@@ -100,14 +95,12 @@ function pushField(lines, label, value, options = {}) {
 
 function buildPollText(eventTitle, eventDate, eventTime, endTime, meetingTime, description) {
     const lines = [
-        `📅 Neue Umfrage`,
         `*${cleanLine(eventTitle)}*`,
-        '',
-        `🗓️ ${fmtDate(eventDate)}`,
-        `⏰ ${formatEventWindow(eventTime, endTime)}`,
+        `Datum: ${fmtDate(eventDate)}`,
+        `Zeit: ${formatEventWindow(eventTime, endTime)}`,
     ];
-    pushField(lines, '📍 Treffen:', meetingTime ? `${meetingTime} Uhr` : '', { italic: true });
-    pushField(lines, '📝 Info:', description, { italic: true });
+    pushField(lines, 'Treffen:', meetingTime ? `${meetingTime} Uhr` : '');
+    pushField(lines, 'Info:', description, { italic: true });
     lines.push('', AUTO_HINT);
     return lines.join('\n');
 }
@@ -161,14 +154,12 @@ async function sendResultImage(chatId, imageBuffer, caption) {
 
 async function sendReminder(chatId, eventTitle, eventDate, eventTime, endTime, deadlineTime, meetingTime, description) {
     const lines = [
-        '⏳ Erinnerung zur Abstimmung',
-        '',
         `*${cleanLine(eventTitle)}*`,
-        `🗓️ ${fmtDate(eventDate)}`,
-        `⏰ ${formatEventWindow(eventTime, endTime)}`,
+        `Datum: ${fmtDate(eventDate)}`,
+        `Zeit: ${formatEventWindow(eventTime, endTime)}`,
     ];
-    pushField(lines, '📍 Treffen:', meetingTime ? `${meetingTime} Uhr` : '', { italic: true });
-    pushField(lines, '📝 Info:', description, { italic: true });
+    pushField(lines, 'Treffen:', meetingTime ? `${meetingTime} Uhr` : '');
+    pushField(lines, 'Info:', description, { italic: true });
     lines.push('', `Bitte stimme bis *${deadlineTime} Uhr* in der Gruppe ab.`, '', AUTO_HINT);
     return sendMessage(chatId, lines.join('\n'));
 }
@@ -188,60 +179,58 @@ async function sendEventReminder(chatId, eventTitle, eventTime, endTime, meeting
     }
 
     const lines = [
-        '🚀 Event-Erinnerung',
-        `*${cleanLine(eventTitle)}* beginnt in *${timeLabel}*`,
+        `*${cleanLine(eventTitle)}*`,
+        `Startet in ${timeLabel}.`,
         '',
-        `⏰ ${formatEventWindow(eventTime, endTime)}`,
+        `Zeit: ${formatEventWindow(eventTime, endTime)}`,
     ];
-    pushField(lines, '📍 Treffen:', meetingTime ? `${meetingTime} Uhr` : '', { italic: true });
-    pushField(lines, '📝 Info:', description, { italic: true });
+    pushField(lines, 'Treffen:', meetingTime ? `${meetingTime} Uhr` : '');
+    pushField(lines, 'Info:', description, { italic: true });
     lines.push('', 'Bis gleich!', '', AUTO_HINT);
     return sendMessage(chatId, lines.join('\n'));
 }
 
 async function postResultsToGroup(groupId, eventTitle, eventDate, eventTime, endTime, yesData, noData, maybeData, pendingData, meetingTime, cancelInfo, description) {
     const lines = [
-        '📊 Ergebnis',
         `*${cleanLine(eventTitle)}*`,
-        '',
-        `🗓️ ${fmtDate(eventDate)}`,
-        `⏰ ${formatEventWindow(eventTime, endTime)}`,
+        `Datum: ${fmtDate(eventDate)}`,
+        `Zeit: ${formatEventWindow(eventTime, endTime)}`,
     ];
-    pushField(lines, '📍 Treffen:', meetingTime ? `${meetingTime} Uhr` : '', { italic: true });
-    pushField(lines, '📝 Info:', description, { italic: true });
+    pushField(lines, 'Treffen:', meetingTime ? `${meetingTime} Uhr` : '');
+    pushField(lines, 'Info:', description, { italic: true });
 
     if (cancelInfo) {
         lines.push('');
-        lines.push(`❌ *Abgesagt*`);
+        lines.push('*Abgesagt*');
         lines.push(`Zu wenige Zusagen (${cancelInfo.yesCount}/${cancelInfo.min})`);
     }
     lines.push('');
 
     const fmtEntry = (r) => r.reason ? `${r.name} (${r.reason})` : r.name;
 
-    lines.push(`✅ *Zusagen* (${yesData.length})`);
+    lines.push(`*Zusagen* (${yesData.length})`);
     lines.push(yesData.length ? yesData.map(fmtEntry).join(', ') : '-');
     lines.push('');
 
-    lines.push(`❌ *Absagen* (${noData.length})`);
+    lines.push(`*Absagen* (${noData.length})`);
     lines.push(noData.length ? noData.map(fmtEntry).join(', ') : '-');
     lines.push('');
 
     if (maybeData.length) {
-        lines.push(`🤔 *Vielleicht* (${maybeData.length})`);
+        lines.push(`*Vielleicht* (${maybeData.length})`);
         lines.push(maybeData.map(fmtEntry).join(', '));
         lines.push('');
     }
 
     if (pendingData && pendingData.length) {
-        lines.push(`⏳ *Nicht abgestimmt* (${pendingData.length})`);
+        lines.push(`*Noch offen* (${pendingData.length})`);
         lines.push(pendingData.map((r) => r.name).join(', '));
         lines.push('');
     }
 
     const total = yesData.length + noData.length + maybeData.length;
     const all = total + (pendingData ? pendingData.length : 0);
-    lines.push(`👥 Antworten: ${total}/${all}`);
+    lines.push(`Antworten: ${total}/${all}`);
     lines.push('', AUTO_HINT);
 
     return sendMessage(groupId, lines.join('\n'));
@@ -249,21 +238,19 @@ async function postResultsToGroup(groupId, eventTitle, eventDate, eventTime, end
 
 async function sendCancellationMessage(chatId, eventTitle, eventDate, eventTime, endTime, yesCount, minRequired, meetingTime, description) {
     const lines = [
-        '❌ Event abgesagt',
         `*${cleanLine(eventTitle)}*`,
-        '',
-        `🗓️ ${fmtDate(eventDate)}`,
-        `⏰ ${formatEventWindow(eventTime, endTime)}`,
+        `Datum: ${fmtDate(eventDate)}`,
+        `Zeit: ${formatEventWindow(eventTime, endTime)}`,
     ];
-    pushField(lines, '📍 Treffen:', meetingTime ? `${meetingTime} Uhr` : '', { italic: true });
-    pushField(lines, '📝 Info:', description, { italic: true });
+    pushField(lines, 'Treffen:', meetingTime ? `${meetingTime} Uhr` : '');
+    pushField(lines, 'Info:', description, { italic: true });
     lines.push('', `Zu wenige Zusagen (${yesCount}/${minRequired}).`, '', AUTO_HINT);
     return sendMessage(chatId, lines.join('\n'));
 }
 
 async function sendMaybeFollowUp(chatId, eventTitle, eventDate) {
     const text = [
-        `🤔 Du hast fuer *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} mit _Vielleicht_ abgestimmt.`,
+        `Du hast fuer *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} mit _Vielleicht_ abgestimmt.`,
         '',
         'Optional: Schreib innerhalb von _5 Minuten_ kurz warum oder ignoriere diese Nachricht.',
         '',
@@ -274,7 +261,7 @@ async function sendMaybeFollowUp(chatId, eventTitle, eventDate) {
 
 async function sendNoFollowUp(chatId, eventTitle, eventDate) {
     const text = [
-        `❌ Du hast fuer *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} abgesagt.`,
+        `Du hast fuer *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} abgesagt.`,
         '',
         'Optional: Schreib innerhalb von _5 Minuten_ kurz den Grund oder ignoriere diese Nachricht.',
         '',
@@ -285,7 +272,7 @@ async function sendNoFollowUp(chatId, eventTitle, eventDate) {
 
 async function sendYesFollowUp(chatId, eventTitle, eventDate) {
     const text = [
-        `✅ Du hast fuer *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} zugesagt.`,
+        `Du hast fuer *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} zugesagt.`,
         '',
         'Optional: Schreib innerhalb von _5 Minuten_ einen Kommentar oder ignoriere diese Nachricht.',
         '',
@@ -297,7 +284,7 @@ async function sendYesFollowUp(chatId, eventTitle, eventDate) {
 async function sendVoteChangeFollowUp(chatId, eventTitle, eventDate, newResponse, oldReason) {
     const labels = { yes: 'Zusage', no: 'Absage', maybe: 'Vielleicht' };
     const label = labels[newResponse] || newResponse;
-    let text = `🔁 Du hast deine Stimme fuer *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} zu *${label}* geaendert.`;
+    let text = `Du hast deine Stimme fuer *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} zu *${label}* geaendert.`;
     if (oldReason) {
         text += `\n\nDein vorheriger Kommentar war: _"${oldReason}"_`;
     }
@@ -309,7 +296,7 @@ async function sendAdminVoteNotification(chatId, eventTitle, eventDate, newRespo
     const labels = { yes: 'Zusage', no: 'Absage', maybe: 'Vielleicht' };
     const label = labels[newResponse] || newResponse;
     const text = [
-        `🛠️ Deine Stimme fuer *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} wurde vom Admin zu *${label}* geaendert.`,
+        `Deine Stimme fuer *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} wurde vom Admin zu *${label}* geaendert.`,
         '',
         'Optional: Schreib innerhalb von _5 Minuten_ einen Kommentar oder ignoriere diese Nachricht.',
         '',
@@ -320,7 +307,7 @@ async function sendAdminVoteNotification(chatId, eventTitle, eventDate, newRespo
 
 async function sendTooLateNotification(chatId, eventTitle, eventDate) {
     const text = [
-        `⌛ Die Abstimmung fuer *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} ist bereits beendet.`,
+        `Die Abstimmung fuer *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} ist bereits beendet.`,
         '',
         'Deine Stimme konnte leider nicht mehr gezaehlt werden.',
         'Falls du doch anwesend warst, wende dich an *Niklas Kronig* - er kann deine Stimme nachtraeglich anpassen.',

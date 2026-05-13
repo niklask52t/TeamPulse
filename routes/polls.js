@@ -176,10 +176,14 @@ function extractMessages(body) {
     if (Array.isArray(body)) return body;
     if (Array.isArray(data?.messages)) return data.messages;
     if (Array.isArray(data?.message)) return data.message;
+    if (Array.isArray(data?.updates)) return data.updates;
     if (Array.isArray(data?.messagesUpdate)) return data.messagesUpdate;
+    if (Array.isArray(body?.updates)) return body.updates;
     if (Array.isArray(body?.messagesUpdate)) return body.messagesUpdate;
     if (Array.isArray(body?.messages)) return body.messages;
+    if (data?.update?.key || data?.update?.message || data?.update?.pollUpdates) return [data.update];
     if (data?.key || data?.message) return [data];
+    if (body?.update?.key || body?.update?.message || body?.update?.pollUpdates) return [body.update];
     if (body?.key || body?.message) return [body];
     return [];
 }
@@ -194,13 +198,20 @@ function extractMessageText(message) {
 }
 
 function extractPollUpdate(message, body) {
-    return message?.message?.pollUpdateMessage
+    return message?.update?.pollUpdateMessage
+        || message?.update?.pollUpdates
+        || message?.update?.vote
+        || message?.message?.pollUpdateMessage
         || message?.message?.pollCreationMessageV3?.pollUpdateMessage
         || message?.message?.pollCreationMessage?.pollUpdateMessage
+        || message?.update?.pollCreationMessageV3?.pollUpdateMessage
+        || message?.update?.pollCreationMessage?.pollUpdateMessage
         || message?.pollUpdateMessage
         || message?.pollUpdates
         || body?.data?.pollUpdateMessage
         || body?.data?.pollUpdates
+        || body?.data?.update?.pollUpdateMessage
+        || body?.data?.update?.pollUpdates
         || body?.pollUpdateMessage
         || body?.pollUpdates
         || null;
@@ -224,7 +235,13 @@ function collectPollMessageIds(message, pollUpdate, body) {
         message?.message?.messageContextInfo?.quotedMessage?.pollCreationMessage?.key?.id,
         message?.message?.pollUpdateMessage?.pollCreationMessageKey?.id,
         message?.message?.pollUpdateMessage?.message?.key?.id,
+        message?.update?.pollUpdateMessage?.pollCreationMessageKey?.id,
+        message?.update?.pollUpdateMessage?.message?.key?.id,
+        message?.update?.pollCreationMessageKey?.id,
+        message?.update?.messageKey?.id,
+        message?.update?.parentMessageKey?.id,
         body?.data?.message?.pollUpdateMessage?.pollCreationMessageKey?.id,
+        body?.data?.update?.pollUpdateMessage?.pollCreationMessageKey?.id,
         body?.data?.pollCreationMessageKey?.id,
         body?.data?.key?.id,
         body?.data?.messageId,
@@ -246,11 +263,21 @@ function collectSelectedOptions(message, pollUpdate, body) {
         pollUpdate?.vote?.votes,
         pollUpdate?.selectedOptions,
         pollUpdate?.pollUpdates,
+        pollUpdate?.selectedOption,
+        pollUpdate?.optionName,
+        pollUpdate?.vote?.selectedOption,
+        pollUpdate?.vote?.optionName,
         message?.pollUpdates,
+        message?.update?.pollUpdates,
+        message?.update?.pollUpdateMessage?.vote?.selectedOptions,
+        message?.update?.pollUpdateMessage?.vote?.votes,
+        message?.update?.pollUpdateMessage?.selectedOptions,
         message?.message?.pollUpdateMessage?.vote?.selectedOptions,
         message?.message?.pollUpdateMessage?.vote?.votes,
         message?.message?.pollUpdateMessage?.selectedOptions,
         body?.data?.pollUpdates,
+        body?.data?.update?.pollUpdates,
+        body?.data?.update?.pollUpdateMessage?.vote?.selectedOptions,
         body?.data?.message?.pollUpdateMessage?.vote?.selectedOptions,
         body?.pollUpdates,
     ];
@@ -275,10 +302,15 @@ function collectParticipantCandidates(entry, body) {
     return [
         resolveJid(entry?.key?.participant),
         resolveJid(entry?.participant),
+        resolveJid(entry?.update?.key?.participant),
+        resolveJid(entry?.update?.participant),
         resolveJid(entry?.message?.messageContextInfo?.participant),
         resolveJid(entry?.message?.pollUpdateMessage?.senderTimestampMs ? entry?.key?.participant : ''),
+        resolveJid(entry?.update?.pollUpdateMessage?.senderTimestampMs ? entry?.update?.key?.participant : ''),
         resolveJid(entry?.message?.pollUpdateMessage?.vote?.voter),
         resolveJid(entry?.message?.pollUpdateMessage?.voter),
+        resolveJid(entry?.update?.pollUpdateMessage?.vote?.voter),
+        resolveJid(entry?.update?.pollUpdateMessage?.voter),
         resolveJid(body?.data?.key?.participant),
         resolveJid(body?.data?.participant),
         resolveJid(body?.participant),

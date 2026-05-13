@@ -1,6 +1,16 @@
 // ===== EVENTS =====
 
 const eventDatePickers = new Map();
+let eventSaveInFlight = false;
+
+function setEventSubmitState(isSaving) {
+    eventSaveInFlight = isSaving;
+    const form = document.getElementById('event-form-el');
+    const submitBtn = form?.querySelector('button[type="submit"]');
+    if (!submitBtn) return;
+    submitBtn.disabled = isSaving;
+    submitBtn.textContent = isSaving ? 'Speichert...' : 'Speichern';
+}
 
 function destroyEventDatePicker(selector) {
     const existing = eventDatePickers.get(selector);
@@ -118,6 +128,7 @@ function showEventForm() {
     hideExceptionsSection();
     initEventDatePickers({ allowPastEventDate: false });
     attachFormListeners('event-form-el');
+    setEventSubmitState(false);
     document.getElementById('event-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -125,6 +136,7 @@ function hideEventForm() {
     document.getElementById('event-form').classList.add('hidden');
     document.querySelectorAll('[id^="event-card-"]').forEach(el => el.classList.remove('hidden'));
     hideExceptionsSection();
+    setEventSubmitState(false);
     clearDirty();
 }
 
@@ -238,12 +250,14 @@ async function editEvent(id) {
         hideExceptionsSection();
     }
     attachFormListeners('event-form-el');
+    setEventSubmitState(false);
     document.getElementById(`event-card-${id}`)?.classList.add('hidden');
     document.getElementById('event-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function saveEvent(e) {
     e.preventDefault();
+    if (eventSaveInFlight) return;
     const id = document.getElementById('event-id').value;
     const isFixed = document.getElementById('send-mode-fixed').checked;
     const isDeadlineFixed = document.getElementById('deadline-mode-fixed').checked;
@@ -338,6 +352,7 @@ async function saveEvent(e) {
         } catch (_) { /* ignore, proceed */ }
     }
 
+    setEventSubmitState(true);
     try {
         let res;
         if (id) {
@@ -353,6 +368,8 @@ async function saveEvent(e) {
     } catch (err) {
         if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
         return;
+    } finally {
+        setEventSubmitState(false);
     }
 
     hideEventForm();
