@@ -2,6 +2,13 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.18',
+        date: '2026-05-13',
+        changes: [
+            { type: 'fix', text: 'Alte WhatsApp-Umfragen werden nach Reset, Loeschen oder Neuaufsetzen nicht mehr ueber den Single-Active-Poll-Fallback in eine neue aktive Umfrage hineingezogen; bei unbekannter Poll-ID wird jetzt bewusst verworfen statt geraten' },
+        ]
+    },
+    {
         version: '2.5.17',
         date: '2026-05-13',
         changes: [

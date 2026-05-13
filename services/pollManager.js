@@ -418,13 +418,20 @@ async function processResponse(phone, text, pollMessageId) {
         }
     }
 
+    if (!activePoll && pollMessageId) {
+        const incomingId = Array.isArray(pollMessageId) ? pollMessageId.join(' | ') : pollMessageId;
+        console.warn(`[WARN] Vote ignored because pollMessageId did not match an active poll. phone=${phone} pollMessageId=${incomingId || 'none'} option=${text}`);
+        return null;
+    }
+
     if (!activePoll) {
-        if (activePolls.length === 1) {
+        const pollsWithoutMessageId = activePolls.filter((poll) => !poll.poll_message_id);
+        if (activePolls.length === 1 && pollsWithoutMessageId.length === 1) {
             activePoll = activePolls[0];
-            console.warn(`[WARN] Vote matched via single-active-poll fallback. phone=${phone} pollId=${activePoll.poll_id} option=${text}`);
-        } else if (activePolls.length > 1) {
+            console.warn(`[WARN] Vote matched via no-message-id fallback. phone=${phone} pollId=${activePoll.poll_id} option=${text}`);
+        } else if (activePolls.length > 0) {
             const incomingId = Array.isArray(pollMessageId) ? pollMessageId.join(' | ') : (pollMessageId || 'none');
-            console.warn(`[WARN] Vote ignored because poll message ID was missing or unknown and ${activePolls.length} active polls exist. phone=${phone} pollMessageId=${incomingId} option=${text}`);
+            console.warn(`[WARN] Vote ignored because no safe poll match was possible. activePolls=${activePolls.length} pollsWithoutMessageId=${pollsWithoutMessageId.length} phone=${phone} pollMessageId=${incomingId} option=${text}`);
             return null;
         }
     }
