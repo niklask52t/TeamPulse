@@ -14,6 +14,7 @@ const statsRouter = require('./routes/stats');
 const settingsRouter = require('./routes/settings');
 const descBlocksRouter = require('./routes/descriptionBlocks');
 const dashboardRouter = require('./routes/dashboard');
+const { handleEvolutionWebhook } = require('./routes/polls');
 const { startScheduler } = require('./services/scheduler');
 const { getGroups } = require('./services/evolution');
 
@@ -91,8 +92,7 @@ app.use('/api/auth', authLimiter);
 app.post(['/api/webhooks/evolution', '/api/webhooks/evolution/messages-upsert', '/api/webhooks/evolution/messages-update'], (req, res, next) => {
     req.body = req.body || {};
     req.body.event = req.body.event || (req.path.endsWith('messages-update') ? 'MESSAGES_UPDATE' : 'MESSAGES_UPSERT');
-    req.url = '/webhook/evolution';
-    return pollsRouter(req, res, next);
+    return handleEvolutionWebhook(req, res, next);
 });
 
 app.use((req, res, next) => {

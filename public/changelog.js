@@ -2,6 +2,13 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.16',
+        date: '2026-05-13',
+        changes: [
+            { type: 'fix', text: 'Evolution-Webhook-Aliasrouten rufen den echten Handler jetzt direkt auf, statt ueber internes URL-Umschreiben zu gehen; so kommen /messages-upsert und /messages-update sicher in derselben Logik an' },
+        ]
+    },
+    {
         version: '2.5.15',
         date: '2026-05-13',
         changes: [

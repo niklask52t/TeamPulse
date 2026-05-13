@@ -320,7 +320,7 @@ function collectParticipantCandidates(entry, body) {
     ].filter(Boolean);
 }
 
-router.post('/webhook/evolution', async (req, res) => {
+async function handleEvolutionWebhook(req, res) {
     const event = String(req.body?.event || 'MESSAGES_UPSERT').toUpperCase();
     const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
 
@@ -389,6 +389,9 @@ router.post('/webhook/evolution', async (req, res) => {
     }
 
     res.json({ ok: true });
-});
+}
+
+router.post('/webhook/evolution', handleEvolutionWebhook);
 
 module.exports = router;
+module.exports.handleEvolutionWebhook = handleEvolutionWebhook;
