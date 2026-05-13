@@ -109,6 +109,7 @@ function showEventForm() {
     document.getElementById('event-date').min = todayStr();
     document.getElementById('event-recurring').checked = false;
     document.getElementById('event-active').checked = true;
+    document.getElementById('event-skip-next-poll').checked = false;
     document.getElementById('event-send-before').value = '36';
     document.getElementById('event-deadline').value = '1';
     document.getElementById('send-mode-before').checked = true;
@@ -210,6 +211,7 @@ async function editEvent(id) {
     document.getElementById('event-date').min = '';
     document.getElementById('event-recurring').checked = !!e.recurring;
     document.getElementById('event-active').checked = !!e.active;
+    document.getElementById('event-skip-next-poll').checked = false;
     document.getElementById('event-recurrence-day').value = e.recurrence_day ?? 1;
     if (e.poll_send_at) {
         document.getElementById('send-mode-fixed').checked = true;
@@ -286,6 +288,7 @@ async function saveEvent(e) {
         deadline_reminder_2_minutes: Number(document.getElementById('event-deadline-r2-min').value) || 15,
         auto_cancel: document.getElementById('event-auto-cancel').checked,
         min_participants: Number(document.getElementById('event-min-participants').value) || 0,
+        skip_next_poll: document.getElementById('event-skip-next-poll').checked,
     };
 
     if (!title) {

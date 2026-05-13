@@ -2,6 +2,14 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.27',
+        date: '2026-05-14',
+        changes: [
+            { type: 'feature', text: 'Events haben jetzt die Option "Nächste Umfrage aussetzen": Beim Speichern wird der nächste passende Termin als einmalige Ausnahme markiert, damit genau diese Umfrage übersprungen und nicht direkt erstellt bzw. gepostet wird' },
+            { type: 'improvement', text: 'Die Aussetz-Logik nutzt den bestehenden Ausnahme-Mechanismus, löscht dabei vorhandene ausstehende Polls für genau dieses Datum sauber weg und lässt spätere passende Termine normal weiterlaufen' },
+        ]
+    },
+    {
         version: '2.5.26',
         date: '2026-05-14',
         changes: [

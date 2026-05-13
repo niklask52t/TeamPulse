@@ -5,6 +5,7 @@ const pollManager = require('../services/pollManager');
 const { scheduleDescriptionUpdate } = require('../services/groupDescription');
 const { berlinToday, parseBerlinDateTime, TZ } = require('../services/timeUtils');
 const evolution = require('../services/evolution');
+const SKIP_NEXT_POLL_REASON = 'Nächste Umfrage ausgesetzt';
 
 async function deleteOpenPollsForEvent(eventId) {
     const openPolls = db.prepare(`
@@ -44,32 +45,71 @@ function ensureOpenPollForEvent(event) {
 
     const deadlineMin = event.poll_deadline_at ? 60 : (event.poll_deadline_minutes || 60);
     const sendMin = event.poll_send_at ? 2160 : (event.poll_send_minutes_before || 2160);
+    const nextDate = findNextSchedulableDate(event);
+    return nextDate ? pollManager.createPollForEvent(event.id, nextDate, deadlineMin, sendMin) : null;
+}
 
-    if (!event.recurring && event.event_date) {
+function addDays(dateStr, days) {
+    const d = new Date(dateStr + 'T12:00:00Z');
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().split('T')[0];
+}
+
+function findNextSchedulableDate(event) {
+    if (!event?.active) return null;
+
+    if (!event.recurring) {
+        if (!event.event_date) return null;
         const eventUtc = parseBerlinDateTime(event.event_date, event.event_time);
-        if (!isNaN(eventUtc.getTime()) && new Date() < eventUtc) {
-            return pollManager.createPollForEvent(event.id, event.event_date, deadlineMin, sendMin);
-        }
-        return null;
+        if (isNaN(eventUtc.getTime()) || new Date() >= eventUtc) return null;
+
+        const blocked = db.prepare(
+            'SELECT id FROM event_exceptions WHERE event_id = ? AND exception_date = ?'
+        ).get(event.id, event.event_date);
+        return blocked ? null : event.event_date;
     }
 
-    if (event.recurring && event.recurrence_day != null) {
-        const todayStr = berlinToday();
-        const todayDow = new Date(new Date().toLocaleString('sv-SE', { timeZone: TZ })).getDay();
-        let daysAhead = (event.recurrence_day - todayDow + 7) % 7;
-        if (daysAhead === 0) {
-            const eventUtc = parseBerlinDateTime(todayStr, event.event_time);
-            if (!isNaN(eventUtc.getTime()) && new Date() >= eventUtc) {
-                daysAhead = 7;
-            }
+    if (event.recurrence_day == null) return null;
+
+    const todayStr = berlinToday();
+    const todayDow = new Date(new Date().toLocaleString('sv-SE', { timeZone: TZ })).getDay();
+    let daysAhead = (event.recurrence_day - todayDow + 7) % 7;
+    if (daysAhead === 0) {
+        const eventUtc = parseBerlinDateTime(todayStr, event.event_time);
+        if (!isNaN(eventUtc.getTime()) && new Date() >= eventUtc) {
+            daysAhead = 7;
         }
-        const d = new Date(todayStr + 'T12:00:00Z');
-        d.setUTCDate(d.getUTCDate() + daysAhead);
-        const nextDate = d.toISOString().split('T')[0];
-        return pollManager.createPollForEvent(event.id, nextDate, deadlineMin, sendMin);
+    }
+
+    for (let attempt = 0; attempt < 52; attempt++) {
+        const candidateDate = addDays(todayStr, daysAhead + (attempt * 7));
+        const blocked = db.prepare(
+            'SELECT id FROM event_exceptions WHERE event_id = ? AND exception_date = ?'
+        ).get(event.id, candidateDate);
+        if (!blocked) return candidateDate;
     }
 
     return null;
+}
+
+function applySkipNextPoll(eventId) {
+    const event = db.prepare('SELECT * FROM events WHERE id = ?').get(eventId);
+    if (!event || !event.active) return null;
+
+    const skipDate = findNextSchedulableDate(event);
+    if (!skipDate) return null;
+
+    db.prepare(`
+        INSERT OR IGNORE INTO event_exceptions (event_id, exception_date, reason)
+        VALUES (?, ?, ?)
+    `).run(eventId, skipDate, SKIP_NEXT_POLL_REASON);
+
+    db.prepare('DELETE FROM poll_responses WHERE poll_id IN (SELECT id FROM polls WHERE event_id = ? AND event_date = ? AND status = \'pending\' AND archived = 0)')
+        .run(eventId, skipDate);
+    db.prepare("DELETE FROM polls WHERE event_id = ? AND event_date = ? AND status = 'pending' AND archived = 0")
+        .run(eventId, skipDate);
+
+    return skipDate;
 }
 
 // GET all events (with next poll date for recurring events)
@@ -99,7 +139,7 @@ router.get('/:id', (req, res) => {
 
 // POST create event
 router.post('/', (req, res) => {
-    const { title, description, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_minutes_before, poll_send_at, poll_deadline_minutes, poll_deadline_at, active, auto_cancel, min_participants, event_reminder_minutes, deadline_reminder_1_minutes, deadline_reminder_2_minutes } = req.body;
+    const { title, description, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_minutes_before, poll_send_at, poll_deadline_minutes, poll_deadline_at, active, auto_cancel, min_participants, event_reminder_minutes, deadline_reminder_1_minutes, deadline_reminder_2_minutes, skip_next_poll } = req.body;
 
     if (!title || !type || !event_time) {
         return res.status(400).json({ error: 'Titel, Typ und Uhrzeit sind erforderlich' });
@@ -160,8 +200,17 @@ router.post('/', (req, res) => {
 
     const event = db.prepare('SELECT * FROM events WHERE id = ?').get(result.lastInsertRowid);
 
+    let skippedPollDate = null;
+    if (skip_next_poll) {
+        skippedPollDate = applySkipNextPoll(event.id);
+        if (skippedPollDate) {
+            event.skipped_poll_date = skippedPollDate;
+            console.log(`[INFO] Next poll skipped for event ${event.id} on ${skippedPollDate}`);
+        }
+    }
+
     // For non-recurring events, create poll immediately
-    if ((active !== false) && !recurring && event_date) {
+    if ((active !== false) && !recurring && event_date && skippedPollDate !== event_date) {
         try {
             const pollId = pollManager.createPollForEvent(event.id, event_date, deadlineMin, sendMin);
             event.pollId = pollId;
@@ -171,7 +220,7 @@ router.post('/', (req, res) => {
     }
 
     // For recurring events, create the first poll for the next occurrence immediately
-    if ((active !== false) && recurring && recurrence_day != null) {
+    if ((active !== false) && recurring && recurrence_day != null && !skippedPollDate) {
         try {
             const todayStr = berlinToday();
             const todayDow = new Date(new Date().toLocaleString('sv-SE', { timeZone: TZ })).getDay();
@@ -202,7 +251,7 @@ router.post('/', (req, res) => {
 
 // PUT update event
 router.put('/:id', async (req, res) => {
-    const { title, description, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_minutes_before, poll_send_at, poll_deadline_minutes, poll_deadline_at, active, auto_cancel, min_participants, event_reminder_minutes, deadline_reminder_1_minutes, deadline_reminder_2_minutes } = req.body;
+    const { title, description, type, event_date, event_time, end_time, meeting_time, recurring, recurrence_day, poll_send_minutes_before, poll_send_at, poll_deadline_minutes, poll_deadline_at, active, auto_cancel, min_participants, event_reminder_minutes, deadline_reminder_1_minutes, deadline_reminder_2_minutes, skip_next_poll } = req.body;
 
     if (!title || !type || !event_time) {
         return res.status(400).json({ error: 'Titel, Typ und Uhrzeit sind erforderlich' });
@@ -241,6 +290,13 @@ router.put('/:id', async (req, res) => {
 
     if (result.changes === 0) return res.status(404).json({ error: 'Event nicht gefunden' });
     const event = db.prepare('SELECT * FROM events WHERE id = ?').get(req.params.id);
+    if (skip_next_poll) {
+        const skippedPollDate = applySkipNextPoll(event.id);
+        if (skippedPollDate) {
+            event.skipped_poll_date = skippedPollDate;
+            console.log(`[INFO] Next poll skipped for event ${event.id} on ${skippedPollDate}`);
+        }
+    }
     if (!event.active) {
         try {
             const removed = await deleteOpenPollsForEvent(event.id);
