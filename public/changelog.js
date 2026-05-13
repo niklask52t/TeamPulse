@@ -2,6 +2,13 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.13',
+        date: '2026-05-13',
+        changes: [
+            { type: 'improvement', text: 'Ablaufpunkte in den Poll-Details zeigen jetzt zusaetzlich eine live aktualisierte Restzeit wie in 1h 24min oder vor 12min' },
+        ]
+    },
+    {
         version: '2.5.12',
         date: '2026-05-13',
         changes: [

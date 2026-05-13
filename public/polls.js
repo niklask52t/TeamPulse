@@ -18,10 +18,31 @@ function subtractMinutes(isoString, minutes) {
     return new Date(base.getTime() - minutes * 60 * 1000).toISOString();
 }
 
+function formatCountdown(targetIso) {
+    if (!targetIso) return '';
+    const target = new Date(targetIso);
+    if (Number.isNaN(target.getTime())) return '';
+
+    const diffMs = target.getTime() - Date.now();
+    const past = diffMs < 0;
+    const absMs = Math.abs(diffMs);
+    const totalMinutes = Math.floor(absMs / 60000);
+    const days = Math.floor(totalMinutes / (24 * 60));
+    const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+    const minutes = totalMinutes % 60;
+
+    const parts = [];
+    if (days > 0) parts.push(`${days}d`);
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0 || parts.length === 0) parts.push(`${minutes}min`);
+
+    return past ? `vor ${parts.join(' ')}` : `in ${parts.join(' ')}`;
+}
+
 function buildPollScheduleInfo(poll) {
     const lines = [
-        { label: 'Geplanter Versand', value: formatPollDateTime(poll.send_after) },
-        { label: 'Abstimmungsfrist', value: formatPollDateTime(poll.deadline) },
+        { label: 'Geplanter Versand', value: formatPollDateTime(poll.send_after), iso: poll.send_after },
+        { label: 'Abstimmungsfrist', value: formatPollDateTime(poll.deadline), iso: poll.deadline },
     ];
 
     const reminder1At = subtractMinutes(poll.deadline, Number(poll.deadline_reminder_1_minutes || 0));
@@ -29,23 +50,27 @@ function buildPollScheduleInfo(poll) {
     const eventReminderAt = subtractMinutes(`${poll.event_date}T${poll.event_time}:00`, Number(poll.event_reminder_minutes || 0));
 
     if (reminder1At && Number(poll.deadline_reminder_1_minutes || 0) > 0) {
-        lines.push({ label: 'Abstimmungs-Erinnerung 1', value: `${formatPollDateTime(reminder1At)} (${poll.deadline_reminder_1_minutes} Min vorher)` });
+        lines.push({ label: 'Abstimmungs-Erinnerung 1', value: `${formatPollDateTime(reminder1At)} (${poll.deadline_reminder_1_minutes} Min vorher)`, iso: reminder1At });
     }
     if (reminder2At && Number(poll.deadline_reminder_2_minutes || 0) > 0) {
-        lines.push({ label: 'Abstimmungs-Erinnerung 2', value: `${formatPollDateTime(reminder2At)} (${poll.deadline_reminder_2_minutes} Min vorher)` });
+        lines.push({ label: 'Abstimmungs-Erinnerung 2', value: `${formatPollDateTime(reminder2At)} (${poll.deadline_reminder_2_minutes} Min vorher)`, iso: reminder2At });
     }
     if (eventReminderAt && Number(poll.event_reminder_minutes || 0) > 0) {
-        lines.push({ label: 'Event-Erinnerung an Zusager', value: `${formatPollDateTime(eventReminderAt)} (${poll.event_reminder_minutes} Min vorher)` });
+        lines.push({ label: 'Event-Erinnerung an Zusager', value: `${formatPollDateTime(eventReminderAt)} (${poll.event_reminder_minutes} Min vorher)`, iso: eventReminderAt });
     }
     if (poll.sent_at) {
-        lines.push({ label: 'Tatsaechlich gesendet', value: formatPollDateTime(poll.sent_at) });
+        lines.push({ label: 'Tatsaechlich gesendet', value: formatPollDateTime(poll.sent_at), iso: poll.sent_at });
     }
 
     return `
         <div class="response-group">
             <div class="response-group-label">Ablauf</div>
             <div class="response-names response-names--maybe">
-                ${lines.map((line) => `<span class="response-maybe-item"><strong>${esc(line.label)}:</strong> ${esc(line.value)}</span>`).join('')}
+                ${lines.map((line) => {
+                    const countdown = formatCountdown(line.iso);
+                    const suffix = countdown ? ` <span class="response-reason">(${esc(countdown)})</span>` : '';
+                    return `<span class="response-maybe-item"><strong>${esc(line.label)}:</strong> ${esc(line.value)}${suffix}</span>`;
+                }).join('')}
             </div>
         </div>
     `;
