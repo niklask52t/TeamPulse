@@ -2,6 +2,13 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.19',
+        date: '2026-05-13',
+        changes: [
+            { type: 'fix', text: 'Evolution-LID-Zuordnung beim Gruppen-Sync und beim Live-Vote weiter gehaertet: Teilnehmer mit participant.id @lid werden jetzt direkt in contacts.lid uebernommen und notfalls beim Abstimmen erneut ueber die aktuelle Gruppenliste aufgeloest' },
+        ]
+    },
+    {
         version: '2.5.18',
         date: '2026-05-13',
         changes: [

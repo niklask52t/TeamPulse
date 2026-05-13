@@ -98,6 +98,16 @@ function extractContactName(entry, fallbackPhone) {
     return String(name || fallbackPhone || '').trim();
 }
 
+function extractParticipantLid(entry, fallbackId = '') {
+    const direct = entry?.lid || entry?.lidJid || entry?.linkedDeviceId || entry?.key?.participantAlt || '';
+    const directDigits = normalizeDigits(direct);
+    if (directDigits) return directDigits;
+
+    const raw = String(fallbackId || extractParticipantId(entry) || '');
+    if (raw.endsWith('@lid')) return normalizeDigits(raw);
+    return '';
+}
+
 function toPrivateChatId(phone) {
     return normalizeDigits(phone);
 }
@@ -166,8 +176,7 @@ async function syncGroupParticipants() {
             if (!phoneDigits) continue;
             nameMap[phoneDigits] = extractContactName(entry, '+' + phoneDigits);
 
-            const lid = entry.lid || entry.lidJid || entry.linkedDeviceId || '';
-            const lidDigits = normalizeDigits(lid);
+            const lidDigits = extractParticipantLid(entry, rawId);
             if (lidDigits) lidMap[phoneDigits] = lidDigits;
         }
 
@@ -199,7 +208,7 @@ async function syncGroupParticipants() {
 
             const phone = '+' + phoneDigits;
             const name = nameMap[phoneDigits] || extractContactName(participant, phone);
-            const lidDigits = normalizeDigits(participant.lid || participant.lidJid || lidMap[phoneDigits] || '');
+            const lidDigits = extractParticipantLid(participant, rawId) || lidMap[phoneDigits] || '';
 
             try {
                 upsert.run(name, phone);
@@ -244,7 +253,11 @@ async function syncPollRecipientsToCurrentGroup(pollId) {
             db.prepare('INSERT OR IGNORE INTO contacts (name, phone) VALUES (?, ?)').run(name, phone);
             contact = db.prepare('SELECT id FROM contacts WHERE phone = ?').get(phone);
         }
-        if (contact?.id) desiredContactIds.add(contact.id);
+        if (contact?.id) {
+            const lidDigits = extractParticipantLid(participant, rawId);
+            if (lidDigits) db.prepare('UPDATE contacts SET lid = ? WHERE id = ?').run(lidDigits, contact.id);
+            desiredContactIds.add(contact.id);
+        }
     }
 
     const existingResponses = db.prepare('SELECT id, contact_id FROM poll_responses WHERE poll_id = ?').all(pollId);
@@ -372,6 +385,33 @@ async function processResponse(phone, text, pollMessageId) {
             }
         } catch (err) {
             console.error('[WARN] Evolution LID resolution failed for %s:', normalizedPhone, err.message);
+        }
+    }
+
+    if (!contactRow && isLid && GROUP_CHAT_ID) {
+        try {
+            console.log(`[INFO] Trying group participant lookup for LID ${normalizedPhone}...`);
+            const participants = await evolution.getGroupParticipants(GROUP_CHAT_ID);
+            const match = participants.find((participant) => extractParticipantLid(participant) === normalizedPhone);
+            if (match) {
+                const rawId = extractParticipantId(match);
+                const resolvedId = rawId && !rawId.endsWith('@lid')
+                    ? rawId
+                    : (match.phoneNumber || match.phone || match.number || match.mobile || '');
+                const phoneDigits = normalizeDigits(resolvedId);
+                if (phoneDigits) {
+                    const phone = '+' + phoneDigits;
+                    const name = extractContactName(match, phone);
+                    db.prepare('INSERT OR IGNORE INTO contacts (name, phone) VALUES (?, ?)').run(name, phone);
+                    db.prepare('UPDATE contacts SET name = ?, lid = ? WHERE phone = ?').run(name, normalizedPhone, phone);
+                    contactRow = db.prepare('SELECT * FROM contacts WHERE phone = ?').get(phone);
+                    if (contactRow) {
+                        console.log(`[INFO] Resolved LID ${normalizedPhone} -> ${contactRow.name} (${contactRow.phone}) via group participant lookup`);
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('[WARN] Group participant LID lookup failed for %s:', normalizedPhone, err.message);
         }
     }
 
