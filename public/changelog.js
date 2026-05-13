@@ -2,6 +2,13 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.12',
+        date: '2026-05-13',
+        changes: [
+            { type: 'fix', text: 'Ausstehende Umfragen zeigen im Web keine Noch-ausstehend-Liste und keine Mitglieder mehr; die aktuelle Gruppenliste wird erst beim Aktivwerden sichtbar' },
+        ]
+    },
+    {
         version: '2.5.11',
         date: '2026-05-13',
         changes: [

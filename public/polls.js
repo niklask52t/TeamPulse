@@ -152,27 +152,38 @@ async function renderPollDetail(id) {
     const pending = poll.responses.filter((row) => !row.response);
 
     const actions = buildActionButtons(poll);
+    const isPending = poll.status === 'pending';
     const autoCancelHtml = poll.auto_cancel && poll.min_participants > 0
         ? `<div class="poll-auto-cancel-info ${yes.length < poll.min_participants ? 'poll-auto-cancel-info--danger' : 'poll-auto-cancel-info--ok'}">Auto-Absage bei &lt; ${poll.min_participants} Zusagen (aktuell: ${yes.length})</div>`
         : '';
     const descHtml = poll.description ? `<p style="color:var(--text-secondary);margin:0.5rem 0">Info: ${esc(poll.description)}</p>` : '';
-
-    detail.innerHTML = `
-        <div class="poll-actions">${actions}</div>
-        ${autoCancelHtml}
-        ${descHtml}
+    const statsHtml = isPending ? '' : `
         <div class="stats">
             <span class="stat response-yes">Ja ${yes.length}</span>
             <span class="stat response-no">Nein ${no.length}</span>
             <span class="stat response-maybe">Vielleicht ${maybe.length}</span>
             <span class="stat response-pending">Offen ${pending.length}</span>
         </div>
-        <div class="response-groups">
-            ${buildPollScheduleInfo(poll)}
+    `;
+    const responseGroupsHtml = isPending ? '' : `
             ${renderReasonGroup('Zusagen', yes, 'yes', poll.id, true)}
             ${renderReasonGroup('Absagen', no, 'no', poll.id, true)}
             ${renderReasonGroup('Vielleicht', maybe, 'maybe', poll.id, true)}
             ${renderResponseGroup('Noch ausstehend', pending, 'pending', poll.id, true)}
+    `;
+    const pendingHintHtml = isPending
+        ? `<div class="response-group"><div class="response-group-label">Teilnehmer</div><div class="response-names">Wird beim Aktivwerden aus den aktuellen Gruppenmitgliedern gefuellt.</div></div>`
+        : '';
+
+    detail.innerHTML = `
+        <div class="poll-actions">${actions}</div>
+        ${autoCancelHtml}
+        ${descHtml}
+        ${statsHtml}
+        <div class="response-groups">
+            ${buildPollScheduleInfo(poll)}
+            ${pendingHintHtml}
+            ${responseGroupsHtml}
         </div>
     `;
     detail.classList.remove('hidden');
