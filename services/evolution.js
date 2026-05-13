@@ -9,7 +9,7 @@ const jsonHeaders = {
 };
 
 let warnedAboutPinning = false;
-const AUTO_HINT = '_Automatisch generierte Nachricht von TeamPulse_';
+const AUTO_HINT = '_Automatisch generierte Nachricht von TeamPulse_ 🤖';
 
 function normalizeRecipient(value) {
     if (!value) return '';
