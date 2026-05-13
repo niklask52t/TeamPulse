@@ -3,6 +3,54 @@
 const openPollDetails = new Set();
 let pollAutoRefreshTimer = null;
 
+function formatPollDateTime(isoOrDate, time) {
+    if (!isoOrDate) return '-';
+    if (time) {
+        return new Date(`${isoOrDate}T${time}:00`).toLocaleString('de-DE');
+    }
+    return new Date(isoOrDate).toLocaleString('de-DE', { timeZone: TZ });
+}
+
+function subtractMinutes(isoString, minutes) {
+    if (!isoString || !Number.isFinite(minutes)) return null;
+    const base = new Date(isoString);
+    if (Number.isNaN(base.getTime())) return null;
+    return new Date(base.getTime() - minutes * 60 * 1000).toISOString();
+}
+
+function buildPollScheduleInfo(poll) {
+    const lines = [
+        { label: 'Geplanter Versand', value: formatPollDateTime(poll.send_after) },
+        { label: 'Abstimmungsfrist', value: formatPollDateTime(poll.deadline) },
+    ];
+
+    const reminder1At = subtractMinutes(poll.deadline, Number(poll.deadline_reminder_1_minutes || 0));
+    const reminder2At = subtractMinutes(poll.deadline, Number(poll.deadline_reminder_2_minutes || 0));
+    const eventReminderAt = subtractMinutes(`${poll.event_date}T${poll.event_time}:00`, Number(poll.event_reminder_minutes || 0));
+
+    if (reminder1At && Number(poll.deadline_reminder_1_minutes || 0) > 0) {
+        lines.push({ label: 'Abstimmungs-Erinnerung 1', value: `${formatPollDateTime(reminder1At)} (${poll.deadline_reminder_1_minutes} Min vorher)` });
+    }
+    if (reminder2At && Number(poll.deadline_reminder_2_minutes || 0) > 0) {
+        lines.push({ label: 'Abstimmungs-Erinnerung 2', value: `${formatPollDateTime(reminder2At)} (${poll.deadline_reminder_2_minutes} Min vorher)` });
+    }
+    if (eventReminderAt && Number(poll.event_reminder_minutes || 0) > 0) {
+        lines.push({ label: 'Event-Erinnerung an Zusager', value: `${formatPollDateTime(eventReminderAt)} (${poll.event_reminder_minutes} Min vorher)` });
+    }
+    if (poll.sent_at) {
+        lines.push({ label: 'Tatsaechlich gesendet', value: formatPollDateTime(poll.sent_at) });
+    }
+
+    return `
+        <div class="response-group">
+            <div class="response-group-label">Ablauf</div>
+            <div class="response-names response-names--maybe">
+                ${lines.map((line) => `<span class="response-maybe-item"><strong>${esc(line.label)}:</strong> ${esc(line.value)}</span>`).join('')}
+            </div>
+        </div>
+    `;
+}
+
 function startPollAutoRefresh() {
     if (pollAutoRefreshTimer) return;
     pollAutoRefreshTimer = setInterval(async () => {
@@ -34,7 +82,7 @@ async function loadPolls() {
             <div class="card-info">
                 <h3>${esc(poll.title)} <span class="badge badge-${poll.status}">${statusLabels[poll.status]}</span></h3>
                 <p>${poll.event_time} Uhr | Frist: ${fmtDeadline(poll.deadline)}</p>
-                ${poll.description ? `<p style="color:var(--text-secondary);font-size:0.85rem;margin-top:0.25rem">📝 ${esc(poll.description)}</p>` : ''}
+                ${poll.description ? `<p style="color:var(--text-secondary);font-size:0.85rem;margin-top:0.25rem">Info: ${esc(poll.description)}</p>` : ''}
             </div>
             <div class="card-actions">
                 <span class="poll-chevron" id="poll-chevron-${poll.id}">Details &#x25BC;</span>
@@ -107,23 +155,24 @@ async function renderPollDetail(id) {
     const autoCancelHtml = poll.auto_cancel && poll.min_participants > 0
         ? `<div class="poll-auto-cancel-info ${yes.length < poll.min_participants ? 'poll-auto-cancel-info--danger' : 'poll-auto-cancel-info--ok'}">Auto-Absage bei &lt; ${poll.min_participants} Zusagen (aktuell: ${yes.length})</div>`
         : '';
-    const descHtml = poll.description ? `<p style="color:var(--text-secondary);margin:0.5rem 0">📝 ${esc(poll.description)}</p>` : '';
+    const descHtml = poll.description ? `<p style="color:var(--text-secondary);margin:0.5rem 0">Info: ${esc(poll.description)}</p>` : '';
 
     detail.innerHTML = `
         <div class="poll-actions">${actions}</div>
         ${autoCancelHtml}
         ${descHtml}
         <div class="stats">
-            <span class="stat response-yes">✅ ${yes.length}</span>
-            <span class="stat response-no">❌ ${no.length}</span>
-            <span class="stat response-maybe">🤔 ${maybe.length}</span>
-            <span class="stat response-pending">⏳ ${pending.length}</span>
+            <span class="stat response-yes">Ja ${yes.length}</span>
+            <span class="stat response-no">Nein ${no.length}</span>
+            <span class="stat response-maybe">Vielleicht ${maybe.length}</span>
+            <span class="stat response-pending">Offen ${pending.length}</span>
         </div>
         <div class="response-groups">
-            ${renderReasonGroup('✅ Zusagen', yes, 'yes', poll.id, true)}
-            ${renderReasonGroup('❌ Absagen', no, 'no', poll.id, true)}
-            ${renderReasonGroup('🤔 Vielleicht', maybe, 'maybe', poll.id, true)}
-            ${renderResponseGroup('⏳ Noch ausstehend', pending, 'pending', poll.id, true)}
+            ${buildPollScheduleInfo(poll)}
+            ${renderReasonGroup('Zusagen', yes, 'yes', poll.id, true)}
+            ${renderReasonGroup('Absagen', no, 'no', poll.id, true)}
+            ${renderReasonGroup('Vielleicht', maybe, 'maybe', poll.id, true)}
+            ${renderResponseGroup('Noch ausstehend', pending, 'pending', poll.id, true)}
         </div>
     `;
     detail.classList.remove('hidden');
@@ -176,11 +225,11 @@ function showVotePicker(evt, pollId, contactId, name) {
     picker.className = 'vote-picker';
     picker.innerHTML = `
         <span class="vote-picker-label">${name}:</span>
-        <button onclick="setVote(${pollId}, ${contactId}, 'yes')" title="Ja">✅</button>
-        <button onclick="setVote(${pollId}, ${contactId}, 'no')" title="Nein">❌</button>
-        <button onclick="setVote(${pollId}, ${contactId}, 'maybe')" title="Vielleicht">🤔</button>
-        <button onclick="setVote(${pollId}, ${contactId}, null)" title="Zurücksetzen">⏳</button>
-        <button onclick="this.parentElement.remove()" title="Abbrechen" class="vote-picker-close">✕</button>
+        <button onclick="setVote(${pollId}, ${contactId}, 'yes')" title="Ja">Ja</button>
+        <button onclick="setVote(${pollId}, ${contactId}, 'no')" title="Nein">Nein</button>
+        <button onclick="setVote(${pollId}, ${contactId}, 'maybe')" title="Vielleicht">Vielleicht</button>
+        <button onclick="setVote(${pollId}, ${contactId}, null)" title="Zuruecksetzen">Offen</button>
+        <button onclick="this.parentElement.remove()" title="Abbrechen" class="vote-picker-close">X</button>
     `;
     evt.target.after(picker);
 }
@@ -211,17 +260,17 @@ function buildActionButtons(poll) {
         buttons.push(`<button class="btn btn-primary btn-sm" onclick="pollAction(${poll.id}, 'send', 'Umfrage in Gruppe senden?')">Jetzt Umfrage senden</button>`);
     }
     if (poll.status === 'active') {
-        buttons.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'send-reminder', 'Abstimmungs-Erinnerung an alle ohne Antwort senden?')">⏰ Abstimmungs-Erinnerung</button>`);
-        buttons.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'resend', 'Alle Stimmen zurücksetzen und Umfrage neu in die Gruppe senden?')">🔁 Neu senden (Reset)</button>`);
-        buttons.push(`<button class="btn btn-secondary btn-sm" onclick="closePollWithPrompt(${poll.id})">Umfrage schließen</button>`);
-        buttons.push(`<button class="btn btn-secondary btn-sm" onclick="showExtendForm(${poll.id})">Frist verlängern</button>`);
+        buttons.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'send-reminder', 'Abstimmungs-Erinnerung an alle ohne Antwort senden?')">Abstimmungs-Erinnerung</button>`);
+        buttons.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'resend', 'Alle Stimmen zuruecksetzen und Umfrage neu in die Gruppe senden?')">Neu senden (Reset)</button>`);
+        buttons.push(`<button class="btn btn-secondary btn-sm" onclick="closePollWithPrompt(${poll.id})">Umfrage schliessen</button>`);
+        buttons.push(`<button class="btn btn-secondary btn-sm" onclick="showExtendForm(${poll.id})">Frist verlaengern</button>`);
     }
     if (poll.status === 'pending') {
-        buttons.push(`<button class="btn btn-secondary btn-sm" onclick="showExtendForm(${poll.id})">Frist verlängern</button>`);
+        buttons.push(`<button class="btn btn-secondary btn-sm" onclick="showExtendForm(${poll.id})">Frist verlaengern</button>`);
     }
     if (poll.status === 'active' || poll.status === 'closed') {
         buttons.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'post-group', 'Ergebnis jetzt in Gruppe posten?')">Ergebnis posten</button>`);
-        buttons.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'send-event-reminder', 'Start-Erinnerung an alle Zusager senden?')">🏃 Start-Erinnerung (Zusager)</button>`);
+        buttons.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'send-event-reminder', 'Start-Erinnerung an alle Zusager senden?')">Start-Erinnerung (Zusager)</button>`);
     }
 
     return buttons.join('');
@@ -257,8 +306,8 @@ function showExtendForm(pollId) {
     form.id = `extend-form-${pollId}`;
     form.className = 'extend-form';
     form.innerHTML = `
-        <label>Frist um <input type="number" id="extend-minutes-${pollId}" value="30" min="1" max="1440" style="width:70px"> Minuten verlängern</label>
-        <button class="btn btn-primary btn-sm" onclick="submitExtend(${pollId})">Verlängern</button>
+        <label>Frist um <input type="number" id="extend-minutes-${pollId}" value="30" min="1" max="1440" style="width:70px"> Minuten verlaengern</label>
+        <button class="btn btn-primary btn-sm" onclick="submitExtend(${pollId})">Verlaengern</button>
         <button class="btn btn-secondary btn-sm" onclick="document.getElementById('extend-form-${pollId}').remove()">Abbrechen</button>
     `;
     detail.querySelector('.poll-actions').after(form);
@@ -267,7 +316,7 @@ function showExtendForm(pollId) {
 async function submitExtend(pollId) {
     const minutes = Number(document.getElementById(`extend-minutes-${pollId}`)?.value);
     if (!minutes || minutes < 1) {
-        alert('Ungültige Minutenzahl');
+        alert('Ungueltige Minutenzahl');
         return;
     }
 
@@ -289,31 +338,9 @@ async function submitExtend(pollId) {
     }
 }
 
-async function closePollWithPrompt(id) {
-    if (!confirm('Umfrage jetzt manuell schließen?')) return;
-    const postResults = confirm('Soll das Ergebnis jetzt auch direkt in die Gruppe gepostet werden?');
-
-    try {
-        const res = await apiFetch(`${API}/api/polls/${id}/close`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ postResults }),
-        });
-        if (!res.ok) {
-            const data = await res.json();
-            alert('Fehler: ' + (data.error || 'Unbekannter Fehler'));
-            return;
-        }
-        await renderPollDetail(id);
-        loadPolls();
-    } catch (err) {
-        if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
-    }
-}
-
 async function pollAction(id, action, confirmMsg) {
     const confirmed = await showConfirmDialog(confirmMsg, {
-        title: 'Aktion bestätigen',
+        title: 'Aktion bestaetigen',
         confirmText: 'Ja',
         cancelText: 'Nein',
     });
@@ -333,8 +360,8 @@ async function pollAction(id, action, confirmMsg) {
 }
 
 closePollWithPrompt = async function(id) {
-    const shouldClose = await showConfirmDialog('Umfrage jetzt manuell schließen?', {
-        title: 'Umfrage schließen',
+    const shouldClose = await showConfirmDialog('Umfrage jetzt manuell schliessen?', {
+        title: 'Umfrage schliessen',
         confirmText: 'Ja',
         cancelText: 'Nein',
     });

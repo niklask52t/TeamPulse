@@ -218,6 +218,55 @@ async function syncGroupParticipants() {
     }
 }
 
+async function syncPollRecipientsToCurrentGroup(pollId) {
+    if (!GROUP_CHAT_ID) {
+        console.warn('[WARN] GROUP_CHAT_ID not set, skipping poll recipient sync');
+        return 0;
+    }
+
+    const participants = await evolution.getGroupParticipants(GROUP_CHAT_ID);
+    const desiredContactIds = new Set();
+
+    for (const participant of participants) {
+        const rawId = extractParticipantId(participant);
+        const resolvedId = rawId && !rawId.endsWith('@lid')
+            ? rawId
+            : (participant.phoneNumber || participant.phone || participant.number || participant.mobile || '');
+        if (!resolvedId || resolvedId.endsWith('@g.us')) continue;
+
+        const phoneDigits = normalizeDigits(resolvedId);
+        if (!phoneDigits) continue;
+
+        const phone = '+' + phoneDigits;
+        let contact = db.prepare('SELECT id FROM contacts WHERE phone = ?').get(phone);
+        if (!contact) {
+            const name = extractContactName(participant, phone);
+            db.prepare('INSERT OR IGNORE INTO contacts (name, phone) VALUES (?, ?)').run(name, phone);
+            contact = db.prepare('SELECT id FROM contacts WHERE phone = ?').get(phone);
+        }
+        if (contact?.id) desiredContactIds.add(contact.id);
+    }
+
+    const existingResponses = db.prepare('SELECT id, contact_id FROM poll_responses WHERE poll_id = ?').all(pollId);
+    const insertResponse = db.prepare('INSERT OR IGNORE INTO poll_responses (poll_id, contact_id) VALUES (?, ?)');
+    const deleteResponse = db.prepare('DELETE FROM poll_responses WHERE id = ?');
+
+    for (const contactId of desiredContactIds) {
+        insertResponse.run(pollId, contactId);
+    }
+
+    let removed = 0;
+    for (const row of existingResponses) {
+        if (!desiredContactIds.has(row.contact_id)) {
+            deleteResponse.run(row.id);
+            removed++;
+        }
+    }
+
+    console.log(`[INFO] Poll ${pollId} recipients synced to current group members (${desiredContactIds.size} active, ${removed} removed)`);
+    return desiredContactIds.size;
+}
+
 function createPollForEvent(eventId, eventDate, deadlineMinutes, sendMinutesBefore) {
     const event = db.prepare('SELECT * FROM events WHERE id = ?').get(eventId);
     if (!event) throw new Error(`Event ${eventId} not found`);
@@ -258,20 +307,7 @@ async function sendPoll(pollId) {
     sendingPolls.add(pollId);
     try {
         await syncGroupParticipants();
-
-        const existingContactIds = new Set(db.prepare(`
-            SELECT contact_id FROM poll_responses WHERE poll_id = ?
-        `).all(pollId).map((row) => row.contact_id));
-
-        const allContacts = db.prepare('SELECT * FROM contacts').all();
-        const insertResponse = db.prepare(`
-            INSERT OR IGNORE INTO poll_responses (poll_id, contact_id) VALUES (?, ?)
-        `);
-        for (const contact of allContacts) {
-            if (!existingContactIds.has(contact.id)) {
-                insertResponse.run(pollId, contact.id);
-            }
-        }
+        await syncPollRecipientsToCurrentGroup(pollId);
 
         const pollResult = await evolution.sendPollMessage(
             GROUP_CHAT_ID,
@@ -638,15 +674,7 @@ async function resendPoll(pollId) {
     db.prepare('UPDATE polls SET reminder_sent = 0, reminder_2_sent = 0 WHERE id = ?').run(pollId);
 
     await syncGroupParticipants();
-
-    const existingContactIds = new Set(db.prepare('SELECT contact_id FROM poll_responses WHERE poll_id = ?').all(pollId).map((row) => row.contact_id));
-    const allContacts = db.prepare('SELECT * FROM contacts').all();
-    const insertResponse = db.prepare('INSERT OR IGNORE INTO poll_responses (poll_id, contact_id) VALUES (?, ?)');
-    for (const contact of allContacts) {
-        if (!existingContactIds.has(contact.id)) {
-            insertResponse.run(pollId, contact.id);
-        }
-    }
+    await syncPollRecipientsToCurrentGroup(pollId);
 
     const pollResult = await evolution.sendPollMessage(
         GROUP_CHAT_ID,
@@ -804,6 +832,7 @@ async function finalizeClosedPoll(pollId, options = {}) {
 
 module.exports = {
     syncGroupParticipants,
+    syncPollRecipientsToCurrentGroup,
     createPollForEvent,
     sendPoll,
     refreshOpenPollScheduleForEvent,

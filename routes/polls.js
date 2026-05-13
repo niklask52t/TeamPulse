@@ -19,7 +19,10 @@ router.get('/', (req, res) => {
 
 router.get('/:id', (req, res) => {
     const poll = db.prepare(`
-        SELECT p.*, e.title, e.description, e.type, e.event_time, e.recurring, e.auto_cancel, e.min_participants
+        SELECT p.*, e.title, e.description, e.type, e.event_time, e.end_time, e.meeting_time, e.recurring,
+               e.auto_cancel, e.min_participants, e.poll_send_at, e.poll_send_minutes_before,
+               e.poll_deadline_at, e.poll_deadline_minutes, e.event_reminder_minutes,
+               e.deadline_reminder_1_minutes, e.deadline_reminder_2_minutes
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.id = ?
     `).get(Number(req.params.id));

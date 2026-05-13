@@ -2,6 +2,14 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.11',
+        date: '2026-05-13',
+        changes: [
+            { type: 'fix', text: 'Beim Aktivwerden und erneuten Senden einer Umfrage wird die Empfaengerliste jetzt direkt auf die aktuellen Gruppenmitglieder synchronisiert, damit Noch-ausstehend nicht auf alten Kontakten haengen bleibt' },
+            { type: 'improvement', text: 'Poll-Details im Web zeigen jetzt einen Ablaufblock mit geplantem Versand, Abstimmungsfrist sowie allen Reminder-Zeitpunkten' },
+        ]
+    },
+    {
         version: '2.5.10',
         date: '2026-05-13',
         changes: [
