@@ -2,6 +2,13 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.20',
+        date: '2026-05-13',
+        changes: [
+            { type: 'fix', text: 'Poll-Ablauf und Gesendet-Zeit interpretieren nackte SQLite-Zeitstempel jetzt korrekt als UTC, damit im Web keine falschen -2h-Angaben mehr auftauchen obwohl der Server schon auf CEST/Berlin laeuft' },
+        ]
+    },
+    {
         version: '2.5.19',
         date: '2026-05-13',
         changes: [

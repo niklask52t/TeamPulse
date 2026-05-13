@@ -6,21 +6,21 @@ let pollAutoRefreshTimer = null;
 function formatPollDateTime(isoOrDate, time) {
     if (!isoOrDate) return '-';
     if (time) {
-        return new Date(`${isoOrDate}T${time}:00`).toLocaleString('de-DE');
+        return parseServerDateTime(`${isoOrDate}T${time}:00`).toLocaleString('de-DE', { timeZone: TZ });
     }
-    return new Date(isoOrDate).toLocaleString('de-DE', { timeZone: TZ });
+    return parseServerDateTime(isoOrDate).toLocaleString('de-DE', { timeZone: TZ });
 }
 
 function subtractMinutes(isoString, minutes) {
     if (!isoString || !Number.isFinite(minutes)) return null;
-    const base = new Date(isoString);
+    const base = parseServerDateTime(isoString);
     if (Number.isNaN(base.getTime())) return null;
     return new Date(base.getTime() - minutes * 60 * 1000).toISOString();
 }
 
 function formatCountdown(targetIso) {
     if (!targetIso) return '';
-    const target = new Date(targetIso);
+    const target = parseServerDateTime(targetIso);
     if (Number.isNaN(target.getTime())) return '';
 
     const diffMs = target.getTime() - Date.now();
