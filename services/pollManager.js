@@ -5,6 +5,8 @@ const { generateResultChart } = require('./chartGenerator');
 const { scheduleDescriptionUpdate } = require('./groupDescription');
 
 const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
+const PINNED_POLL_ID_KEY = 'pinned_active_poll_id';
+const PINNED_POLL_MESSAGE_ID_KEY = 'pinned_active_poll_message_id';
 
 function extractMessageId(result) {
     if (!result) return null;
@@ -110,6 +112,67 @@ function extractParticipantLid(entry, fallbackId = '') {
 
 function toPrivateChatId(phone) {
     return normalizeDigits(phone);
+}
+
+function getAppSetting(key) {
+    return db.prepare('SELECT value FROM app_settings WHERE key = ?').get(key)?.value || null;
+}
+
+function setAppSetting(key, value) {
+    db.prepare(`
+        INSERT INTO app_settings (key, value, updated_at)
+        VALUES (?, ?, datetime('now'))
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')
+    `).run(key, String(value));
+}
+
+function deleteAppSetting(key) {
+    db.prepare('DELETE FROM app_settings WHERE key = ?').run(key);
+}
+
+async function reconcilePinnedActivePoll() {
+    if (!GROUP_CHAT_ID) return null;
+
+    const targetPoll = db.prepare(`
+        SELECT p.id, p.poll_message_id, p.sent_at, p.event_date, e.event_time, e.title
+        FROM polls p
+        JOIN events e ON p.event_id = e.id
+        WHERE p.status = 'active' AND p.archived = 0 AND p.poll_message_id IS NOT NULL
+        ORDER BY datetime(COALESCE(p.sent_at, '1970-01-01T00:00:00Z')) DESC, p.id DESC
+        LIMIT 1
+    `).get();
+
+    const currentPinnedPollId = Number(getAppSetting(PINNED_POLL_ID_KEY) || 0) || null;
+    const currentPinnedMessageId = normalizeMessageId(getAppSetting(PINNED_POLL_MESSAGE_ID_KEY));
+    const targetMessageId = normalizeMessageId(targetPoll?.poll_message_id);
+
+    if (currentPinnedMessageId && (!targetPoll || currentPinnedPollId !== targetPoll.id || currentPinnedMessageId !== targetMessageId)) {
+        try {
+            await evolution.unpinMessage(GROUP_CHAT_ID, currentPinnedMessageId);
+            console.log(`[INFO] Unpin attempted for previous active poll message ${currentPinnedMessageId}`);
+        } catch (err) {
+            console.error('[ERROR] unpinMessage active poll:', err.message);
+        }
+    }
+
+    if (!targetPoll) {
+        deleteAppSetting(PINNED_POLL_ID_KEY);
+        deleteAppSetting(PINNED_POLL_MESSAGE_ID_KEY);
+        return null;
+    }
+
+    if (currentPinnedPollId !== targetPoll.id || currentPinnedMessageId !== targetMessageId) {
+        try {
+            await evolution.pinMessage(GROUP_CHAT_ID, targetMessageId);
+            console.log(`[INFO] Pin attempted for active poll ${targetPoll.id} (${targetPoll.title})`);
+        } catch (err) {
+            console.error('[ERROR] pinMessage active poll:', err.message);
+        }
+    }
+
+    setAppSetting(PINNED_POLL_ID_KEY, targetPoll.id);
+    setAppSetting(PINNED_POLL_MESSAGE_ID_KEY, targetMessageId);
+    return targetPoll.id;
 }
 
 function getResultPostMode() {
@@ -338,10 +401,7 @@ async function sendPoll(pollId) {
         db.prepare('UPDATE poll_responses SET message_sent = 1 WHERE poll_id = ?').run(pollId);
         db.prepare("UPDATE polls SET status = 'active', sent_at = datetime('now'), poll_message_id = ? WHERE id = ?").run(pollMessageId, pollId);
 
-        if (pollMessageId) {
-            evolution.pinMessage(GROUP_CHAT_ID, pollMessageId)
-                .catch((err) => console.error('[ERROR] pinMessage poll:', err.message));
-        }
+        await reconcilePinnedActivePoll();
         console.log(`[INFO] Poll ${pollId} sent to group ${GROUP_CHAT_ID}`);
         scheduleDescriptionUpdate();
     } finally {
@@ -667,10 +727,6 @@ async function postGroupResults(pollId, cancelInfo, options = {}) {
         db.prepare('UPDATE polls SET result_message_id = ? WHERE id = ?').run(resultMessageId, pollId);
     }
 
-    if (resultMessageId) {
-        evolution.pinMessage(GROUP_CHAT_ID, resultMessageId)
-            .catch((err) => console.error('[ERROR] pinMessage result:', err.message));
-    }
     scheduleDescriptionUpdate();
 }
 
@@ -736,23 +792,24 @@ async function resendPoll(pollId) {
 
     db.prepare("UPDATE polls SET poll_message_id = ?, sent_at = datetime('now') WHERE id = ?").run(pollMessageId, pollId);
 
-    if (pollMessageId) {
-        evolution.pinMessage(GROUP_CHAT_ID, pollMessageId)
-            .catch((err) => console.error('[ERROR] pinMessage resend:', err.message));
-    }
+    await reconcilePinnedActivePoll();
 
     console.log(`[INFO] Poll ${pollId} resent (reset + new WhatsApp poll)`);
     scheduleDescriptionUpdate();
 }
 
-function closePoll(pollId) {
+async function closePoll(pollId) {
     const poll = db.prepare('SELECT poll_message_id FROM polls WHERE id = ?').get(pollId);
     db.prepare("UPDATE polls SET status = 'closed' WHERE id = ? AND status = 'active'").run(pollId);
 
     if (poll?.poll_message_id && GROUP_CHAT_ID) {
-        evolution.unpinMessage(GROUP_CHAT_ID, poll.poll_message_id)
-            .catch((err) => console.error('[ERROR] unpinMessage poll:', err.message));
+        try {
+            await evolution.unpinMessage(GROUP_CHAT_ID, poll.poll_message_id);
+        } catch (err) {
+            console.error('[ERROR] unpinMessage poll:', err.message);
+        }
     }
+    await reconcilePinnedActivePoll();
     scheduleDescriptionUpdate();
 }
 
@@ -845,7 +902,7 @@ async function finalizeClosedPoll(pollId, options = {}) {
     const poll = db.prepare('SELECT event_id, event_date FROM polls WHERE id = ?').get(pollId);
     if (!poll) throw new Error(`Poll ${pollId} not found`);
 
-    closePoll(pollId);
+    await closePoll(pollId);
 
     if (suppressAutoPost) {
         db.prepare('UPDATE polls SET group_posted = 1 WHERE id = ?').run(pollId);
@@ -893,4 +950,5 @@ module.exports = {
     sendEventReminders,
     ensureNextRecurringPoll,
     finalizeClosedPoll,
+    reconcilePinnedActivePoll,
 };

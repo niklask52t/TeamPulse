@@ -159,6 +159,61 @@ router.put('/:id/response', async (req, res) => {
     res.json({ success: true });
 });
 
+router.put('/:id/reason', (req, res) => {
+    const pollId = Number(req.params.id);
+    const { contact_id, reason } = req.body;
+    if (!contact_id || reason === undefined) {
+        return res.status(400).json({ error: 'contact_id und reason erforderlich' });
+    }
+
+    const poll = db.prepare('SELECT id FROM polls WHERE id = ?').get(pollId);
+    if (!poll) return res.status(404).json({ error: 'Umfrage nicht gefunden' });
+
+    const responseRow = db.prepare('SELECT response FROM poll_responses WHERE poll_id = ? AND contact_id = ?').get(pollId, contact_id);
+    if (!responseRow) return res.status(404).json({ error: 'Antwort nicht gefunden' });
+    if (!responseRow.response) {
+        return res.status(400).json({ error: 'Ein Grund kann erst gesetzt werden, wenn die Person einen Status hat' });
+    }
+
+    const normalizedReason = String(reason || '').trim();
+    db.prepare('UPDATE poll_responses SET reason = ? WHERE poll_id = ? AND contact_id = ?')
+        .run(normalizedReason || null, pollId, contact_id);
+
+    const { scheduleDescriptionUpdate } = require('../services/groupDescription');
+    scheduleDescriptionUpdate();
+    res.json({ success: true });
+});
+
+router.post('/:id/request-reason', async (req, res) => {
+    const pollId = Number(req.params.id);
+    const { contact_id } = req.body;
+    if (!contact_id) {
+        return res.status(400).json({ error: 'contact_id erforderlich' });
+    }
+
+    const poll = db.prepare(`
+        SELECT p.id, p.event_date, e.title
+        FROM polls p JOIN events e ON p.event_id = e.id
+        WHERE p.id = ?
+    `).get(pollId);
+    if (!poll) return res.status(404).json({ error: 'Umfrage nicht gefunden' });
+
+    const row = db.prepare(`
+        SELECT pr.response, c.name, c.phone
+        FROM poll_responses pr JOIN contacts c ON pr.contact_id = c.id
+        WHERE pr.poll_id = ? AND pr.contact_id = ?
+    `).get(pollId, contact_id);
+    if (!row) return res.status(404).json({ error: 'Antwort nicht gefunden' });
+    if (!row.response) return res.status(400).json({ error: 'Die Person hat noch keinen Status' });
+    if (!row.phone) return res.status(400).json({ error: 'Kontakt hat keine nutzbare Telefonnummer' });
+
+    const evolution = require('../services/evolution');
+    evolution.sendAdminReasonRequest(row.phone, poll.title, poll.event_date, row.response)
+        .catch((err) => console.error(`[ERROR] sendAdminReasonRequest to ${row.name}:`, err.message));
+
+    res.json({ success: true });
+});
+
 function asArray(value) {
     if (Array.isArray(value)) return value;
     if (value == null) return [];

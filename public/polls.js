@@ -219,7 +219,7 @@ function renderResponseGroup(label, responses, type, pollId, editable) {
     if (responses.length === 0) return '';
     const names = responses.map((row) => {
         if (editable) {
-            return `<span class="response-name-editable" onclick="showVotePicker(event, ${pollId}, ${row.contact_id}, '${esc(row.name)}')">${esc(row.name)}</span>`;
+            return `<span class="response-name-editable" onclick="showVotePicker(event, ${pollId}, ${row.contact_id}, '${esc(row.name)}', ${row.response ? `'${row.response}'` : 'null'}, ${row.reason ? `'${esc(row.reason)}'` : 'null'})">${esc(row.name)}</span>`;
         }
         return esc(row.name);
     }).join(', ');
@@ -240,7 +240,7 @@ function renderReasonGroup(label, responses, type, pollId, editable) {
             ? ` <span class="response-reason">- <em>${esc(row.reason)}</em></span>`
             : '';
         if (editable) {
-            return `<span class="response-maybe-item"><span class="response-name-editable" onclick="showVotePicker(event, ${pollId}, ${row.contact_id}, '${esc(row.name)}')">${esc(row.name)}</span>${reason}</span>`;
+            return `<span class="response-maybe-item"><span class="response-name-editable" onclick="showVotePicker(event, ${pollId}, ${row.contact_id}, '${esc(row.name)}', ${row.response ? `'${row.response}'` : 'null'}, ${row.reason ? `'${esc(row.reason)}'` : 'null'})">${esc(row.name)}</span>${reason}</span>`;
         }
         return `<span class="response-maybe-item">${esc(row.name)}${reason}</span>`;
     }).join('');
@@ -252,9 +252,16 @@ function renderReasonGroup(label, responses, type, pollId, editable) {
         </div>`;
 }
 
-function showVotePicker(evt, pollId, contactId, name) {
+function showVotePicker(evt, pollId, contactId, name, currentResponse = null, currentReason = null) {
     evt.stopPropagation();
     document.querySelectorAll('.vote-picker').forEach((el) => el.remove());
+
+    const reasonLabel = currentReason ? `Grund ändern` : 'Grund setzen';
+    const reasonButtons = currentResponse ? `
+        <button onclick="editReason(${pollId}, ${contactId}, '${esc(name)}', ${currentReason ? `'${esc(currentReason)}'` : 'null'})" title="${reasonLabel}">${reasonLabel}</button>
+        <button onclick="requestReason(${pollId}, ${contactId}, '${esc(name)}')" title="Grund anfragen">Grund anfragen</button>
+        ${currentReason ? `<button onclick="clearReason(${pollId}, ${contactId}, '${esc(name)}')" title="Grund löschen">Grund löschen</button>` : ''}
+    ` : '';
 
     const picker = document.createElement('div');
     picker.className = 'vote-picker';
@@ -264,6 +271,7 @@ function showVotePicker(evt, pollId, contactId, name) {
         <button onclick="setVote(${pollId}, ${contactId}, 'no')" title="Nein">Nein</button>
         <button onclick="setVote(${pollId}, ${contactId}, 'maybe')" title="Vielleicht">Vielleicht</button>
         <button onclick="setVote(${pollId}, ${contactId}, null)" title="Zuruecksetzen">Offen</button>
+        ${reasonButtons}
         <button onclick="this.parentElement.remove()" title="Abbrechen" class="vote-picker-close">X</button>
     `;
     evt.target.after(picker);
@@ -283,6 +291,76 @@ async function setVote(pollId, contactId, response) {
         }
         document.querySelectorAll('.vote-picker').forEach((el) => el.remove());
         await renderPollDetail(pollId);
+    } catch (err) {
+        if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
+    }
+}
+
+async function editReason(pollId, contactId, name, currentReason) {
+    const nextReason = prompt(`Grund für ${name}:`, currentReason || '');
+    if (nextReason === null) return;
+    try {
+        const res = await apiFetch(`${API}/api/polls/${pollId}/reason`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contact_id: contactId, reason: nextReason }),
+        });
+        if (!res.ok) {
+            const data = await res.json();
+            alert('Fehler: ' + (data.error || 'Unbekannter Fehler'));
+            return;
+        }
+        document.querySelectorAll('.vote-picker').forEach((el) => el.remove());
+        await renderPollDetail(pollId);
+    } catch (err) {
+        if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
+    }
+}
+
+async function clearReason(pollId, contactId, name) {
+    const confirmed = await showConfirmDialog(`Grund von ${name} wirklich löschen?`, {
+        title: 'Grund löschen',
+        confirmText: 'Ja',
+        cancelText: 'Nein',
+    });
+    if (!confirmed) return;
+    try {
+        const res = await apiFetch(`${API}/api/polls/${pollId}/reason`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contact_id: contactId, reason: '' }),
+        });
+        if (!res.ok) {
+            const data = await res.json();
+            alert('Fehler: ' + (data.error || 'Unbekannter Fehler'));
+            return;
+        }
+        document.querySelectorAll('.vote-picker').forEach((el) => el.remove());
+        await renderPollDetail(pollId);
+    } catch (err) {
+        if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
+    }
+}
+
+async function requestReason(pollId, contactId, name) {
+    const confirmed = await showConfirmDialog(`${name} jetzt per PN erneut nach einem Grund fragen?`, {
+        title: 'Grund anfragen',
+        confirmText: 'Ja',
+        cancelText: 'Nein',
+    });
+    if (!confirmed) return;
+    try {
+        const res = await apiFetch(`${API}/api/polls/${pollId}/request-reason`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contact_id: contactId }),
+        });
+        if (!res.ok) {
+            const data = await res.json();
+            alert('Fehler: ' + (data.error || 'Unbekannter Fehler'));
+            return;
+        }
+        document.querySelectorAll('.vote-picker').forEach((el) => el.remove());
     } catch (err) {
         if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
     }

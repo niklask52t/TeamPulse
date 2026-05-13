@@ -2,6 +2,21 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.26',
+        date: '2026-05-14',
+        changes: [
+            { type: 'feature', text: 'Pin-Logik fuer laufende Umfragen gestrafft: Beim Start wird immer genau die aktuell relevante aktive Umfrage als einzige Pin-Kandidatin behandelt, beim Schliessen oder Wechsel wird der Pin sauber aufgeloest bzw. auf die neueste laufende Umfrage umgeschaltet' },
+            { type: 'improvement', text: 'Ergebnis-Posts nehmen nicht mehr am Auto-Pin fuer aktive Umfragen teil und Event-Deaktivierung, Loeschen, Resend sowie Scheduler-Ablaeufe bereinigen den aktiven Pin-Status jetzt konsistent mit' },
+        ]
+    },
+    {
+        version: '2.5.25',
+        date: '2026-05-14',
+        changes: [
+            { type: 'feature', text: 'Admin-Tools in Poll-Details erweitert: Status pro Person manuell setzen, Gründe direkt setzen oder ändern, Gründe löschen und Personen per PN erneut nach einem Grund fragen' },
+        ]
+    },
+    {
         version: '2.5.24',
         date: '2026-05-13',
         changes: [

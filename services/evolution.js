@@ -96,7 +96,7 @@ function pushField(lines, label, value, options = {}) {
 function appendManualDescription(lines, description) {
     const clean = cleanLine(description);
     if (!clean) return;
-    lines.push('', '─────────────────', clean);
+    lines.push('', '\u2500'.repeat(17), clean);
 }
 
 function buildPollText(eventTitle, eventDate, eventTime, endTime, meetingTime, description) {
@@ -311,6 +311,19 @@ async function sendAdminVoteNotification(chatId, eventTitle, eventDate, newRespo
     return sendMessage(chatId, text);
 }
 
+async function sendAdminReasonRequest(chatId, eventTitle, eventDate, response) {
+    const labels = { yes: 'Zusage', no: 'Absage', maybe: 'Vielleicht' };
+    const label = labels[response] || 'deine Antwort';
+    const text = [
+        `Bitte schick f\u00FCr *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} noch einmal kurz einen Kommentar zu *${label}*.`,
+        '',
+        'Du kannst einfach direkt auf diese Nachricht antworten.',
+        '',
+        AUTO_HINT,
+    ].join('\n');
+    return sendMessage(chatId, text);
+}
+
 async function sendTooLateNotification(chatId, eventTitle, eventDate) {
     const text = [
         `Die Abstimmung f\u00FCr *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} ist bereits beendet.`,
@@ -466,6 +479,7 @@ module.exports = {
     sendYesFollowUp,
     sendVoteChangeFollowUp,
     sendAdminVoteNotification,
+    sendAdminReasonRequest,
     sendTooLateNotification,
     postResultsToGroup,
     sendCancellationMessage,

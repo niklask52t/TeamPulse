@@ -44,8 +44,8 @@ function startScheduler() {
             await checkEventReminders();
             await generateRecurringPolls();
             await archiveOldPolls();
-            await unpinExpiredResults();
             await checkDescriptionEventSwitch();
+            await pollManager.reconcilePinnedActivePoll();
         } catch (err) {
             console.error('[ERROR] Scheduler:', err);
         } finally {
@@ -135,7 +135,7 @@ async function checkAndClosePolls() {
     `).all();
 
     for (const poll of pollsToClose) {
-        pollManager.closePoll(poll.id);
+        await pollManager.closePoll(poll.id);
         pollManager.ensureNextRecurringPoll(poll.event_id, poll.event_date);
         console.log(`Poll ${poll.id} closed (deadline passed)`);
 
@@ -276,35 +276,6 @@ async function archiveOldPolls() {
             console.log(`Poll ${poll.id} archived`);
             scheduleDescriptionUpdate();
         }
-    }
-}
-
-// Unpin result messages after event ends (end_time or event_time)
-async function unpinExpiredResults() {
-    const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
-    if (!GROUP_CHAT_ID) return;
-
-    const evolution = require('./evolution');
-    const now = new Date();
-
-    const polls = db.prepare(`
-        SELECT p.id, p.result_message_id, p.event_date, e.event_time, e.end_time
-        FROM polls p JOIN events e ON p.event_id = e.id
-        WHERE p.result_message_id IS NOT NULL AND p.result_unpinned = 0
-    `).all();
-
-    for (const poll of polls) {
-        const relevantTime = poll.end_time || poll.event_time;
-        const eventEnd = parseBerlinDateTime(poll.event_date, relevantTime);
-        if (isNaN(eventEnd.getTime()) || now < eventEnd) continue;
-
-        try {
-            await evolution.unpinMessage(GROUP_CHAT_ID, poll.result_message_id);
-            console.log(`[INFO] Result message unpinned for poll ${poll.id}`);
-        } catch (err) {
-            console.error(`[ERROR] unpinMessage result ${poll.id}:`, err.message);
-        }
-        db.prepare('UPDATE polls SET result_unpinned = 1 WHERE id = ?').run(poll.id);
     }
 }
 

@@ -26,6 +26,7 @@ async function deleteOpenPollsForEvent(eventId) {
     if (openPolls.length > 0) {
         db.prepare('DELETE FROM poll_responses WHERE poll_id IN (SELECT id FROM polls WHERE event_id = ? AND archived = 0 AND status IN (\'pending\', \'active\'))').run(eventId);
         db.prepare("DELETE FROM polls WHERE event_id = ? AND archived = 0 AND status IN ('pending', 'active')").run(eventId);
+        await pollManager.reconcilePinnedActivePoll();
     }
 
     return openPolls.length;
@@ -267,6 +268,7 @@ router.put('/:id', async (req, res) => {
     } catch (err) {
         console.error('[ERROR] refreshOpenPollScheduleForEvent:', err.message);
     }
+    await pollManager.reconcilePinnedActivePoll();
     scheduleDescriptionUpdate();
 
     res.json(event);
@@ -313,7 +315,7 @@ router.delete('/:id/exceptions/:exceptionId', (req, res) => {
 });
 
 // DELETE event (explicit cascade for compatibility with older DBs)
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
     const deleteAll = db.transaction((id) => {
         db.prepare('DELETE FROM poll_responses WHERE poll_id IN (SELECT id FROM polls WHERE event_id = ?)').run(id);
         db.prepare('DELETE FROM polls WHERE event_id = ?').run(id);
@@ -321,6 +323,7 @@ router.delete('/:id', (req, res) => {
     });
     const result = deleteAll(req.params.id);
     if (result.changes === 0) return res.status(404).json({ error: 'Event nicht gefunden' });
+    await pollManager.reconcilePinnedActivePoll();
     scheduleDescriptionUpdate();
     res.json({ success: true });
 });
