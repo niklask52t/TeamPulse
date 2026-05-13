@@ -2,6 +2,13 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.24',
+        date: '2026-05-13',
+        changes: [
+            { type: 'improvement', text: 'WhatsApp-Eventtexte trennen automatisch erzeugte Eventdaten und manuell gepflegte Beschreibung jetzt mit einer klaren Separator-Linie, damit eigene Zusatzinfos im Chat sauberer abgesetzt sind' },
+        ]
+    },
+    {
         version: '2.5.23',
         date: '2026-05-13',
         changes: [

@@ -93,6 +93,12 @@ function pushField(lines, label, value, options = {}) {
     lines.push(`${label} ${clean}`);
 }
 
+function appendManualDescription(lines, description) {
+    const clean = cleanLine(description);
+    if (!clean) return;
+    lines.push('', '─────────────────', clean);
+}
+
 function buildPollText(eventTitle, eventDate, eventTime, endTime, meetingTime, description) {
     const lines = [
         `*${cleanLine(eventTitle)}*`,
@@ -100,7 +106,7 @@ function buildPollText(eventTitle, eventDate, eventTime, endTime, meetingTime, d
         `Zeit: ${formatEventWindow(eventTime, endTime)}`,
     ];
     pushField(lines, 'Treffen:', meetingTime ? `${meetingTime} Uhr` : '');
-    pushField(lines, 'Info:', description);
+    appendManualDescription(lines, description);
     lines.push('', AUTO_HINT);
     return lines.join('\n');
 }
@@ -159,7 +165,7 @@ async function sendReminder(chatId, eventTitle, eventDate, eventTime, endTime, d
         `Zeit: ${formatEventWindow(eventTime, endTime)}`,
     ];
     pushField(lines, 'Treffen:', meetingTime ? `${meetingTime} Uhr` : '');
-    pushField(lines, 'Info:', description);
+    appendManualDescription(lines, description);
     lines.push('', `Bitte stimme bis *${deadlineTime} Uhr* in der Gruppe ab.`, '', AUTO_HINT);
     return sendMessage(chatId, lines.join('\n'));
 }
@@ -185,7 +191,7 @@ async function sendEventReminder(chatId, eventTitle, eventTime, endTime, meeting
         `Zeit: ${formatEventWindow(eventTime, endTime)}`,
     ];
     pushField(lines, 'Treffen:', meetingTime ? `${meetingTime} Uhr` : '');
-    pushField(lines, 'Info:', description);
+    appendManualDescription(lines, description);
     lines.push('', 'Bis gleich!', '', AUTO_HINT);
     return sendMessage(chatId, lines.join('\n'));
 }
@@ -197,7 +203,7 @@ async function postResultsToGroup(groupId, eventTitle, eventDate, eventTime, end
         `Zeit: ${formatEventWindow(eventTime, endTime)}`,
     ];
     pushField(lines, 'Treffen:', meetingTime ? `${meetingTime} Uhr` : '');
-    pushField(lines, 'Info:', description);
+    appendManualDescription(lines, description);
 
     if (cancelInfo) {
         lines.push('');
@@ -243,7 +249,7 @@ async function sendCancellationMessage(chatId, eventTitle, eventDate, eventTime,
         `Zeit: ${formatEventWindow(eventTime, endTime)}`,
     ];
     pushField(lines, 'Treffen:', meetingTime ? `${meetingTime} Uhr` : '');
-    pushField(lines, 'Info:', description);
+    appendManualDescription(lines, description);
     lines.push('', `Zu wenige Zusagen (${yesCount}/${minRequired}).`, '', AUTO_HINT);
     return sendMessage(chatId, lines.join('\n'));
 }
