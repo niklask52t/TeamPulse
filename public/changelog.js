@@ -2,6 +2,13 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.15',
+        date: '2026-05-13',
+        changes: [
+            { type: 'fix', text: 'Evolution-Webhook-Aliasrouten fuer /messages-upsert und /messages-update werden jetzt direkt in den Poll-Webhook-Router durchgereicht, damit echte Poll-Votes nicht mehr still an der Alias-Weiterleitung haengen bleiben' },
+        ]
+    },
+    {
         version: '2.5.14',
         date: '2026-05-13',
         changes: [
