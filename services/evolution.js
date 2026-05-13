@@ -100,7 +100,7 @@ function buildPollText(eventTitle, eventDate, eventTime, endTime, meetingTime, d
         `Zeit: ${formatEventWindow(eventTime, endTime)}`,
     ];
     pushField(lines, 'Treffen:', meetingTime ? `${meetingTime} Uhr` : '');
-    pushField(lines, 'Info:', description, { italic: true });
+    pushField(lines, 'Info:', description);
     lines.push('', AUTO_HINT);
     return lines.join('\n');
 }
@@ -159,7 +159,7 @@ async function sendReminder(chatId, eventTitle, eventDate, eventTime, endTime, d
         `Zeit: ${formatEventWindow(eventTime, endTime)}`,
     ];
     pushField(lines, 'Treffen:', meetingTime ? `${meetingTime} Uhr` : '');
-    pushField(lines, 'Info:', description, { italic: true });
+    pushField(lines, 'Info:', description);
     lines.push('', `Bitte stimme bis *${deadlineTime} Uhr* in der Gruppe ab.`, '', AUTO_HINT);
     return sendMessage(chatId, lines.join('\n'));
 }
@@ -185,7 +185,7 @@ async function sendEventReminder(chatId, eventTitle, eventTime, endTime, meeting
         `Zeit: ${formatEventWindow(eventTime, endTime)}`,
     ];
     pushField(lines, 'Treffen:', meetingTime ? `${meetingTime} Uhr` : '');
-    pushField(lines, 'Info:', description, { italic: true });
+    pushField(lines, 'Info:', description);
     lines.push('', 'Bis gleich!', '', AUTO_HINT);
     return sendMessage(chatId, lines.join('\n'));
 }
@@ -197,7 +197,7 @@ async function postResultsToGroup(groupId, eventTitle, eventDate, eventTime, end
         `Zeit: ${formatEventWindow(eventTime, endTime)}`,
     ];
     pushField(lines, 'Treffen:', meetingTime ? `${meetingTime} Uhr` : '');
-    pushField(lines, 'Info:', description, { italic: true });
+    pushField(lines, 'Info:', description);
 
     if (cancelInfo) {
         lines.push('');
@@ -243,7 +243,7 @@ async function sendCancellationMessage(chatId, eventTitle, eventDate, eventTime,
         `Zeit: ${formatEventWindow(eventTime, endTime)}`,
     ];
     pushField(lines, 'Treffen:', meetingTime ? `${meetingTime} Uhr` : '');
-    pushField(lines, 'Info:', description, { italic: true });
+    pushField(lines, 'Info:', description);
     lines.push('', `Zu wenige Zusagen (${yesCount}/${minRequired}).`, '', AUTO_HINT);
     return sendMessage(chatId, lines.join('\n'));
 }

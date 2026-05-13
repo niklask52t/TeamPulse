@@ -2,6 +2,13 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.21',
+        date: '2026-05-13',
+        changes: [
+            { type: 'improvement', text: 'WhatsApp-Eventtexte weiter beruhigt: Titel bleibt wie bisher prominent, Datum/Zeit/Treffen/Info laufen jetzt einheitlich als normale Meta-Zeilen und nur der automatische TeamPulse-Hinweis bleibt dezent kursiv' },
+        ]
+    },
+    {
         version: '2.5.20',
         date: '2026-05-13',
         changes: [
