@@ -321,7 +321,10 @@ function collectParticipantCandidates(entry, body) {
 }
 
 async function handleEvolutionWebhook(req, res) {
-    const event = String(req.body?.event || 'MESSAGES_UPSERT').toUpperCase();
+    const event = String(req.body?.event || 'MESSAGES_UPSERT')
+        .trim()
+        .replace(/[.\-]/g, '_')
+        .toUpperCase();
     const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
 
     if (event && event !== 'MESSAGES_UPSERT' && event !== 'MESSAGES_UPDATE') {

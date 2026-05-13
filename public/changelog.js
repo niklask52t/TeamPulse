@@ -2,6 +2,13 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.17',
+        date: '2026-05-13',
+        changes: [
+            { type: 'fix', text: 'Evolution-Webhook-Events wie messages.upsert und messages.update werden jetzt korrekt auf MESSAGES_UPSERT und MESSAGES_UPDATE normalisiert statt still ignoriert zu werden' },
+        ]
+    },
+    {
         version: '2.5.16',
         date: '2026-05-13',
         changes: [
