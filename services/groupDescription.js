@@ -166,7 +166,7 @@ function buildDescription() {
 
     // 6. Assemble
     const parts = [];
-    if (aboveBlocks.length) parts.push(aboveBlocks.map(b => b.content).join('\n\n'));
+    if (aboveBlocks.length) parts.push(`${aboveBlocks.map(b => b.content).join('\n\n')}\n${SECTION_SEPARATOR}`);
     parts.push(dynamic);
     if (upcoming) parts.push(upcoming.trim());
     if (belowBlocks.length) parts.push(`${SECTION_SEPARATOR}\n${belowBlocks.map(b => b.content).join('\n\n')}`);
