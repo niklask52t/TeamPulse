@@ -31,10 +31,10 @@ function buildCompactPollSummary(poll) {
 
 function buildPollResponseBlock(poll) {
     const responses = db.prepare(`
-        SELECT pr.response, pr.reason, c.name
+        SELECT pr.response, pr.reason, COALESCE(NULLIF(c.name_override, ''), c.name) AS name
         FROM poll_responses pr JOIN contacts c ON pr.contact_id = c.id
         WHERE pr.poll_id = ?
-        ORDER BY c.name
+        ORDER BY COALESCE(NULLIF(c.name_override, ''), c.name)
     `).all(poll.id);
 
     const yes = responses.filter(r => r.response === 'yes');

@@ -100,6 +100,38 @@ function extractContactName(entry, fallbackPhone) {
     return String(name || fallbackPhone || '').trim();
 }
 
+function countNameTokens(value) {
+    return String(value || '')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .length;
+}
+
+function isPhoneLikeName(name, fallbackPhone = '') {
+    const digits = normalizeDigits(name);
+    const fallbackDigits = normalizeDigits(fallbackPhone);
+    if (!digits) return false;
+    if (fallbackDigits && digits === fallbackDigits) return true;
+    return /^[+\d\s().-]+$/.test(String(name || '').trim());
+}
+
+function choosePreferredContactName(existingName, candidateName, fallbackPhone = '') {
+    const existing = String(existingName || '').trim();
+    const candidate = String(candidateName || '').trim();
+
+    if (!existing) return candidate;
+    if (!candidate) return existing;
+    if (existing === candidate) return existing;
+
+    const existingIsPhone = isPhoneLikeName(existing, fallbackPhone);
+    const candidateIsPhone = isPhoneLikeName(candidate, fallbackPhone);
+
+    if (existingIsPhone && !candidateIsPhone) return candidate;
+    if (!existingIsPhone && candidateIsPhone) return existing;
+    return candidate;
+}
+
 function extractParticipantLid(entry, fallbackId = '') {
     const direct = entry?.lid || entry?.lidJid || entry?.linkedDeviceId || entry?.key?.participantAlt || '';
     const directDigits = normalizeDigits(direct);
@@ -243,10 +275,9 @@ async function syncGroupParticipants() {
             if (lidDigits) lidMap[phoneDigits] = lidDigits;
         }
 
-        const upsert = db.prepare(`
-            INSERT INTO contacts (name, phone) VALUES (?, ?)
-            ON CONFLICT(phone) DO UPDATE SET name = excluded.name WHERE excluded.name != ''
-        `);
+        const insertContact = db.prepare('INSERT OR IGNORE INTO contacts (name, phone) VALUES (?, ?)');
+        const selectContactByPhone = db.prepare('SELECT id, name, name_override FROM contacts WHERE phone = ?');
+        const updateName = db.prepare('UPDATE contacts SET name = ? WHERE id = ?');
         const updateLid = db.prepare('UPDATE contacts SET lid = ? WHERE phone = ?');
 
         if (participants.length > 0) {
@@ -258,7 +289,9 @@ async function syncGroupParticipants() {
             console.log(`[SYNC] Contact[0] full data: ${JSON.stringify(allContacts[0]).slice(0, 500)}`);
         }
 
+        const desiredPhones = new Set();
         let synced = 0;
+        let changed = 0;
         for (const participant of participants) {
             const rawId = extractParticipantId(participant);
             const resolvedId = rawId && !rawId.endsWith('@lid')
@@ -270,19 +303,46 @@ async function syncGroupParticipants() {
             if (!phoneDigits) continue;
 
             const phone = '+' + phoneDigits;
+            desiredPhones.add(phone);
             const name = nameMap[phoneDigits] || extractContactName(participant, phone);
             const lidDigits = extractParticipantLid(participant, rawId) || lidMap[phoneDigits] || '';
 
             try {
-                upsert.run(name, phone);
-                if (lidDigits) updateLid.run(lidDigits, phone);
+                insertContact.run(name, phone);
+                const existing = selectContactByPhone.get(phone);
+                if (existing) {
+                    const preferredName = choosePreferredContactName(existing.name, name, phone);
+                    if (preferredName && preferredName !== existing.name) {
+                        updateName.run(preferredName, existing.id);
+                        changed++;
+                    }
+                }
+                if (lidDigits) {
+                    updateLid.run(lidDigits, phone);
+                }
                 synced++;
             } catch (err) {
                 console.error(`[WARN] syncGroupParticipants upsert failed for ${phone}:`, err.message);
             }
         }
 
-        console.log(`[INFO] Synced ${synced} group participants to contacts`);
+        let removed = 0;
+        if (participants.length > 0) {
+            const existingContacts = db.prepare('SELECT id, phone FROM contacts').all();
+            const deleteContact = db.prepare('DELETE FROM contacts WHERE id = ?');
+            for (const contact of existingContacts) {
+                if (!desiredPhones.has(contact.phone)) {
+                    deleteContact.run(contact.id);
+                    removed++;
+                }
+            }
+        }
+
+        if (changed > 0 || removed > 0) {
+            scheduleDescriptionUpdate();
+        }
+
+        console.log(`[INFO] Synced ${synced} group participants to contacts (${changed} name updates, ${removed} removed)`);
         return synced;
     } catch (err) {
         console.error('[ERROR] syncGroupParticipants:', err.message);
@@ -310,11 +370,17 @@ async function syncPollRecipientsToCurrentGroup(pollId) {
         if (!phoneDigits) continue;
 
         const phone = '+' + phoneDigits;
-        let contact = db.prepare('SELECT id FROM contacts WHERE phone = ?').get(phone);
+        const candidateName = extractContactName(participant, phone);
+        let contact = db.prepare('SELECT id, name, name_override FROM contacts WHERE phone = ?').get(phone);
         if (!contact) {
-            const name = extractContactName(participant, phone);
-            db.prepare('INSERT OR IGNORE INTO contacts (name, phone) VALUES (?, ?)').run(name, phone);
-            contact = db.prepare('SELECT id FROM contacts WHERE phone = ?').get(phone);
+            db.prepare('INSERT OR IGNORE INTO contacts (name, phone) VALUES (?, ?)').run(candidateName, phone);
+            contact = db.prepare('SELECT id, name, name_override FROM contacts WHERE phone = ?').get(phone);
+        } else {
+            const preferredName = choosePreferredContactName(contact.name, candidateName, phone);
+            if (preferredName && preferredName !== contact.name) {
+                db.prepare('UPDATE contacts SET name = ? WHERE id = ?').run(preferredName, contact.id);
+                contact.name = preferredName;
+            }
         }
         if (contact?.id) {
             const lidDigits = extractParticipantLid(participant, rawId);
@@ -463,7 +529,13 @@ async function processResponse(phone, text, pollMessageId) {
                     const phone = '+' + phoneDigits;
                     const name = extractContactName(match, phone);
                     db.prepare('INSERT OR IGNORE INTO contacts (name, phone) VALUES (?, ?)').run(name, phone);
-                    db.prepare('UPDATE contacts SET name = ?, lid = ? WHERE phone = ?').run(name, normalizedPhone, phone);
+                    const existing = db.prepare('SELECT id, name, name_override FROM contacts WHERE phone = ?').get(phone);
+                    if (existing) {
+                        const preferredName = choosePreferredContactName(existing.name, name, phone);
+                        db.prepare('UPDATE contacts SET name = ?, lid = ? WHERE id = ?').run(preferredName, normalizedPhone, existing.id);
+                    } else {
+                        db.prepare('UPDATE contacts SET lid = ? WHERE phone = ?').run(normalizedPhone, phone);
+                    }
                     contactRow = db.prepare('SELECT * FROM contacts WHERE phone = ?').get(phone);
                     if (contactRow) {
                         console.log(`[INFO] Resolved LID ${normalizedPhone} -> ${contactRow.name} (${contactRow.phone}) via group participant lookup`);
@@ -492,6 +564,8 @@ async function processResponse(phone, text, pollMessageId) {
     }
 
     if (!contactRow) return null;
+
+    const displayName = contactRow.name_override || contactRow.name;
 
     const stripped = String(text || '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
     let response = null;
@@ -546,7 +620,7 @@ async function processResponse(phone, text, pollMessageId) {
         if (closedPoll && contactRow.phone) {
             evolution.sendTooLateNotification(toPrivateChatId(contactRow.phone), closedPoll.event_title, closedPoll.event_date)
                 .catch((err) => console.error('[ERROR] sendTooLateNotification:', err.message));
-            console.log(`[VOTE] Too late vote from ${contactRow.name} for ${closedPoll.event_title} - notification sent`);
+            console.log(`[VOTE] Too late vote from ${displayName} for ${closedPoll.event_title} - notification sent`);
         }
         return null;
     }
@@ -581,7 +655,7 @@ async function processResponse(phone, text, pollMessageId) {
     }
 
     scheduleDescriptionUpdate();
-    return { contactName: contactRow.name, response, pollId: activePoll.poll_id };
+    return { contactName: displayName, response, pollId: activePoll.poll_id };
 }
 
 function processReasonMessage(phone, text) {
@@ -604,9 +678,10 @@ function processReasonMessage(phone, text) {
     if (!pendingReason) return null;
 
     db.prepare('UPDATE poll_responses SET reason = ? WHERE id = ?').run(String(text || '').trim(), pendingReason.id);
-    console.log(`[INFO] Reason saved for ${contact.name} (${pendingReason.response}): "${String(text || '').trim()}" (poll ${pendingReason.poll_id})`);
+    const contactName = contact.name_override || contact.name;
+    console.log(`[INFO] Reason saved for ${contactName} (${pendingReason.response}): "${String(text || '').trim()}" (poll ${pendingReason.poll_id})`);
     scheduleDescriptionUpdate();
-    return { pollId: pendingReason.poll_id, contactName: contact.name };
+    return { pollId: pendingReason.poll_id, contactName };
 }
 
 async function sendDeadlineReminder(pollId, isSecond) {
@@ -624,7 +699,7 @@ async function sendDeadlineReminder(pollId, isSecond) {
     });
 
     const pending = db.prepare(`
-        SELECT pr.*, c.phone, c.name
+        SELECT pr.*, c.phone, COALESCE(NULLIF(c.name_override, ''), c.name) AS name
         FROM poll_responses pr JOIN contacts c ON pr.contact_id = c.id
         WHERE pr.poll_id = ? AND pr.response IS NULL
     `).all(pollId);
@@ -664,7 +739,7 @@ async function postGroupResults(pollId, cancelInfo, options = {}) {
     if (!GROUP_CHAT_ID) throw new Error('GROUP_CHAT_ID not configured');
 
     const responses = db.prepare(`
-        SELECT pr.response, pr.reason, c.name
+        SELECT pr.response, pr.reason, COALESCE(NULLIF(c.name_override, ''), c.name) AS name
         FROM poll_responses pr JOIN contacts c ON pr.contact_id = c.id
         WHERE pr.poll_id = ?
     `).all(pollId);
@@ -835,7 +910,7 @@ async function sendEventReminders(pollId) {
     if (!poll) return;
 
     const yesResponses = db.prepare(`
-        SELECT c.phone, c.name
+        SELECT c.phone, COALESCE(NULLIF(c.name_override, ''), c.name) AS name
         FROM poll_responses pr JOIN contacts c ON pr.contact_id = c.id
         WHERE pr.poll_id = ? AND pr.response = 'yes'
     `).all(pollId);

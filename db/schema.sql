@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS contacts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
+    name_override TEXT,
     phone TEXT NOT NULL UNIQUE,
     created_at TEXT DEFAULT (datetime('now'))
 );

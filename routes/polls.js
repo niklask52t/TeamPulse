@@ -9,7 +9,8 @@ router.get('/active-count', (req, res) => {
 });
 
 router.get('/', (req, res) => {
-    const polls = db.prepare(`
+    const send = () => {
+        const polls = db.prepare(`
         SELECT p.*, e.title, e.description, e.type, e.event_time
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE NOT (
@@ -20,11 +21,17 @@ router.get('/', (req, res) => {
         )
         ORDER BY p.event_date DESC
     `).all();
-    res.json(polls);
+        res.json(polls);
+    };
+
+    Promise.resolve(pollManager.syncGroupParticipants())
+        .catch((err) => console.error('[WARN] polls sync before GET /polls failed:', err.message))
+        .finally(send);
 });
 
 router.get('/:id', (req, res) => {
-    const poll = db.prepare(`
+    const send = () => {
+        const poll = db.prepare(`
         SELECT p.*, e.title, e.description, e.type, e.event_time, e.end_time, e.meeting_time, e.recurring,
                e.auto_cancel, e.min_participants, e.poll_send_at, e.poll_send_minutes_before,
                e.poll_deadline_at, e.poll_deadline_minutes, e.event_reminder_minutes,
@@ -32,16 +39,21 @@ router.get('/:id', (req, res) => {
         FROM polls p JOIN events e ON p.event_id = e.id
         WHERE p.id = ?
     `).get(Number(req.params.id));
-    if (!poll) return res.status(404).json({ error: 'Umfrage nicht gefunden' });
+        if (!poll) return res.status(404).json({ error: 'Umfrage nicht gefunden' });
 
-    const responses = db.prepare(`
-        SELECT pr.*, c.name, c.phone
+        const responses = db.prepare(`
+        SELECT pr.*, c.phone, COALESCE(NULLIF(c.name_override, ''), c.name) AS name
         FROM poll_responses pr JOIN contacts c ON pr.contact_id = c.id
         WHERE pr.poll_id = ?
-        ORDER BY c.name
+        ORDER BY COALESCE(NULLIF(c.name_override, ''), c.name)
     `).all(poll.id);
 
-    res.json({ ...poll, responses });
+        res.json({ ...poll, responses });
+    };
+
+    Promise.resolve(pollManager.syncGroupParticipants())
+        .catch((err) => console.error('[WARN] polls sync before GET /polls/:id failed:', err.message))
+        .finally(send);
 });
 
 router.post('/create', (req, res) => {
@@ -205,7 +217,7 @@ router.post('/:id/request-reason', async (req, res) => {
     if (!poll) return res.status(404).json({ error: 'Umfrage nicht gefunden' });
 
     const row = db.prepare(`
-        SELECT pr.response, c.name, c.phone
+        SELECT pr.response, c.phone, COALESCE(NULLIF(c.name_override, ''), c.name) AS name
         FROM poll_responses pr JOIN contacts c ON pr.contact_id = c.id
         WHERE pr.poll_id = ? AND pr.contact_id = ?
     `).get(pollId, contact_id);

@@ -2,6 +2,15 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.33',
+        date: '2026-05-14',
+        changes: [
+            { type: 'feature', text: 'Kontakte haben jetzt optional einen festen Anzeigenamen-Override, der in Umfragen, Poll-Details, Statistiken, Gruppenbeschreibung und allen Antwortlisten überall Vorrang vor dem automatisch synchronisierten WhatsApp-Namen hat' },
+            { type: 'improvement', text: 'Der Kontaktsync läuft jetzt zusätzlich vor Dashboard-, Umfragen-, Statistik- und Kontaktansichten sowie vor Poll-Aktionen, damit neue Namen und Gruppenänderungen deutlich schneller in der Oberfläche und in neuen Umfragen ankommen' },
+            { type: 'fix', text: 'Beim Gruppensync werden Kontakte, die die WhatsApp-Gruppe verlassen haben, jetzt vollständig aus TeamPulse entfernt; dadurch verschwinden sie auch aus Statistiken, Poll-Responses und Beschreibungen, während neue Gruppenmitglieder ab der nächsten Umfrage automatisch dabei sind' },
+        ]
+    },
+    {
         version: '2.5.32',
         date: '2026-05-14',
         changes: [

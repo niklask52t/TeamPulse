@@ -1,13 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
+const { syncGroupParticipants } = require('../services/pollManager');
 
 // GET participation stats per contact (only counts closed/archived polls)
 router.get('/', (req, res) => {
-    const stats = db.prepare(`
+    const send = () => {
+        const stats = db.prepare(`
         SELECT
             c.id,
-            c.name,
+            c.name AS raw_name,
+            c.name_override,
+            COALESCE(NULLIF(c.name_override, ''), c.name) AS name,
             c.phone,
             COUNT(pr.id) as total_polls,
             SUM(CASE WHEN pr.response = 'yes'   THEN 1 ELSE 0 END) as yes_count,
@@ -21,18 +25,23 @@ router.get('/', (req, res) => {
             WHERE p.status = 'closed'
         ) pr ON c.id = pr.contact_id
         GROUP BY c.id
-        ORDER BY c.name
+        ORDER BY COALESCE(NULLIF(c.name_override, ''), c.name)
     `).all();
 
-    const result = stats.map(s => ({
+        const result = stats.map(s => ({
         ...s,
         responded: s.yes_count + s.no_count + s.maybe_count,
         response_rate: s.total_polls > 0
             ? Math.round((s.yes_count + s.no_count + s.maybe_count) / s.total_polls * 100)
             : 0,
-    }));
+        }));
 
-    res.json(result);
+        res.json(result);
+    };
+
+    Promise.resolve(syncGroupParticipants())
+        .catch((err) => console.error('[WARN] stats sync before GET /stats failed:', err.message))
+        .finally(send);
 });
 
 module.exports = router;

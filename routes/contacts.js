@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
 const { syncGroupParticipants } = require('../services/pollManager');
+const { scheduleDescriptionUpdate } = require('../services/groupDescription');
 
 // GET all contacts
 router.get('/', async (req, res) => {
@@ -10,7 +11,11 @@ router.get('/', async (req, res) => {
     } catch (err) {
         console.error('[WARN] contact sync before GET /contacts failed:', err.message);
     }
-    const contacts = db.prepare('SELECT * FROM contacts ORDER BY name').all();
+    const contacts = db.prepare(`
+        SELECT *, COALESCE(NULLIF(name_override, ''), name) AS display_name
+        FROM contacts
+        ORDER BY COALESCE(NULLIF(name_override, ''), name)
+    `).all();
     res.json(contacts);
 });
 
@@ -38,6 +43,21 @@ router.put('/:id', (req, res) => {
         .run(name, phone, req.params.id);
     if (result.changes === 0) return res.status(404).json({ error: 'Kontakt nicht gefunden' });
     res.json({ id: Number(req.params.id), name, phone });
+});
+
+// PUT optional display name override
+router.put('/:id/override-name', (req, res) => {
+    const overrideName = String(req.body?.override_name || '').trim();
+    const normalized = overrideName || null;
+    const result = db.prepare('UPDATE contacts SET name_override = ? WHERE id = ?')
+        .run(normalized, req.params.id);
+    if (result.changes === 0) return res.status(404).json({ error: 'Kontakt nicht gefunden' });
+    scheduleDescriptionUpdate();
+    const contact = db.prepare(`
+        SELECT *, COALESCE(NULLIF(name_override, ''), name) AS display_name
+        FROM contacts WHERE id = ?
+    `).get(req.params.id);
+    res.json(contact);
 });
 
 // PUT set LID mapping for a contact
