@@ -2,6 +2,13 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.32',
+        date: '2026-05-14',
+        changes: [
+            { type: 'improvement', text: 'Der manuelle untere Beschreibungsteil in der Gruppenbeschreibung wird jetzt auch sichtbar mit einer Trennlinie vom automatisch generierten Block getrennt, bevor darunter der Footer folgt' },
+        ]
+    },
+    {
         version: '2.5.31',
         date: '2026-05-14',
         changes: [

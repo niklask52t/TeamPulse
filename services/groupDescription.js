@@ -4,6 +4,7 @@ const { parseBerlinDateTime } = require('./timeUtils');
 
 const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
 const MAX_DESC_LENGTH = 2048;
+const SECTION_SEPARATOR = '\u2500'.repeat(17);
 const FOOTER = '─────────────────\nPowered by TeamPulse by Niklas Kronig\nBei Änderungswünschen/Anfragen: Niklas Kronig kontaktieren';
 
 function fmtDate(dateStr) {
@@ -168,7 +169,7 @@ function buildDescription() {
     if (aboveBlocks.length) parts.push(aboveBlocks.map(b => b.content).join('\n\n'));
     parts.push(dynamic);
     if (upcoming) parts.push(upcoming.trim());
-    if (belowBlocks.length) parts.push(belowBlocks.map(b => b.content).join('\n\n'));
+    if (belowBlocks.length) parts.push(`${SECTION_SEPARATOR}\n${belowBlocks.map(b => b.content).join('\n\n')}`);
     parts.push(FOOTER);
 
     let result = parts.join('\n\n');
