@@ -167,8 +167,8 @@ function buildDescription() {
     const parts = [];
     if (aboveBlocks.length) parts.push(aboveBlocks.map(b => b.content).join('\n\n'));
     parts.push(dynamic);
-    if (belowBlocks.length) parts.push(belowBlocks.map(b => b.content).join('\n\n'));
     if (upcoming) parts.push(upcoming.trim());
+    if (belowBlocks.length) parts.push(belowBlocks.map(b => b.content).join('\n\n'));
     parts.push(FOOTER);
 
     let result = parts.join('\n\n');

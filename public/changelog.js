@@ -2,6 +2,13 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.30',
+        date: '2026-05-14',
+        changes: [
+            { type: 'fix', text: 'Die Gruppenbeschreibung baut den unteren manuellen Textblock jetzt erst nach den automatisch generierten Systemteilen auf: erst Event-/Umfrage-Infos, dann anstehende Events und weitere Hinweise, danach die manuelle Beschreibung und ganz unten weiterhin der Footer' },
+        ]
+    },
+    {
         version: '2.5.29',
         date: '2026-05-14',
         changes: [
