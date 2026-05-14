@@ -27,9 +27,9 @@ async function loadContacts() {
             <td class="contacts-lid">${esc(lid)}</td>
             <td class="contacts-actions-cell">
                 <button class="btn btn-secondary btn-sm" onclick='editContactOverride(${contact.id}, ${JSON.stringify(contact.name_override || "")}, ${JSON.stringify(autoName)})'>
-                    ${overrideActive ? 'Override aendern' : 'Override setzen'}
+                    ${overrideActive ? 'Override ändern' : 'Override setzen'}
                 </button>
-                ${overrideActive ? `<button class="btn btn-secondary btn-sm" onclick="clearContactOverride(${contact.id})">Override loeschen</button>` : ''}
+                ${overrideActive ? `<button class="btn btn-secondary btn-sm" onclick="clearContactOverride(${contact.id})">Override löschen</button>` : ''}
             </td>
         </tr>`;
     }).join('');
@@ -60,7 +60,7 @@ async function loadContacts() {
 
 async function editContactOverride(contactId, currentOverride, autoName) {
     const next = prompt(
-        `Anzeigename ueberschreiben?\n\nLeer lassen = automatischen Namen verwenden\nAutomatisch aktuell: ${autoName || '-'}`,
+        `Anzeigename überschreiben?\n\nLeer lassen = automatischen Namen verwenden\nAutomatisch aktuell: ${autoName || '-'}`,
         currentOverride || ''
     );
     if (next === null) return;
