@@ -112,6 +112,24 @@ function applySkipNextPoll(eventId) {
     return skipDate;
 }
 
+function ensureNextRecurringOpenPoll(event) {
+    if (!event?.active || !event.recurring) return null;
+
+    const existingOpenPoll = db.prepare(`
+        SELECT id FROM polls
+        WHERE event_id = ? AND archived = 0 AND status IN ('pending', 'active')
+        ORDER BY id DESC LIMIT 1
+    `).get(event.id);
+    if (existingOpenPoll) return existingOpenPoll.id;
+
+    const nextDate = findNextSchedulableDate(event);
+    if (!nextDate) return null;
+
+    const deadlineMin = event.poll_deadline_at ? 60 : (event.poll_deadline_minutes || 60);
+    const sendMin = event.poll_send_at ? 2160 : (event.poll_send_minutes_before || 2160);
+    return pollManager.createPollForEvent(event.id, nextDate, deadlineMin, sendMin);
+}
+
 // GET all events (with next poll date for recurring events)
 router.get('/', (req, res) => {
     const events = db.prepare('SELECT * FROM events ORDER BY event_date DESC, event_time DESC').all();
@@ -226,28 +244,17 @@ router.post('/', (req, res) => {
         }
     }
 
-    // For recurring events, create the first poll for the next occurrence immediately
-    if ((active !== false) && recurring && recurrence_day != null && !skippedPollDate) {
+    // For recurring events, ensure the next valid open poll exists immediately.
+    // If the first occurrence was skipped, this will create the following valid one.
+    if ((active !== false) && recurring && recurrence_day != null) {
         try {
-            const todayStr = berlinToday();
-            const todayDow = new Date(new Date().toLocaleString('sv-SE', { timeZone: TZ })).getDay();
-            let daysAhead = (recurrence_day - todayDow + 7) % 7;
-            // If same weekday (daysAhead=0), use today only if event hasn't passed yet
-            if (daysAhead === 0) {
-                const eventUtc = parseBerlinDateTime(todayStr, event_time);
-                if (!isNaN(eventUtc.getTime()) && new Date() >= eventUtc) {
-                    // Event already passed today, schedule for next week
-                    daysAhead = 7;
-                }
+            const pollId = ensureNextRecurringOpenPoll(event);
+            if (pollId) {
+                event.pollId = pollId;
+                console.log(`[INFO] Ensured first recurring poll ${pollId} for ${event.title}`);
             }
-            const d = new Date(todayStr + 'T12:00:00Z');
-            d.setUTCDate(d.getUTCDate() + daysAhead);
-            const nextDate = d.toISOString().split('T')[0];
-            const pollId = pollManager.createPollForEvent(event.id, nextDate, deadlineMin, sendMin);
-            event.pollId = pollId;
-            console.log(`[INFO] Created first recurring poll ${pollId} for ${event.title} on ${nextDate}`);
         } catch (err) {
-            console.error('[ERROR] createPollForEvent (recurring first):', err);
+            console.error('[ERROR] ensureNextRecurringOpenPoll (create):', err);
         }
     }
 

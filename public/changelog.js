@@ -2,6 +2,15 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.31',
+        date: '2026-05-14',
+        changes: [
+            { type: 'fix', text: 'Beim Abschluss-Check wurde die Skip-Next-Logik für neue wiederkehrende Events gehärtet: Wird der erste Termin ausgesetzt, erzeugt TeamPulse jetzt sofort die nächste wirklich gültige offene Umfrage statt vorerst gar keine mehr anzulegen' },
+            { type: 'fix', text: 'Der Ausnahmen-Editor merkt sich beim Nachladen wieder den Wochentag des wiederkehrenden Events, damit die Datumsauswahl auch nach dem Hinzufügen oder Entfernen weiterer Aussetzungen korrekt auf echte Trainingstermine eingeschränkt bleibt' },
+            { type: 'improvement', text: 'Abschlussprüfung der Event- und Umfrage-Logik durchgeführt; Pinning-Pfad, Aussetzungen, Beschreibungsreihenfolge und Footer-Verhalten nochmals gegengeprüft' },
+        ]
+    },
+    {
         version: '2.5.30',
         date: '2026-05-14',
         changes: [

@@ -429,6 +429,8 @@ async function loadEventExceptions(eventId, recurrenceDay = null) {
     const section = document.createElement('div');
     section.id = 'event-exceptions-section';
     section.className = 'exceptions-section';
+    section.dataset.eventId = String(eventId);
+    section.dataset.recurrenceDay = recurrenceDay == null ? '' : String(recurrenceDay);
     section.innerHTML = `
         <h4>Ausnahmen (Termine aussetzen)</h4>
         ${restrictionNote}
@@ -488,7 +490,7 @@ async function addException(eventId, recurrenceDay = null) {
             alert('Fehler: ' + (err.error || 'Unbekannter Fehler'));
             return;
         }
-        loadEventExceptions(eventId);
+        loadEventExceptions(eventId, recurrenceDay);
         loadPolls();
     } catch (err) {
         if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
@@ -496,6 +498,9 @@ async function addException(eventId, recurrenceDay = null) {
 }
 
 async function removeException(eventId, exceptionId) {
+    const section = document.getElementById('event-exceptions-section');
+    const recurrenceDayRaw = section?.dataset?.recurrenceDay;
+    const recurrenceDay = recurrenceDayRaw === '' || recurrenceDayRaw == null ? null : Number(recurrenceDayRaw);
     try {
         const res = await apiFetch(`${API}/api/events/${eventId}/exceptions/${exceptionId}`, { method: 'DELETE' });
         if (!res.ok) {
@@ -503,7 +508,7 @@ async function removeException(eventId, exceptionId) {
             alert('Fehler: ' + (err.error || 'Unbekannter Fehler'));
             return;
         }
-        loadEventExceptions(eventId);
+        loadEventExceptions(eventId, recurrenceDay);
     } catch (err) {
         if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
     }
