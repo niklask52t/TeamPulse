@@ -1216,6 +1216,99 @@ main {
     transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
 }
 
+.contacts-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    animation: fadeInUp 0.25s ease;
+}
+
+.contacts-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    animation: fadeInUp 0.3s ease 0.05s both;
+}
+
+.contacts-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.contacts-table thead th {
+    background: var(--bg-secondary);
+    padding: 0.7rem 0.85rem;
+    text-align: left;
+    color: var(--text-secondary);
+    font-weight: 700;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.contacts-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+}
+
+.contacts-table tbody tr:last-child { border-bottom: none; }
+.contacts-table tbody tr:hover { background: rgba(88,166,255,0.04); }
+
+.contacts-table td {
+    padding: 0.75rem 0.85rem;
+    vertical-align: top;
+}
+
+.contacts-name-cell {
+    min-width: 220px;
+}
+
+.contacts-primary-name {
+    font-weight: 600;
+}
+
+.contacts-override-badge {
+    display: inline-block;
+    margin-top: 0.35rem;
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    color: var(--blue);
+    background: rgba(88,166,255,0.12);
+    border: 1px solid rgba(88,166,255,0.2);
+}
+
+.contacts-lid {
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    word-break: break-all;
+    min-width: 120px;
+}
+
+.contacts-actions-cell {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    min-width: 240px;
+}
+
+.contacts-help {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin-top: 0.75rem;
+}
+
 /* ===== EXTEND FORM ===== */
 .extend-form {
     display: flex;
@@ -1287,6 +1380,16 @@ main {
     .stats-table td {
         padding: 0.5rem 0.4rem;
         font-size: 0.8rem;
+    }
+
+    .contacts-table th,
+    .contacts-table td {
+        padding: 0.5rem 0.4rem;
+        font-size: 0.8rem;
+    }
+
+    .contacts-actions-cell {
+        min-width: 180px;
     }
 
     .footer-bar {

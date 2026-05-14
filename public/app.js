@@ -228,7 +228,7 @@ async function apiFetch(url, options) {
 // ===== NAVIGATION =====
 
 async function activateTab(tabId) {
-    if (['wiki', 'changelog', 'contacts'].includes(tabId)) tabId = 'dashboard';
+    if (['wiki', 'changelog'].includes(tabId)) tabId = 'dashboard';
     if (!checkDirtyAndClose()) return;
     hideAllForms();
     // Reload tab data on every switch to avoid stale/empty content
@@ -236,6 +236,7 @@ async function activateTab(tabId) {
     if (tabId === 'events') await loadEvents();
     if (tabId === 'polls') await loadPolls();
     if (tabId === 'stats') await loadStats();
+    if (tabId === 'contacts' && typeof loadContacts === 'function') await loadContacts();
     if (tabId === 'settings' && typeof loadSettings === 'function') await loadSettings();
     if (tabId === 'description' && typeof loadDescriptionBlocks === 'function') await loadDescriptionBlocks();
 

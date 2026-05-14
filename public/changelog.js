@@ -2,6 +2,14 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.34',
+        date: '2026-05-14',
+        changes: [
+            { type: 'feature', text: 'Neuer Kontakte-Tab zur zentralen Pflege von automatischem Namen, Telefonnummer, LID und optionalem Anzeigenamen-Override pro Person' },
+            { type: 'improvement', text: 'Namens-Overrides werden jetzt nicht mehr ueber die Statistiken bearbeitet, sondern nur noch gesammelt im eigenen Kontaktbereich' },
+        ]
+    },
+    {
         version: '2.5.33',
         date: '2026-05-14',
         changes: [

@@ -65,6 +65,7 @@
                 <button class="nav-btn" data-tab="events">Events</button>
                 <button class="nav-btn" data-tab="polls">Umfragen</button>
                 <button class="nav-btn" data-tab="stats">Statistiken</button>
+                <button class="nav-btn" data-tab="contacts">Kontakte</button>
                 <button class="nav-btn" data-tab="settings">Einstellungen</button>
                 <button class="nav-btn" data-tab="description">Beschreibung</button>
             </nav>
@@ -255,6 +256,14 @@
                     <button class="btn btn-secondary" onclick="loadStats()">&#x21BB; Aktualisieren</button>
                 </div>
                 <div id="stats-list" class="card-list"></div>
+            </section>
+
+            <section id="contacts" class="tab">
+                <div class="section-header">
+                    <h2>Kontakte</h2>
+                    <button class="btn btn-secondary" onclick="loadContacts()">&#x21BB; Aktualisieren</button>
+                </div>
+                <div id="contacts-list" class="card-list"></div>
             </section>
 
             <!-- Settings Tab -->
@@ -539,6 +548,7 @@
     <script src="events.js"></script>
     <script src="polls.js"></script>
     <script src="stats.js"></script>
+    <script src="contacts.js"></script>
     <script src="settings.js"></script>
     <script src="description.js"></script>
     <script src="app.js"></script>
