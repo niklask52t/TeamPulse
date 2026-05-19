@@ -42,7 +42,7 @@ router.get('/', async (req, res) => {
     // Quick stats
     const totalEvents = db.prepare('SELECT COUNT(*) as cnt FROM events WHERE active = 1').get().cnt;
     const totalMembers = db.prepare('SELECT COUNT(*) as cnt FROM contacts').get().cnt;
-    const totalClosedPolls = db.prepare("SELECT COUNT(*) as cnt FROM polls WHERE status = 'closed'").get().cnt;
+    const totalClosedPolls = db.prepare("SELECT COUNT(*) as cnt FROM polls WHERE status = 'closed' OR archived = 1").get().cnt;
 
     // Match stats.js logic: average of per-member response rates across closed polls only
     const memberRates = db.prepare(`
@@ -54,7 +54,7 @@ router.get('/', async (req, res) => {
         LEFT JOIN (
             SELECT pr2.* FROM poll_responses pr2
             JOIN polls p ON pr2.poll_id = p.id
-            WHERE p.status = 'closed'
+            WHERE p.status = 'closed' OR p.archived = 1
         ) pr ON c.id = pr.contact_id
         GROUP BY c.id
     `).all();
@@ -63,7 +63,7 @@ router.get('/', async (req, res) => {
         ? Math.round(ratesWithPolls.reduce((sum, m) => sum + (m.responded / m.total_polls * 100), 0) / ratesWithPolls.length)
         : 0;
 
-    // Trend: last 10 closed polls
+    // Trend: last 10 completed historical polls
     const responseTrend = db.prepare(`
         SELECT p.id, p.event_date, e.title,
             SUM(CASE WHEN pr.response = 'yes' THEN 1 ELSE 0 END) as yes_count,
@@ -71,7 +71,7 @@ router.get('/', async (req, res) => {
             COUNT(pr.id) as total
         FROM polls p JOIN events e ON p.event_id = e.id
         LEFT JOIN poll_responses pr ON p.id = pr.poll_id
-        WHERE p.status = 'closed'
+        WHERE p.status = 'closed' OR p.archived = 1
         GROUP BY p.id
         ORDER BY p.event_date DESC LIMIT 10
     `).all().reverse();

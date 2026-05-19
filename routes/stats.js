@@ -3,7 +3,7 @@ const router = express.Router();
 const db = require('../db/database');
 const { syncGroupParticipants } = require('../services/pollManager');
 
-// GET participation stats per contact (only counts closed/archived polls)
+// GET participation stats per contact (counts closed polls and archived historical polls)
 router.get('/', (req, res) => {
     const send = () => {
         const stats = db.prepare(`
@@ -22,7 +22,7 @@ router.get('/', (req, res) => {
         LEFT JOIN (
             SELECT pr2.* FROM poll_responses pr2
             JOIN polls p ON pr2.poll_id = p.id
-            WHERE p.status = 'closed'
+            WHERE p.status = 'closed' OR p.archived = 1
         ) pr ON c.id = pr.contact_id
         GROUP BY c.id
         ORDER BY COALESCE(NULLIF(c.name_override, ''), c.name)

@@ -2,6 +2,13 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.37',
+        date: '2026-05-19',
+        changes: [
+            { type: 'fix', text: 'Statistiken und Dashboard-Verlauf berücksichtigen jetzt auch archivierte historische Umfragen korrekt, sodass wiederkehrende Events nicht mehr aus den letzten Umfragen oder den Teilnahmequoten verschwinden' },
+        ]
+    },
+    {
         version: '2.5.36',
         date: '2026-05-19',
         changes: [
