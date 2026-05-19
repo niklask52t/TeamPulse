@@ -15,6 +15,7 @@ async function loadContacts() {
         const displayName = contact.display_name || autoName || '-';
         const overrideActive = Boolean(contact.name_override && String(contact.name_override).trim());
         const lid = contact.lid ? String(contact.lid) : '-';
+        const reasonDmEnabled = contact.reason_dm_enabled !== 0 && String(contact.reason_dm_enabled) !== '0';
 
         return `
         <tr>
@@ -30,6 +31,9 @@ async function loadContacts() {
                     ${overrideActive ? 'Override ändern' : 'Override setzen'}
                 </button>
                 ${overrideActive ? `<button class="btn btn-secondary btn-sm" onclick="clearContactOverride(${contact.id})">Override löschen</button>` : ''}
+                <button class="btn btn-secondary btn-sm" onclick="toggleContactReasonDm(${contact.id}, ${reasonDmEnabled ? 'false' : 'true'})">
+                    ${reasonDmEnabled ? 'Grund-PN an' : 'Grund-PN aus'}
+                </button>
             </td>
         </tr>`;
     }).join('');
@@ -38,6 +42,7 @@ async function loadContacts() {
         <div class="contacts-summary">
             <span>Gruppenkontakte: <strong>${contacts.length}</strong></span>
             <span>Overrides aktiv: <strong>${contacts.filter((contact) => contact.name_override && String(contact.name_override).trim()).length}</strong></span>
+            <span>Grund-PNs aktiv: <strong>${contacts.filter((contact) => contact.reason_dm_enabled !== 0 && String(contact.reason_dm_enabled) !== '0').length}</strong></span>
         </div>
         <div class="contacts-table-wrap">
             <table class="contacts-table">
@@ -54,7 +59,7 @@ async function loadContacts() {
             </table>
         </div>
         <p class="contacts-help">
-            TeamPulse nutzt hier zuerst deinen festen Override. Wenn keiner gesetzt ist, wird weiter der automatisch synchronisierte WhatsApp-Name verwendet.
+            TeamPulse nutzt hier zuerst deinen festen Override. Wenn keiner gesetzt ist, wird weiter der automatisch synchronisierte WhatsApp-Name verwendet. Die Grund-PN steuert nur die privaten Nachrichten zur Begründungs-Nachfrage nach Abstimmungen.
         </p>`;
 }
 
@@ -94,13 +99,39 @@ async function saveContactOverride(contactId, overrideName) {
             return;
         }
 
-        await loadContacts();
-        if (typeof loadStats === 'function') await loadStats();
-        if (typeof loadPolls === 'function') await loadPolls();
-        if (typeof loadDashboard === 'function') await loadDashboard();
+        await refreshContactsRelatedViews();
     } catch (err) {
         if (err.message !== 'Nicht angemeldet') {
             alert('Fehler: ' + err.message);
         }
     }
+}
+
+async function toggleContactReasonDm(contactId, enabled) {
+    try {
+        const res = await apiFetch(`${API}/api/contacts/${contactId}/reason-dm`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason_dm_enabled: enabled }),
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            alert('Fehler: ' + (err.error || 'Unbekannter Fehler'));
+            return;
+        }
+
+        await refreshContactsRelatedViews();
+    } catch (err) {
+        if (err.message !== 'Nicht angemeldet') {
+            alert('Fehler: ' + err.message);
+        }
+    }
+}
+
+async function refreshContactsRelatedViews() {
+    await loadContacts();
+    if (typeof loadStats === 'function') await loadStats();
+    if (typeof loadPolls === 'function') await loadPolls();
+    if (typeof loadDashboard === 'function') await loadDashboard();
 }

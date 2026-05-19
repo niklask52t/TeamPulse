@@ -171,8 +171,8 @@ router.put('/:id/response', async (req, res) => {
             .catch((err) => console.error(`[ERROR] sendAdminVoteNotification to ${contact.name}:`, err.message));
     }
 
-    const { scheduleDescriptionUpdate } = require('../services/groupDescription');
-    scheduleDescriptionUpdate();
+    const { scheduleImportantDescriptionUpdate } = require('../services/groupDescription');
+    scheduleImportantDescriptionUpdate();
 
     res.json({ success: true });
 });
@@ -197,8 +197,8 @@ router.put('/:id/reason', (req, res) => {
     db.prepare('UPDATE poll_responses SET reason = ? WHERE poll_id = ? AND contact_id = ?')
         .run(normalizedReason || null, pollId, contact_id);
 
-    const { scheduleDescriptionUpdate } = require('../services/groupDescription');
-    scheduleDescriptionUpdate();
+    const { scheduleImportantDescriptionUpdate } = require('../services/groupDescription');
+    scheduleImportantDescriptionUpdate();
     res.json({ success: true });
 });
 
@@ -217,13 +217,16 @@ router.post('/:id/request-reason', async (req, res) => {
     if (!poll) return res.status(404).json({ error: 'Umfrage nicht gefunden' });
 
     const row = db.prepare(`
-        SELECT pr.response, c.phone, COALESCE(NULLIF(c.name_override, ''), c.name) AS name
+        SELECT pr.response, c.phone, c.reason_dm_enabled, COALESCE(NULLIF(c.name_override, ''), c.name) AS name
         FROM poll_responses pr JOIN contacts c ON pr.contact_id = c.id
         WHERE pr.poll_id = ? AND pr.contact_id = ?
     `).get(pollId, contact_id);
     if (!row) return res.status(404).json({ error: 'Antwort nicht gefunden' });
     if (!row.response) return res.status(400).json({ error: 'Die Person hat noch keinen Status' });
     if (!row.phone) return res.status(400).json({ error: 'Kontakt hat keine nutzbare Telefonnummer' });
+    if (!pollManager.shouldSendReasonRequestDm(row)) {
+        return res.status(400).json({ error: 'Grund-Nachfrage-PNs sind global oder fuer diesen Kontakt deaktiviert' });
+    }
 
     const evolution = require('../services/evolution');
     evolution.sendAdminReasonRequest(row.phone, poll.title, poll.event_date, row.response)

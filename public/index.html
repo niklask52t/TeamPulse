@@ -292,6 +292,24 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="form-group">
+                            <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+                                <input type="checkbox" id="settings-reason-request-dm-enabled">
+                                Grund-Nachfrage per PN global erlauben
+                            </label>
+                            <small style="color:var(--text-secondary)">Betrifft nur die privaten Nachrichten nach einer Abstimmung oder beim manuellen erneuten Nachfragen eines Grunds. Erinnerungen und andere PNs bleiben unverändert.</small>
+                        </div>
+                        <div class="form-group">
+                            <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+                                <input type="checkbox" id="settings-description-slow-mode-enabled">
+                                Gruppenbeschreibung im langsamen Modus aktualisieren
+                            </label>
+                            <small style="color:var(--text-secondary)">Dann wird die Gruppenbeschreibung nicht mehr nach jeder Abstimmung aktualisiert, sondern nur noch einmal täglich zur eingestellten Uhrzeit oder bei wichtigen Ereignissen wie neuer Umfrage oder Umfrage-Abschluss.</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Uhrzeit für langsamen Beschreibungsmodus</label>
+                            <input type="time" id="settings-description-slow-mode-time" value="04:00">
+                        </div>
                         <div id="settings-status" class="error-msg hidden"></div>
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary">Speichern</button>

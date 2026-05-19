@@ -19,6 +19,7 @@ try { db.exec('ALTER TABLE events ADD COLUMN poll_send_minutes_before INTEGER DE
 try { db.exec('ALTER TABLE polls ADD COLUMN send_after TEXT'); } catch { /* already exists */ }
 try { db.exec('ALTER TABLE contacts ADD COLUMN lid TEXT'); } catch { /* already exists */ }
 try { db.exec('ALTER TABLE contacts ADD COLUMN name_override TEXT'); } catch { /* already exists */ }
+try { db.exec('ALTER TABLE contacts ADD COLUMN reason_dm_enabled INTEGER DEFAULT 1'); } catch { /* already exists */ }
 try { db.exec('ALTER TABLE events ADD COLUMN end_time TEXT'); } catch { /* already exists */ }
 try { db.exec('ALTER TABLE events ADD COLUMN poll_send_at TEXT'); } catch { /* already exists */ }
 try { db.exec('ALTER TABLE events ADD COLUMN description TEXT'); } catch { /* already exists */ }
@@ -56,6 +57,27 @@ try {
     db.prepare(`
         INSERT INTO app_settings (key, value)
         VALUES ('result_post_mode', 'both')
+        ON CONFLICT(key) DO NOTHING
+    `).run();
+} catch { /* ignore */ }
+try {
+    db.prepare(`
+        INSERT INTO app_settings (key, value)
+        VALUES ('reason_request_dm_enabled', '1')
+        ON CONFLICT(key) DO NOTHING
+    `).run();
+} catch { /* ignore */ }
+try {
+    db.prepare(`
+        INSERT INTO app_settings (key, value)
+        VALUES ('description_slow_mode_enabled', '0')
+        ON CONFLICT(key) DO NOTHING
+    `).run();
+} catch { /* ignore */ }
+try {
+    db.prepare(`
+        INSERT INTO app_settings (key, value)
+        VALUES ('description_slow_mode_time', '04:00')
         ON CONFLICT(key) DO NOTHING
     `).run();
 } catch { /* ignore */ }

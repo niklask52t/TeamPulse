@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
 const { syncGroupParticipants } = require('../services/pollManager');
-const { scheduleDescriptionUpdate } = require('../services/groupDescription');
+const { scheduleImportantDescriptionUpdate } = require('../services/groupDescription');
 
 // GET all contacts
 router.get('/', async (req, res) => {
@@ -52,7 +52,25 @@ router.put('/:id/override-name', (req, res) => {
     const result = db.prepare('UPDATE contacts SET name_override = ? WHERE id = ?')
         .run(normalized, req.params.id);
     if (result.changes === 0) return res.status(404).json({ error: 'Kontakt nicht gefunden' });
-    scheduleDescriptionUpdate();
+    scheduleImportantDescriptionUpdate();
+    const contact = db.prepare(`
+        SELECT *, COALESCE(NULLIF(name_override, ''), name) AS display_name
+        FROM contacts WHERE id = ?
+    `).get(req.params.id);
+    res.json(contact);
+});
+
+router.put('/:id/reason-dm', (req, res) => {
+    const enabled = req.body?.reason_dm_enabled;
+    if (enabled === undefined) {
+        return res.status(400).json({ error: 'reason_dm_enabled erforderlich' });
+    }
+
+    const normalized = enabled ? 1 : 0;
+    const result = db.prepare('UPDATE contacts SET reason_dm_enabled = ? WHERE id = ?')
+        .run(normalized, req.params.id);
+    if (result.changes === 0) return res.status(404).json({ error: 'Kontakt nicht gefunden' });
+
     const contact = db.prepare(`
         SELECT *, COALESCE(NULLIF(name_override, ''), name) AS display_name
         FROM contacts WHERE id = ?

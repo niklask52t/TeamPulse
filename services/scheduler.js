@@ -2,7 +2,7 @@ const cron = require('node-cron');
 const db = require('../db/database');
 const pollManager = require('./pollManager');
 const { parseBerlinDateTime, TZ } = require('./timeUtils');
-const { scheduleDescriptionUpdate } = require('./groupDescription');
+const { scheduleDescriptionUpdate, scheduleImportantDescriptionUpdate, runSlowDescriptionUpdateIfDue } = require('./groupDescription');
 
 // Returns current date string (YYYY-MM-DD) in Europe/Berlin timezone
 function berlinDateStr() {
@@ -47,6 +47,7 @@ function startScheduler() {
             await archiveOldPolls();
             await checkDescriptionEventSwitch();
             await pollManager.reconcilePinnedActivePoll();
+            await runSlowDescriptionUpdateIfDue();
         } catch (err) {
             console.error('[ERROR] Scheduler:', err);
         } finally {
@@ -186,7 +187,7 @@ async function checkAndClosePolls() {
         }
     }
     if (pollsToClose.length > 0) {
-        scheduleDescriptionUpdate();
+        scheduleImportantDescriptionUpdate();
     }
 }
 

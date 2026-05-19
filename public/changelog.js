@@ -2,6 +2,15 @@
 
 const CHANGELOG = [
     {
+        version: '2.5.36',
+        date: '2026-05-19',
+        changes: [
+            { type: 'feature', text: 'Neue globale Einstellung fuer Grund-Nachfrage-PNs: Die privaten Nachrichten nach Abstimmungen koennen jetzt komplett abgeschaltet werden, waehrend Erinnerungen und andere Nachrichten unveraendert bleiben' },
+            { type: 'feature', text: 'Kontakte koennen jetzt zusaetzlich pro Person steuern, ob Grund-Nachfrage-PNs fuer diesen einzelnen Kontakt erlaubt sind' },
+            { type: 'feature', text: 'Neuer langsamer Beschreibungsmodus: Die WhatsApp-Gruppenbeschreibung wird auf Wunsch nur noch einmal taeglich zu einer konfigurierbaren Uhrzeit oder bei wichtigen Ereignissen wie neuer Umfrage oder Umfrage-Abschluss aktualisiert' },
+        ]
+    },
+    {
         version: '2.5.35',
         date: '2026-05-14',
         changes: [

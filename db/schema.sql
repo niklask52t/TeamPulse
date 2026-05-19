@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS contacts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     name_override TEXT,
+    reason_dm_enabled INTEGER DEFAULT 1,
     phone TEXT NOT NULL UNIQUE,
     created_at TEXT DEFAULT (datetime('now'))
 );

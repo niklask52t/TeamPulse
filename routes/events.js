@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
 const pollManager = require('../services/pollManager');
-const { scheduleDescriptionUpdate } = require('../services/groupDescription');
+const { scheduleImportantDescriptionUpdate } = require('../services/groupDescription');
 const { berlinToday, parseBerlinDateTime, TZ } = require('../services/timeUtils');
 const evolution = require('../services/evolution');
 const SKIP_NEXT_POLL_REASON = 'Nächste Umfrage ausgesetzt';
@@ -258,7 +258,7 @@ router.post('/', (req, res) => {
         }
     }
 
-    scheduleDescriptionUpdate();
+    scheduleImportantDescriptionUpdate();
 
     res.status(201).json(event);
 });
@@ -339,7 +339,7 @@ router.put('/:id', async (req, res) => {
         console.error('[ERROR] refreshOpenPollScheduleForEvent:', err.message);
     }
     await pollManager.reconcilePinnedActivePoll();
-    scheduleDescriptionUpdate();
+    scheduleImportantDescriptionUpdate();
 
     res.json(event);
 });
@@ -378,7 +378,7 @@ router.post('/:id/exceptions', (req, res) => {
         db.prepare(
             "DELETE FROM polls WHERE event_id = ? AND event_date = ? AND status = 'pending'"
         ).run(req.params.id, exception_date);
-        scheduleDescriptionUpdate();
+        scheduleImportantDescriptionUpdate();
         res.status(201).json({ id: result.lastInsertRowid });
     } catch (err) {
         if (err.message?.includes('UNIQUE')) {
@@ -394,7 +394,7 @@ router.delete('/:id/exceptions/:exceptionId', (req, res) => {
         'DELETE FROM event_exceptions WHERE id = ? AND event_id = ?'
     ).run(req.params.exceptionId, req.params.id);
     if (result.changes === 0) return res.status(404).json({ error: 'Ausnahme nicht gefunden' });
-    scheduleDescriptionUpdate();
+    scheduleImportantDescriptionUpdate();
     res.json({ success: true });
 });
 
@@ -408,7 +408,7 @@ router.delete('/:id', async (req, res) => {
     const result = deleteAll(req.params.id);
     if (result.changes === 0) return res.status(404).json({ error: 'Event nicht gefunden' });
     await pollManager.reconcilePinnedActivePoll();
-    scheduleDescriptionUpdate();
+    scheduleImportantDescriptionUpdate();
     res.json({ success: true });
 });
 

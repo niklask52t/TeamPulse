@@ -2,7 +2,7 @@ const db = require('../db/database');
 const evolution = require('./evolution');
 const { parseBerlinDateTime, TZ } = require('./timeUtils');
 const { generateResultChart } = require('./chartGenerator');
-const { scheduleDescriptionUpdate } = require('./groupDescription');
+const { scheduleDescriptionUpdate, scheduleImportantDescriptionUpdate } = require('./groupDescription');
 
 const GROUP_CHAT_ID = process.env.GROUP_CHAT_ID || '';
 const PINNED_POLL_ID_KEY = 'pinned_active_poll_id';
@@ -148,6 +148,21 @@ function toPrivateChatId(phone) {
 
 function getAppSetting(key) {
     return db.prepare('SELECT value FROM app_settings WHERE key = ?').get(key)?.value || null;
+}
+
+function isTruthySetting(value, fallback = false) {
+    if (value == null) return fallback;
+    const normalized = String(value).trim().toLowerCase();
+    if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+    if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+    return fallback;
+}
+
+function shouldSendReasonRequestDm(contact) {
+    if (!contact?.phone) return false;
+    const globalEnabled = isTruthySetting(getAppSetting('reason_request_dm_enabled') || '1', true);
+    if (!globalEnabled) return false;
+    return contact.reason_dm_enabled !== 0 && String(contact.reason_dm_enabled) !== '0';
 }
 
 function setAppSetting(key, value) {
@@ -469,7 +484,7 @@ async function sendPoll(pollId) {
 
         await reconcilePinnedActivePoll();
         console.log(`[INFO] Poll ${pollId} sent to group ${GROUP_CHAT_ID}`);
-        scheduleDescriptionUpdate();
+        scheduleImportantDescriptionUpdate();
     } finally {
         sendingPolls.delete(pollId);
     }
@@ -640,18 +655,20 @@ async function processResponse(phone, text, pollMessageId) {
     `).run(response, activePoll.poll_id, contactRow.id);
 
     const chatId = toPrivateChatId(contactRow.phone);
-    if (isVoteChange) {
-        evolution.sendVoteChangeFollowUp(chatId, activePoll.event_title, activePoll.event_date, response, previousResponse.reason)
-            .catch((err) => console.error('[ERROR] sendVoteChangeFollowUp:', err.message));
-    } else if (response === 'yes') {
-        evolution.sendYesFollowUp(chatId, activePoll.event_title, activePoll.event_date)
-            .catch((err) => console.error('[ERROR] sendYesFollowUp:', err.message));
-    } else if (response === 'maybe') {
-        evolution.sendMaybeFollowUp(chatId, activePoll.event_title, activePoll.event_date)
-            .catch((err) => console.error('[ERROR] sendMaybeFollowUp:', err.message));
-    } else if (response === 'no') {
-        evolution.sendNoFollowUp(chatId, activePoll.event_title, activePoll.event_date)
-            .catch((err) => console.error('[ERROR] sendNoFollowUp:', err.message));
+    if (shouldSendReasonRequestDm(contactRow)) {
+        if (isVoteChange) {
+            evolution.sendVoteChangeFollowUp(chatId, activePoll.event_title, activePoll.event_date, response, previousResponse.reason)
+                .catch((err) => console.error('[ERROR] sendVoteChangeFollowUp:', err.message));
+        } else if (response === 'yes') {
+            evolution.sendYesFollowUp(chatId, activePoll.event_title, activePoll.event_date)
+                .catch((err) => console.error('[ERROR] sendYesFollowUp:', err.message));
+        } else if (response === 'maybe') {
+            evolution.sendMaybeFollowUp(chatId, activePoll.event_title, activePoll.event_date)
+                .catch((err) => console.error('[ERROR] sendMaybeFollowUp:', err.message));
+        } else if (response === 'no') {
+            evolution.sendNoFollowUp(chatId, activePoll.event_title, activePoll.event_date)
+                .catch((err) => console.error('[ERROR] sendNoFollowUp:', err.message));
+        }
     }
 
     scheduleDescriptionUpdate();
@@ -680,7 +697,7 @@ function processReasonMessage(phone, text) {
     db.prepare('UPDATE poll_responses SET reason = ? WHERE id = ?').run(String(text || '').trim(), pendingReason.id);
     const contactName = contact.name_override || contact.name;
     console.log(`[INFO] Reason saved for ${contactName} (${pendingReason.response}): "${String(text || '').trim()}" (poll ${pendingReason.poll_id})`);
-    scheduleDescriptionUpdate();
+    scheduleImportantDescriptionUpdate();
     return { pollId: pendingReason.poll_id, contactName };
 }
 
@@ -829,7 +846,7 @@ function refreshOpenPollScheduleForEvent(eventId) {
         updated++;
     }
 
-    if (updated > 0) scheduleDescriptionUpdate();
+    if (updated > 0) scheduleImportantDescriptionUpdate();
     return updated;
 }
 
@@ -870,7 +887,7 @@ async function resendPoll(pollId) {
     await reconcilePinnedActivePoll();
 
     console.log(`[INFO] Poll ${pollId} resent (reset + new WhatsApp poll)`);
-    scheduleDescriptionUpdate();
+    scheduleImportantDescriptionUpdate();
 }
 
 async function closePoll(pollId) {
@@ -885,7 +902,7 @@ async function closePoll(pollId) {
         }
     }
     await reconcilePinnedActivePoll();
-    scheduleDescriptionUpdate();
+    scheduleImportantDescriptionUpdate();
 }
 
 function extendDeadline(pollId, minutes) {
@@ -897,7 +914,7 @@ function extendDeadline(pollId, minutes) {
     const newDeadline = new Date(current.getTime() + minutes * 60 * 1000);
     db.prepare('UPDATE polls SET deadline = ?, reminder_sent = 0, reminder_2_sent = 0 WHERE id = ?')
         .run(newDeadline.toISOString(), pollId);
-    scheduleDescriptionUpdate();
+    scheduleImportantDescriptionUpdate();
     return newDeadline.toISOString();
 }
 
@@ -1026,4 +1043,5 @@ module.exports = {
     ensureNextRecurringPoll,
     finalizeClosedPoll,
     reconcilePinnedActivePoll,
+    shouldSendReasonRequestDm,
 };
