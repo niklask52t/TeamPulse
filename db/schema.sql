@@ -10,7 +10,6 @@ CREATE TABLE IF NOT EXISTS contacts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     name_override TEXT,
-    reason_dm_enabled INTEGER DEFAULT 1,
     phone TEXT NOT NULL UNIQUE,
     created_at TEXT DEFAULT (datetime('now'))
 );
@@ -59,7 +58,6 @@ CREATE TABLE IF NOT EXISTS poll_responses (
     poll_id INTEGER NOT NULL,
     contact_id INTEGER NOT NULL,
     response TEXT CHECK(response IN ('yes', 'no', 'maybe')),
-    reason TEXT,
     message_sent INTEGER DEFAULT 0,
     responded_at TEXT,
     FOREIGN KEY (poll_id) REFERENCES polls(id) ON DELETE CASCADE,

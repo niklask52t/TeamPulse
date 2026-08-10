@@ -72,7 +72,7 @@ function fmtDate(dateStr) {
     const [y, m, d] = dateStr.split('-');
     const dayNames = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
     const dow = new Date(dateStr + 'T12:00:00Z').getUTCDay();
-    return `${d}.${m}.${y} (${dayNames[dow]})`;
+    return `${dayNames[dow]}, ${d}.${m}.${y}`;
 }
 
 function buildCompactPollSummary(poll) {
@@ -89,7 +89,7 @@ function buildCompactPollSummary(poll) {
 
 function buildPollResponseBlock(poll) {
     const responses = db.prepare(`
-        SELECT pr.response, pr.reason, COALESCE(NULLIF(c.name_override, ''), c.name) AS name
+        SELECT pr.response, COALESCE(NULLIF(c.name_override, ''), c.name) AS name
         FROM poll_responses pr JOIN contacts c ON pr.contact_id = c.id
         WHERE pr.poll_id = ?
         ORDER BY COALESCE(NULLIF(c.name_override, ''), c.name)
@@ -100,9 +100,9 @@ function buildPollResponseBlock(poll) {
     const maybe = responses.filter((r) => r.response === 'maybe');
     const pending = responses.filter((r) => !r.response);
 
-    let block = `✅ Zusagen (${yes.length}): ${yes.map((r) => r.name + (r.reason ? ` (${r.reason})` : '')).join(', ') || '—'}\n`;
-    block += `❌ Absagen (${no.length}): ${no.map((r) => r.name + (r.reason ? ` (${r.reason})` : '')).join(', ') || '—'}\n`;
-    block += `🤷 Vielleicht (${maybe.length}): ${maybe.map((r) => r.name + (r.reason ? ` (${r.reason})` : '')).join(', ') || '—'}\n`;
+    let block = `✅ Zusagen (${yes.length}): ${yes.map((r) => r.name).join(', ') || '—'}\n`;
+    block += `❌ Absagen (${no.length}): ${no.map((r) => r.name).join(', ') || '—'}\n`;
+    block += `🤷 Vielleicht (${maybe.length}): ${maybe.map((r) => r.name).join(', ') || '—'}\n`;
     block += `⏳ Ausstehend (${pending.length}): ${pending.map((r) => r.name).join(', ') || '—'}`;
     return block;
 }

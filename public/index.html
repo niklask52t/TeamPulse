@@ -38,16 +38,20 @@
             <p class="login-subtitle">Passwort muss geändert werden</p>
             <form onsubmit="doChangePassword(event)">
                 <div class="form-group">
+                    <label>Aktuelles Passwort *</label>
+                    <input type="password" id="change-current-password" required autocomplete="current-password">
+                </div>
+                <div class="form-group">
                     <label>Neuer Benutzername (optional)</label>
                     <input type="text" id="change-username" placeholder="Leer lassen um beizubehalten" autocomplete="username">
                 </div>
                 <div class="form-group">
-                    <label>Neues Passwort *</label>
-                    <input type="password" id="change-password" required minlength="4" autocomplete="new-password">
+                    <label>Neues Passwort * (mind. 10 Zeichen)</label>
+                    <input type="password" id="change-password" required minlength="10" autocomplete="new-password">
                 </div>
                 <div class="form-group">
                     <label>Passwort wiederholen *</label>
-                    <input type="password" id="change-password-confirm" required minlength="4" autocomplete="new-password">
+                    <input type="password" id="change-password-confirm" required minlength="10" autocomplete="new-password">
                 </div>
                 <div id="change-error" class="error-msg hidden"></div>
                 <button type="submit" class="btn btn-primary btn-full">Speichern & Weiter</button>
@@ -212,7 +216,7 @@
                         <div class="form-group">
                             <label>Start-Erinnerung (Minuten vor Event)</label>
                             <input type="number" id="event-event-reminder-min" value="60" min="5" step="5">
-                            <small style="color:var(--text-secondary)">Privatnachricht an alle Zusager, z.B. 60 = 1h vorher</small>
+                            <small style="color:var(--text-secondary)">Gruppennachricht mit allen Zusagern, z.B. 60 = 1h vorher</small>
                         </div>
                         <div class="form-group">
                             <label>Abstimmungs-Erinnerungen (Minuten vor Frist)</label>
@@ -291,13 +295,6 @@
                                     Text + Bild
                                 </label>
                             </div>
-                        </div>
-                        <div class="form-group">
-                            <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
-                                <input type="checkbox" id="settings-reason-request-dm-enabled">
-                                Grund-Nachfrage per PN global erlauben
-                            </label>
-                            <small style="color:var(--text-secondary)">Betrifft nur die privaten Nachrichten nach einer Abstimmung oder beim manuellen erneuten Nachfragen eines Grunds. Erinnerungen und andere PNs bleiben unverändert.</small>
                         </div>
                         <div class="form-group">
                             <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
@@ -427,8 +424,8 @@
                         <p><strong>Ende:</strong> Optional — wann das Event endet (z.B. 20:30). Muss nach der Event-Uhrzeit liegen.</p>
                         <p><strong>Umfrage senden:</strong> Entweder "X Stunden vor Event" (Standard: 36h) oder ein festes Datum+Uhrzeit. Bei wiederkehrenden Events ist nur "Stunden vorher" verfügbar.</p>
                         <p><strong>Abstimmungsfrist:</strong> Entweder "X Stunden vor Event" (Standard: 1h) oder ein festes Datum+Uhrzeit. Bei wiederkehrenden Events ist nur "Stunden vorher" verfügbar.</p>
-                        <p><strong>Start-Erinnerung:</strong> Minuten vor Event-Beginn — Privatnachricht an alle Zusager mit dem Event-Namen. Standard: 60 Min.</p>
-                        <p><strong>Abstimmungs-Erinnerungen:</strong> Zwei Erinnerungen an Nicht-Abstimmer, konfigurierbar in Minuten vor der Frist. Standard: 120 Min (1. Erinnerung) und 15 Min (2. Erinnerung).</p>
+                        <p><strong>Start-Erinnerung:</strong> Minuten vor Event-Beginn — Gruppennachricht mit allen Zusagern. Standard: 60 Min.</p>
+                        <p><strong>Abstimmungs-Erinnerungen:</strong> Zwei Erinnerungen als Gruppennachricht (listet alle ohne Antwort auf), konfigurierbar in Minuten vor der Frist. Standard: 120 Min (1. Erinnerung) und 15 Min (2. Erinnerung).</p>
                         <p><strong>Beschreibung:</strong> Optionales Freitextfeld — wird in WhatsApp-Umfragen, Erinnerungen, Ergebnis-Posts, Gruppenbeschreibung und im Dashboard angezeigt.</p>
                         <p><strong>Automatische Absage:</strong> Optional — wenn aktiviert, wird bei zu wenigen Zusagen automatisch eine Absage in die Gruppe gesendet. Mindest-Zusagen konfigurierbar.</p>
                         <p><strong>Ausnahmen (nur wiederkehrend):</strong> Einzelne Termine können ausgesetzt werden (z.B. Feiertage). Die Umfrage wird für dieses Datum nicht erstellt/gesendet.</p>
@@ -448,9 +445,9 @@
                     <div class="wiki-section">
                         <h3>Abstimmen &amp; Antworten</h3>
                         <p>Teilnehmer stimmen direkt in WhatsApp über die native Umfrage ab: <strong>Ja / Nein / Vielleicht</strong>.</p>
-                        <p><strong>Nach jeder Abstimmung</strong> (Ja, Nein, Vielleicht) bekommt der Voter eine private Nachricht und kann innerhalb von <strong>5 Minuten</strong> optional einen Kommentar/Grund angeben.</p>
-                        <p><strong>Stimmänderung:</strong> Wer seine Stimme ändert, bekommt eine 🔄-Nachricht mit dem alten Kommentar und kann innerhalb von 5 Minuten einen neuen schreiben. Ohne neuen Kommentar bleibt der alte erhalten.</p>
-                        <p><strong>Ergebnisse:</strong> Alle Antworten werden mit Namen und Kommentaren/Gründen angezeigt — gruppiert nach Zusagen, Absagen, Vielleicht und Ausstehend.</p>
+                        <p><strong>Stimmänderung:</strong> Einfach in der WhatsApp-Umfrage neu abstimmen — die letzte Stimme zählt.</p>
+                        <p><strong>Ergebnisse:</strong> Alle Antworten werden mit Namen angezeigt — gruppiert nach Zusagen, Absagen, Vielleicht und Ausstehend.</p>
+                        <p><strong>Keine Privatnachrichten:</strong> TeamPulse schreibt niemanden privat an — alle Nachrichten (Umfrage, Erinnerungen, Ergebnisse) laufen über die Gruppe.</p>
                         <p>Antworten werden alle 15 Sekunden automatisch aktualisiert, wenn ein Poll-Detail geöffnet ist.</p>
                         <p><strong>Alle automatischen Nachrichten</strong> sind mit dem Hinweis <em>"🤖 Automatisch generierte Nachricht von TeamPulse"</em> gekennzeichnet.</p>
                     </div>
@@ -458,12 +455,12 @@
                         <h3>Manuelle Aktionen</h3>
                         <ul>
                             <li><strong>Umfrage senden</strong> — sendet native WhatsApp-Poll in die Gruppe. Nur bei Status "Ausstehend", einmalig.</li>
-                            <li><strong>Abstimmungs-Erinnerung</strong> — Privatnachricht an alle ohne Antwort mit Frist-Uhrzeit. Automatisch 2x (konfigurierbar), manuell auch mehrfach möglich.</li>
+                            <li><strong>Abstimmungs-Erinnerung</strong> — Gruppennachricht mit Frist-Uhrzeit, listet alle ohne Antwort auf. Automatisch 2x (konfigurierbar), manuell auch mehrfach möglich.</li>
                             <li><strong>Frist verlängern</strong> — Deadline um beliebige Minuten verschieben. Löst ggf. erneute Auto-Erinnerung aus.</li>
                             <li><strong>Umfrage schließen</strong> — manuell schließen. Nur bei "Aktiv".</li>
                             <li><strong>Ergebnis posten</strong> — Text + Chart-Bild in die Gruppe. Schließt die Umfrage NICHT. Mehrfach möglich.</li>
-                            <li><strong>Start-Erinnerung</strong> — Privatnachricht an alle Zusager ("Event beginnt in 1h"). Mehrfach möglich.</li>
-                            <li><strong>Stimme manuell ändern</strong> — Klick auf einen Mitgliedernamen in der Umfrage-Detail-Ansicht öffnet eine Auswahl (✅/❌/🤷/⏳). Funktioniert auch bei archivierten Umfragen — die Statistiken werden korrekt aktualisiert. Der Kontakt bekommt eine PN über die Änderung.</li>
+                            <li><strong>Start-Erinnerung</strong> — Gruppennachricht ("Event startet in 1h") mit allen Zusagern. Mehrfach möglich.</li>
+                            <li><strong>Stimme manuell ändern</strong> — Klick auf einen Mitgliedernamen in der Umfrage-Detail-Ansicht öffnet eine Auswahl (✅/❌/🤷/⏳). Funktioniert auch bei archivierten Umfragen — die Statistiken werden korrekt aktualisiert.</li>
                         </ul>
                     </div>
                     <div class="wiki-section">
@@ -471,11 +468,11 @@
                         <p>Der Scheduler prüft jede Minute:</p>
                         <ol>
                             <li><strong>Ausstehende Umfragen senden</strong> — sobald fällig</li>
-                            <li><strong>Erinnerung 1</strong> — konfigurierbar, Standard 120 Min vor Fristende an alle Nicht-Voter (privat)</li>
-                            <li><strong>Erinnerung 2</strong> — konfigurierbar, Standard 15 Min vor Fristende (privat)</li>
+                            <li><strong>Erinnerung 1</strong> — konfigurierbar, Standard 120 Min vor Fristende als Gruppennachricht (listet Nicht-Voter auf)</li>
+                            <li><strong>Erinnerung 2</strong> — konfigurierbar, Standard 15 Min vor Fristende (Gruppennachricht)</li>
                             <li><strong>Frist abgelaufen</strong> — automatisch schließen</li>
                             <li><strong>Ergebnis posten</strong> — sofort nach Schließung</li>
-                            <li><strong>Event-Erinnerung</strong> — 1h vor Event an alle Zusager (privat)</li>
+                            <li><strong>Event-Erinnerung</strong> — 1h vor Event als Gruppennachricht mit allen Zusagern</li>
                             <li><strong>Wiederkehrend</strong> — beim Schließen wird direkt die nächste ausstehende Umfrage angelegt</li>
                             <li><strong>Archivieren</strong> — 24h nach Event-Ende</li>
                             <li><strong>Pin bereinigen</strong> - wenn eine aktive Umfrage endet, geloescht wird oder eine neuere laufende Umfrage startet</li>
@@ -492,7 +489,7 @@
                         <p><strong>Aufbau:</strong></p>
                         <ol>
                             <li>Statische Textblöcke (Position: "Oberhalb")</li>
-                            <li>Dynamischer Event-Status: nächstes Event mit allen Zu-/Absagen, Begründungen und ausstehenden Antworten</li>
+                            <li>Dynamischer Event-Status: nächstes Event mit allen Zu-/Absagen und ausstehenden Antworten</li>
                             <li>Statische Textblöcke (Position: "Unterhalb")</li>
                             <li>Nächste 3 Events: Titel, Datum und Uhrzeit der kommenden Termine</li>
                             <li>Footer: "Powered by TeamPulse by Niklas Kronig"</li>

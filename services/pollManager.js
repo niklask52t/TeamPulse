@@ -142,27 +142,8 @@ function extractParticipantLid(entry, fallbackId = '') {
     return '';
 }
 
-function toPrivateChatId(phone) {
-    return normalizeDigits(phone);
-}
-
 function getAppSetting(key) {
     return db.prepare('SELECT value FROM app_settings WHERE key = ?').get(key)?.value || null;
-}
-
-function isTruthySetting(value, fallback = false) {
-    if (value == null) return fallback;
-    const normalized = String(value).trim().toLowerCase();
-    if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
-    if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
-    return fallback;
-}
-
-function shouldSendReasonRequestDm(contact) {
-    if (!contact?.phone) return false;
-    const globalEnabled = isTruthySetting(getAppSetting('reason_request_dm_enabled') || '1', true);
-    if (!globalEnabled) return false;
-    return contact.reason_dm_enabled !== 0 && String(contact.reason_dm_enabled) !== '0';
 }
 
 function setAppSetting(key, value) {
@@ -264,11 +245,20 @@ function addDays(dateStr, days) {
 
 const sendingPolls = new Set();
 
-async function syncGroupParticipants() {
+let lastParticipantSyncAt = 0;
+const SYNC_MIN_INTERVAL_MS = 30 * 1000;
+
+async function syncGroupParticipants({ force = false } = {}) {
     if (!GROUP_CHAT_ID) {
         console.warn('[WARN] GROUP_CHAT_ID not set, skipping participant sync');
         return 0;
     }
+
+    // Throttle: every GET (polls, contacts, stats, dashboard) triggers a sync and the poll detail
+    // auto-refreshes every 15s. Without this, each request fires two Evolution calls + heavy DB churn.
+    // Setting the timestamp synchronously before the first await also dedupes concurrent requests.
+    if (!force && Date.now() - lastParticipantSyncAt < SYNC_MIN_INTERVAL_MS) return 0;
+    lastParticipantSyncAt = Date.now();
 
     try {
         const [participants, allContacts] = await Promise.all([
@@ -344,12 +334,19 @@ async function syncGroupParticipants() {
         let removed = 0;
         if (participants.length > 0) {
             const existingContacts = db.prepare('SELECT id, phone FROM contacts').all();
-            const deleteContact = db.prepare('DELETE FROM contacts WHERE id = ?');
-            for (const contact of existingContacts) {
-                if (!desiredPhones.has(contact.phone)) {
-                    deleteContact.run(contact.id);
-                    removed++;
+            // Guard against a transient/partial participant response wiping real contacts (and their
+            // cascade-deleted poll_responses): only reconcile deletions when the fetched list is
+            // plausibly complete relative to what we already have.
+            if (existingContacts.length === 0 || desiredPhones.size >= existingContacts.length / 2) {
+                const deleteContact = db.prepare('DELETE FROM contacts WHERE id = ?');
+                for (const contact of existingContacts) {
+                    if (!desiredPhones.has(contact.phone)) {
+                        deleteContact.run(contact.id);
+                        removed++;
+                    }
                 }
+            } else {
+                console.warn(`[WARN] Skipping contact removal: only ${desiredPhones.size} participants for ${existingContacts.length} contacts (looks partial)`);
             }
         }
 
@@ -463,7 +460,7 @@ async function sendPoll(pollId) {
 
     sendingPolls.add(pollId);
     try {
-        await syncGroupParticipants();
+        await syncGroupParticipants({ force: true });
         await syncPollRecipientsToCurrentGroup(pollId);
 
         const pollResult = await evolution.sendPollMessage(
@@ -626,17 +623,7 @@ async function processResponse(phone, text, pollMessageId) {
     }
 
     if (!activePoll) {
-        const closedPoll = db.prepare(`
-            SELECT p.event_date, e.title as event_title
-            FROM polls p JOIN events e ON p.event_id = e.id
-            WHERE p.status = 'closed' AND p.archived = 0
-            ORDER BY p.deadline DESC LIMIT 1
-        `).get();
-        if (closedPoll && contactRow.phone) {
-            evolution.sendTooLateNotification(toPrivateChatId(contactRow.phone), closedPoll.event_title, closedPoll.event_date)
-                .catch((err) => console.error('[ERROR] sendTooLateNotification:', err.message));
-            console.log(`[VOTE] Too late vote from ${displayName} for ${closedPoll.event_title} - notification sent`);
-        }
+        console.log(`[VOTE] Ignored vote from ${displayName} - no matching active poll`);
         return null;
     }
 
@@ -644,61 +631,13 @@ async function processResponse(phone, text, pollMessageId) {
         INSERT OR IGNORE INTO poll_responses (poll_id, contact_id) VALUES (?, ?)
     `).run(activePoll.poll_id, contactRow.id);
 
-    const previousResponse = db.prepare(`
-        SELECT response, reason FROM poll_responses WHERE poll_id = ? AND contact_id = ?
-    `).get(activePoll.poll_id, contactRow.id);
-    const isVoteChange = previousResponse && previousResponse.response && previousResponse.response !== response;
-
     db.prepare(`
         UPDATE poll_responses SET response = ?, responded_at = datetime('now')
         WHERE poll_id = ? AND contact_id = ?
     `).run(response, activePoll.poll_id, contactRow.id);
 
-    const chatId = toPrivateChatId(contactRow.phone);
-    if (shouldSendReasonRequestDm(contactRow)) {
-        if (isVoteChange) {
-            evolution.sendVoteChangeFollowUp(chatId, activePoll.event_title, activePoll.event_date, response, previousResponse.reason)
-                .catch((err) => console.error('[ERROR] sendVoteChangeFollowUp:', err.message));
-        } else if (response === 'yes') {
-            evolution.sendYesFollowUp(chatId, activePoll.event_title, activePoll.event_date)
-                .catch((err) => console.error('[ERROR] sendYesFollowUp:', err.message));
-        } else if (response === 'maybe') {
-            evolution.sendMaybeFollowUp(chatId, activePoll.event_title, activePoll.event_date)
-                .catch((err) => console.error('[ERROR] sendMaybeFollowUp:', err.message));
-        } else if (response === 'no') {
-            evolution.sendNoFollowUp(chatId, activePoll.event_title, activePoll.event_date)
-                .catch((err) => console.error('[ERROR] sendNoFollowUp:', err.message));
-        }
-    }
-
     scheduleDescriptionUpdate();
     return { contactName: displayName, response, pollId: activePoll.poll_id };
-}
-
-function processReasonMessage(phone, text) {
-    const normalizedPhone = normalizeDigits(phone);
-    const contact = db.prepare(`
-        SELECT * FROM contacts WHERE REPLACE(REPLACE(REPLACE(phone, '+', ''), ' ', ''), '-', '') = ?
-    `).get(normalizedPhone);
-    if (!contact) return null;
-
-    const pendingReason = db.prepare(`
-        SELECT pr.id, p.id as poll_id, pr.response
-        FROM poll_responses pr
-        JOIN polls p ON pr.poll_id = p.id
-        WHERE pr.contact_id = ? AND pr.response IN ('yes', 'maybe', 'no')
-        AND p.archived = 0
-        AND pr.responded_at >= datetime('now', '-5 minutes')
-        ORDER BY p.id DESC LIMIT 1
-    `).get(contact.id);
-
-    if (!pendingReason) return null;
-
-    db.prepare('UPDATE poll_responses SET reason = ? WHERE id = ?').run(String(text || '').trim(), pendingReason.id);
-    const contactName = contact.name_override || contact.name;
-    console.log(`[INFO] Reason saved for ${contactName} (${pendingReason.response}): "${String(text || '').trim()}" (poll ${pendingReason.poll_id})`);
-    scheduleImportantDescriptionUpdate();
-    return { pollId: pendingReason.poll_id, contactName };
 }
 
 async function sendDeadlineReminder(pollId, isSecond) {
@@ -715,27 +654,29 @@ async function sendDeadlineReminder(pollId, isSecond) {
         minute: '2-digit',
     });
 
+    if (!GROUP_CHAT_ID) throw new Error('GROUP_CHAT_ID not configured');
+
     const pending = db.prepare(`
-        SELECT pr.*, c.phone, COALESCE(NULLIF(c.name_override, ''), c.name) AS name
+        SELECT COALESCE(NULLIF(c.name_override, ''), c.name) AS name
         FROM poll_responses pr JOIN contacts c ON pr.contact_id = c.id
         WHERE pr.poll_id = ? AND pr.response IS NULL
+        ORDER BY COALESCE(NULLIF(c.name_override, ''), c.name)
     `).all(pollId);
 
-    for (const row of pending) {
-        try {
-            await evolution.sendReminder(
-                toPrivateChatId(row.phone),
-                poll.title,
-                poll.event_date,
-                poll.event_time,
-                poll.end_time,
-                deadlineTime,
-                poll.meeting_time,
-                poll.description
-            );
-        } catch (err) {
-            console.error(`Failed to send reminder to ${row.name}:`, err.message);
-        }
+    if (pending.length > 0) {
+        await evolution.sendDeadlineReminderToGroup(
+            GROUP_CHAT_ID,
+            poll.title,
+            poll.event_date,
+            poll.event_time,
+            poll.end_time,
+            deadlineTime,
+            poll.meeting_time,
+            poll.description,
+            pending.map((row) => row.name)
+        );
+    } else {
+        console.log(`[INFO] Deadline reminder for poll ${pollId} skipped - everyone has voted`);
     }
 
     if (isSecond) {
@@ -743,6 +684,7 @@ async function sendDeadlineReminder(pollId, isSecond) {
     } else {
         db.prepare('UPDATE polls SET reminder_sent = 1 WHERE id = ?').run(pollId);
     }
+    return pending.length;
 }
 
 async function postGroupResults(pollId, cancelInfo, options = {}) {
@@ -756,15 +698,16 @@ async function postGroupResults(pollId, cancelInfo, options = {}) {
     if (!GROUP_CHAT_ID) throw new Error('GROUP_CHAT_ID not configured');
 
     const responses = db.prepare(`
-        SELECT pr.response, pr.reason, COALESCE(NULLIF(c.name_override, ''), c.name) AS name
+        SELECT pr.response, COALESCE(NULLIF(c.name_override, ''), c.name) AS name
         FROM poll_responses pr JOIN contacts c ON pr.contact_id = c.id
         WHERE pr.poll_id = ?
+        ORDER BY COALESCE(NULLIF(c.name_override, ''), c.name)
     `).all(pollId);
 
-    const yes = responses.filter((row) => row.response === 'yes').map((row) => ({ name: row.name, reason: row.reason }));
-    const no = responses.filter((row) => row.response === 'no').map((row) => ({ name: row.name, reason: row.reason }));
-    const maybe = responses.filter((row) => row.response === 'maybe').map((row) => ({ name: row.name, reason: row.reason }));
-    const pending = responses.filter((row) => !row.response).map((row) => ({ name: row.name }));
+    const yes = responses.filter((row) => row.response === 'yes').map((row) => row.name);
+    const no = responses.filter((row) => row.response === 'no').map((row) => row.name);
+    const maybe = responses.filter((row) => row.response === 'maybe').map((row) => row.name);
+    const pending = responses.filter((row) => !row.response).map((row) => row.name);
     const resultPostMode = getResultPostMode();
     let sentAnything = false;
 
@@ -793,12 +736,14 @@ async function postGroupResults(pollId, cancelInfo, options = {}) {
             const imageBuffer = generateResultChart(poll.title, poll.event_date, yes.length, no.length, maybe.length, pending.length);
             const fmtDate = (date) => {
                 const [year, month, day] = date.split('-');
-                return `${day}.${month}.${year}`;
+                const dayNames = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
+                const dow = new Date(date + 'T12:00:00Z').getUTCDay();
+                return `${dayNames[dow]}, ${day}.${month}.${year}`;
             };
             const imageResponse = await evolution.sendResultImage(
                 GROUP_CHAT_ID,
                 imageBuffer,
-                `📊 Abstimmung: ${poll.title} - ${fmtDate(poll.event_date)}`
+                `📊 *Ergebnis: ${poll.title}* — ${fmtDate(poll.event_date)}`
             );
             if (!resultMessageId) {
                 resultMessageId = extractMessageId(imageResponse);
@@ -865,10 +810,10 @@ async function resendPoll(pollId) {
             .catch((err) => console.error('[ERROR] unpinMessage old poll:', err.message));
     }
 
-    db.prepare('UPDATE poll_responses SET response = NULL, reason = NULL, responded_at = NULL WHERE poll_id = ?').run(pollId);
+    db.prepare('UPDATE poll_responses SET response = NULL, responded_at = NULL WHERE poll_id = ?').run(pollId);
     db.prepare('UPDATE polls SET reminder_sent = 0, reminder_2_sent = 0 WHERE id = ?').run(pollId);
 
-    await syncGroupParticipants();
+    await syncGroupParticipants({ force: true });
     await syncPollRecipientsToCurrentGroup(pollId);
 
     const pollResult = await evolution.sendPollMessage(
@@ -926,30 +871,33 @@ async function sendEventReminders(pollId) {
     `).get(pollId);
     if (!poll) return;
 
+    if (!GROUP_CHAT_ID) throw new Error('GROUP_CHAT_ID not configured');
+
     const yesResponses = db.prepare(`
-        SELECT c.phone, COALESCE(NULLIF(c.name_override, ''), c.name) AS name
+        SELECT COALESCE(NULLIF(c.name_override, ''), c.name) AS name
         FROM poll_responses pr JOIN contacts c ON pr.contact_id = c.id
         WHERE pr.poll_id = ? AND pr.response = 'yes'
+        ORDER BY COALESCE(NULLIF(c.name_override, ''), c.name)
     `).all(pollId);
 
     const minutes = poll.event_reminder_minutes ?? 60;
-    for (const row of yesResponses) {
-        try {
-            await evolution.sendEventReminder(
-                toPrivateChatId(row.phone),
-                poll.title,
-                poll.event_time,
-                poll.end_time,
-                poll.meeting_time,
-                poll.description,
-                minutes
-            );
-        } catch (err) {
-            console.error(`Failed to send event reminder to ${row.name}:`, err.message);
-        }
+    if (yesResponses.length > 0) {
+        await evolution.sendEventReminderToGroup(
+            GROUP_CHAT_ID,
+            poll.title,
+            poll.event_time,
+            poll.end_time,
+            poll.meeting_time,
+            poll.description,
+            minutes,
+            yesResponses.map((row) => row.name)
+        );
+    } else {
+        console.log(`[INFO] Event reminder for poll ${pollId} skipped - no confirmed participants`);
     }
 
     db.prepare('UPDATE polls SET event_reminder_sent = 1 WHERE id = ?').run(pollId);
+    return yesResponses.length;
 }
 
 function ensureNextRecurringPoll(eventId, currentEventDate) {
@@ -1033,7 +981,6 @@ module.exports = {
     sendPoll,
     refreshOpenPollScheduleForEvent,
     processResponse,
-    processReasonMessage,
     sendDeadlineReminder,
     postGroupResults,
     closePoll,
@@ -1043,5 +990,4 @@ module.exports = {
     ensureNextRecurringPoll,
     finalizeClosedPoll,
     reconcilePinnedActivePoll,
-    shouldSendReasonRequestDm,
 };

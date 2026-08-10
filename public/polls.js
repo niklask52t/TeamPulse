@@ -57,7 +57,7 @@ function buildPollScheduleInfo(poll) {
         lines.push({ label: 'Abstimmungs-Erinnerung 2', value: `${formatPollDateTime(reminder2At)} (${poll.deadline_reminder_2_minutes} Min vorher)`, iso: reminder2At });
     }
     if (eventReminderAt && Number(poll.event_reminder_minutes || 0) > 0) {
-        lines.push({ label: 'Event-Erinnerung an Zusager', value: `${formatPollDateTime(eventReminderAt)} (${poll.event_reminder_minutes} Min vorher)`, iso: eventReminderAt });
+        lines.push({ label: 'Start-Erinnerung (Gruppe)', value: `${formatPollDateTime(eventReminderAt)} (${poll.event_reminder_minutes} Min vorher)`, iso: eventReminderAt });
     }
     if (!isPending && poll.sent_at) {
         lines.push({ label: 'Tatsaechlich gesendet', value: formatPollDateTime(poll.sent_at), iso: poll.sent_at });
@@ -192,9 +192,9 @@ async function renderPollDetail(id) {
         </div>
     `;
     const responseGroupsHtml = isPending ? '' : `
-            ${renderReasonGroup('Zusagen', yes, 'yes', poll.id, true)}
-            ${renderReasonGroup('Absagen', no, 'no', poll.id, true)}
-            ${renderReasonGroup('Vielleicht', maybe, 'maybe', poll.id, true)}
+            ${renderResponseGroup('Zusagen', yes, 'yes', poll.id, true)}
+            ${renderResponseGroup('Absagen', no, 'no', poll.id, true)}
+            ${renderResponseGroup('Vielleicht', maybe, 'maybe', poll.id, true)}
             ${renderResponseGroup('Noch ausstehend', pending, 'pending', poll.id, true)}
     `;
     const pendingHintHtml = '';
@@ -218,8 +218,10 @@ async function renderPollDetail(id) {
 function renderResponseGroup(label, responses, type, pollId, editable) {
     if (responses.length === 0) return '';
     const names = responses.map((row) => {
+        // Only numeric IDs go into the inline handler; the name is read from the DOM in showVotePicker,
+        // so an attacker-controlled WhatsApp display name can never break out of the attribute.
         if (editable) {
-            return `<span class="response-name-editable" onclick="showVotePicker(event, ${pollId}, ${row.contact_id}, '${esc(row.name)}', ${row.response ? `'${row.response}'` : 'null'}, ${row.reason ? `'${esc(row.reason)}'` : 'null'})">${esc(row.name)}</span>`;
+            return `<span class="response-name-editable" onclick="showVotePicker(event, ${Number(pollId)}, ${Number(row.contact_id)})">${esc(row.name)}</span>`;
         }
         return esc(row.name);
     }).join(', ');
@@ -230,48 +232,19 @@ function renderResponseGroup(label, responses, type, pollId, editable) {
         </div>`;
 }
 
-function renderReasonGroup(label, responses, type, pollId, editable) {
-    if (responses.length === 0) return '';
-    const hasReasons = responses.some((row) => row.reason);
-    if (!hasReasons) return renderResponseGroup(label, responses, type, pollId, editable);
-
-    const items = responses.map((row) => {
-        const reason = row.reason
-            ? ` <span class="response-reason">- <em>${esc(row.reason)}</em></span>`
-            : '';
-        if (editable) {
-            return `<span class="response-maybe-item"><span class="response-name-editable" onclick="showVotePicker(event, ${pollId}, ${row.contact_id}, '${esc(row.name)}', ${row.response ? `'${row.response}'` : 'null'}, ${row.reason ? `'${esc(row.reason)}'` : 'null'})">${esc(row.name)}</span>${reason}</span>`;
-        }
-        return `<span class="response-maybe-item">${esc(row.name)}${reason}</span>`;
-    }).join('');
-
-    return `
-        <div class="response-group">
-            <div class="response-group-label response-${type}">${label} (${responses.length})</div>
-            <div class="response-names response-names--maybe">${items}</div>
-        </div>`;
-}
-
-function showVotePicker(evt, pollId, contactId, name, currentResponse = null, currentReason = null) {
+function showVotePicker(evt, pollId, contactId) {
     evt.stopPropagation();
     document.querySelectorAll('.vote-picker').forEach((el) => el.remove());
 
-    const reasonLabel = currentReason ? `Grund ändern` : 'Grund setzen';
-    const reasonButtons = currentResponse ? `
-        <button onclick="editReason(${pollId}, ${contactId}, '${esc(name)}', ${currentReason ? `'${esc(currentReason)}'` : 'null'})" title="${reasonLabel}">${reasonLabel}</button>
-        <button onclick="requestReason(${pollId}, ${contactId}, '${esc(name)}')" title="Grund anfragen">Grund anfragen</button>
-        ${currentReason ? `<button onclick="clearReason(${pollId}, ${contactId}, '${esc(name)}')" title="Grund löschen">Grund löschen</button>` : ''}
-    ` : '';
-
+    const name = evt.target.textContent || '';
     const picker = document.createElement('div');
     picker.className = 'vote-picker';
     picker.innerHTML = `
-        <span class="vote-picker-label">${name}:</span>
-        <button onclick="setVote(${pollId}, ${contactId}, 'yes')" title="Ja">Ja</button>
-        <button onclick="setVote(${pollId}, ${contactId}, 'no')" title="Nein">Nein</button>
-        <button onclick="setVote(${pollId}, ${contactId}, 'maybe')" title="Vielleicht">Vielleicht</button>
-        <button onclick="setVote(${pollId}, ${contactId}, null)" title="Zuruecksetzen">Offen</button>
-        ${reasonButtons}
+        <span class="vote-picker-label">${esc(name)}:</span>
+        <button onclick="setVote(${Number(pollId)}, ${Number(contactId)}, 'yes')" title="Ja">Ja</button>
+        <button onclick="setVote(${Number(pollId)}, ${Number(contactId)}, 'no')" title="Nein">Nein</button>
+        <button onclick="setVote(${Number(pollId)}, ${Number(contactId)}, 'maybe')" title="Vielleicht">Vielleicht</button>
+        <button onclick="setVote(${Number(pollId)}, ${Number(contactId)}, null)" title="Zuruecksetzen">Offen</button>
         <button onclick="this.parentElement.remove()" title="Abbrechen" class="vote-picker-close">X</button>
     `;
     evt.target.after(picker);
@@ -296,76 +269,6 @@ async function setVote(pollId, contactId, response) {
     }
 }
 
-async function editReason(pollId, contactId, name, currentReason) {
-    const nextReason = prompt(`Grund für ${name}:`, currentReason || '');
-    if (nextReason === null) return;
-    try {
-        const res = await apiFetch(`${API}/api/polls/${pollId}/reason`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contact_id: contactId, reason: nextReason }),
-        });
-        if (!res.ok) {
-            const data = await res.json();
-            alert('Fehler: ' + (data.error || 'Unbekannter Fehler'));
-            return;
-        }
-        document.querySelectorAll('.vote-picker').forEach((el) => el.remove());
-        await renderPollDetail(pollId);
-    } catch (err) {
-        if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
-    }
-}
-
-async function clearReason(pollId, contactId, name) {
-    const confirmed = await showConfirmDialog(`Grund von ${name} wirklich löschen?`, {
-        title: 'Grund löschen',
-        confirmText: 'Ja',
-        cancelText: 'Nein',
-    });
-    if (!confirmed) return;
-    try {
-        const res = await apiFetch(`${API}/api/polls/${pollId}/reason`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contact_id: contactId, reason: '' }),
-        });
-        if (!res.ok) {
-            const data = await res.json();
-            alert('Fehler: ' + (data.error || 'Unbekannter Fehler'));
-            return;
-        }
-        document.querySelectorAll('.vote-picker').forEach((el) => el.remove());
-        await renderPollDetail(pollId);
-    } catch (err) {
-        if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
-    }
-}
-
-async function requestReason(pollId, contactId, name) {
-    const confirmed = await showConfirmDialog(`${name} jetzt per PN erneut nach einem Grund fragen?`, {
-        title: 'Grund anfragen',
-        confirmText: 'Ja',
-        cancelText: 'Nein',
-    });
-    if (!confirmed) return;
-    try {
-        const res = await apiFetch(`${API}/api/polls/${pollId}/request-reason`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contact_id: contactId }),
-        });
-        if (!res.ok) {
-            const data = await res.json();
-            alert('Fehler: ' + (data.error || 'Unbekannter Fehler'));
-            return;
-        }
-        document.querySelectorAll('.vote-picker').forEach((el) => el.remove());
-    } catch (err) {
-        if (err.message !== 'Nicht angemeldet') alert('Fehler: ' + err.message);
-    }
-}
-
 function buildActionButtons(poll) {
     const buttons = [];
 
@@ -373,7 +276,7 @@ function buildActionButtons(poll) {
         buttons.push(`<button class="btn btn-primary btn-sm" onclick="pollAction(${poll.id}, 'send', 'Umfrage in Gruppe senden?')">Jetzt Umfrage senden</button>`);
     }
     if (poll.status === 'active') {
-        buttons.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'send-reminder', 'Abstimmungs-Erinnerung an alle ohne Antwort senden?')">Abstimmungs-Erinnerung</button>`);
+        buttons.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'send-reminder', 'Abstimmungs-Erinnerung in die Gruppe senden? Alle ohne Antwort werden darin aufgelistet.')">Abstimmungs-Erinnerung</button>`);
         buttons.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'resend', 'Alle Stimmen zuruecksetzen und Umfrage neu in die Gruppe senden?')">Neu senden (Reset)</button>`);
         buttons.push(`<button class="btn btn-secondary btn-sm" onclick="closePollWithPrompt(${poll.id})">Umfrage schliessen</button>`);
         buttons.push(`<button class="btn btn-secondary btn-sm" onclick="showExtendForm(${poll.id})">Frist verlaengern</button>`);
@@ -383,7 +286,7 @@ function buildActionButtons(poll) {
     }
     if (poll.status === 'active' || poll.status === 'closed') {
         buttons.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'post-group', 'Ergebnis jetzt in Gruppe posten?')">Ergebnis posten</button>`);
-        buttons.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'send-event-reminder', 'Start-Erinnerung an alle Zusager senden?')">Start-Erinnerung (Zusager)</button>`);
+        buttons.push(`<button class="btn btn-secondary btn-sm" onclick="pollAction(${poll.id}, 'send-event-reminder', 'Start-Erinnerung in die Gruppe senden? Alle Zusager werden darin aufgelistet.')">Start-Erinnerung</button>`);
     }
 
     return buttons.join('');

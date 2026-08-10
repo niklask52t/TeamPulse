@@ -31,7 +31,6 @@ function isValidTime(value) {
 router.get('/', (req, res) => {
     res.json({
         result_post_mode: getSetting('result_post_mode', 'both'),
-        reason_request_dm_enabled: asBool(getSetting('reason_request_dm_enabled', '1'), true),
         description_slow_mode_enabled: asBool(getSetting('description_slow_mode_enabled', '0'), false),
         description_slow_mode_time: getSetting('description_slow_mode_time', '04:00'),
     });
@@ -44,7 +43,6 @@ router.put('/', (req, res) => {
         return res.status(400).json({ error: 'Ungueltiger Ergebnisversand-Modus' });
     }
 
-    const reasonRequestDmEnabled = asBool(req.body?.reason_request_dm_enabled, true);
     const descriptionSlowModeEnabled = asBool(req.body?.description_slow_mode_enabled, false);
     const descriptionSlowModeTime = String(req.body?.description_slow_mode_time || '04:00').trim();
 
@@ -53,14 +51,12 @@ router.put('/', (req, res) => {
     }
 
     setSetting('result_post_mode', resultPostMode);
-    setSetting('reason_request_dm_enabled', reasonRequestDmEnabled ? '1' : '0');
     setSetting('description_slow_mode_enabled', descriptionSlowModeEnabled ? '1' : '0');
     setSetting('description_slow_mode_time', descriptionSlowModeTime);
 
     res.json({
         success: true,
         result_post_mode: resultPostMode,
-        reason_request_dm_enabled: reasonRequestDmEnabled,
         description_slow_mode_enabled: descriptionSlowModeEnabled,
         description_slow_mode_time: descriptionSlowModeTime,
     });

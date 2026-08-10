@@ -7,9 +7,7 @@ TeamPulse ist ein WhatsApp-basiertes Anwesenheits-Management fuer Teams. Das Pro
 - geschuetztes Dashboard mit Login und Passwortwechsel beim ersten Start
 - einmalige und wiederkehrende Events
 - automatische native WhatsApp-Polls in der Gruppe
-- private Follow-up-Nachrichten nach `Ja`, `Nein` und `Vielleicht`
-- Kommentare/Gruende innerhalb von 5 Minuten
-- automatische Erinnerungen und Event-Reminder
+- automatische Erinnerungen und Event-Reminder als Gruppennachricht (keine Privatnachrichten)
 - Ergebnis-Post als Text, Bild oder beides
 - automatische Gruppenbeschreibung
 
@@ -418,7 +416,8 @@ journalctl -u teampulse -f
 
 - TeamPulse nutzt jetzt nur noch Evolution API. WAHA wird nicht mehr benoetigt.
 - Ergebnis-Bilder laufen ueber `sendMedia` der Evolution API.
-- Gruppenbeschreibung, Polls, private Erinnerungen und Ergebnis-Posts laufen ueber dieselbe Evolution-Instanz.
+- Gruppenbeschreibung, Polls, Erinnerungen und Ergebnis-Posts laufen ueber dieselbe Evolution-Instanz.
+- TeamPulse sendet keinerlei Privatnachrichten - alle Nachrichten gehen in die Gruppe.
 - Der Ergebnisversand laesst sich in der UI unter `Einstellungen` auf `Text`, `Bild` oder `Text + Bild` umstellen.
 - Message Pinning/Unpinning haengt von der verfuegbaren Evolution-API-Unterstuetzung ab. Die offiziellen v2-Dokumentationsseiten zeigen dafuer derzeit keinen separaten Endpunkt.
 
@@ -427,4 +426,4 @@ journalctl -u teampulse -f
 MIT
 
 ---
-Last reviewed: 2026-04-30
+Last reviewed: 2026-08-10

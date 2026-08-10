@@ -3,6 +3,11 @@ const bcrypt = require('bcrypt');
 const router = express.Router();
 const db = require('../db/database');
 
+const MIN_PASSWORD_LENGTH = 10;
+// Constant dummy hash so a missing username still runs a bcrypt.compare of similar cost,
+// closing the login timing side-channel that would otherwise reveal valid usernames.
+const DUMMY_HASH = bcrypt.hashSync('invalid-placeholder', 10);
+
 router.get('/csrf', (req, res) => {
     res.json({ csrfToken: req.csrfToken() });
 });
@@ -15,21 +20,25 @@ router.post('/login', async (req, res) => {
     }
 
     const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
-    if (!user) {
+    const valid = await bcrypt.compare(password, user ? user.password_hash : DUMMY_HASH);
+    if (!user || !valid) {
         return res.status(401).json({ error: 'Ungültige Anmeldedaten' });
     }
 
-    const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) {
-        return res.status(401).json({ error: 'Ungültige Anmeldedaten' });
-    }
-
-    req.session.userId = user.id;
-    req.session.username = user.username;
-
-    res.json({
-        username: user.username,
-        mustChangePassword: !!user.must_change_password,
+    // Regenerate the session on login to prevent session fixation (a pre-planted session ID
+    // must not survive authentication). req.csrfToken() then seeds a fresh token on the new session.
+    req.session.regenerate((err) => {
+        if (err) {
+            console.error('[ERROR] session regenerate on login:', err.message);
+            return res.status(500).json({ error: 'Interner Serverfehler' });
+        }
+        req.session.userId = user.id;
+        req.session.username = user.username;
+        res.json({
+            username: user.username,
+            mustChangePassword: !!user.must_change_password,
+            csrfToken: req.csrfToken(),
+        });
     });
 });
 
@@ -61,9 +70,15 @@ router.post('/change-password', async (req, res) => {
         return res.status(401).json({ error: 'Nicht angemeldet' });
     }
 
-    const { newPassword, newUsername } = req.body;
-    if (!newPassword || newPassword.length < 4) {
-        return res.status(400).json({ error: 'Passwort muss mindestens 4 Zeichen lang sein' });
+    const { currentPassword, newPassword, newUsername } = req.body;
+    if (!newPassword || newPassword.length < MIN_PASSWORD_LENGTH) {
+        return res.status(400).json({ error: `Passwort muss mindestens ${MIN_PASSWORD_LENGTH} Zeichen lang sein` });
+    }
+
+    // Require the current password so a hijacked/left-open session cannot silently take over the account.
+    const currentUser = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(req.session.userId);
+    if (!currentUser || !(await bcrypt.compare(currentPassword || '', currentUser.password_hash))) {
+        return res.status(401).json({ error: 'Aktuelles Passwort ist falsch' });
     }
 
     const hash = await bcrypt.hash(newPassword, 10);

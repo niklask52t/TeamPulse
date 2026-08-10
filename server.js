@@ -22,6 +22,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
 const isProduction = process.env.NODE_ENV === 'production';
+// Optional shared secret for the public Evolution webhook. When set, requests must present it;
+// when unset, behaviour is unchanged (backwards compatible).
+const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || '';
 const sessionStore = new SQLiteSessionStore({
     ttlMs: 24 * 60 * 60 * 1000,
     cleanupEveryMs: 15 * 60 * 1000,
@@ -29,6 +32,12 @@ const sessionStore = new SQLiteSessionStore({
 const pageLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 300,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+});
+const webhookLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    limit: 120,
     standardHeaders: 'draft-8',
     legacyHeaders: false,
 });
@@ -52,8 +61,26 @@ process.on('unhandledRejection', (err) => {
     console.error('[ERROR] Unhandled Rejection:', err);
 });
 
-app.use(express.json());
-app.set('trust proxy', 1);
+app.use(express.json({ limit: '256kb' }));
+
+// Trust proxy must be topology-aware: with the server bound to 0.0.0.0 and no guaranteed reverse
+// proxy, unconditionally trusting X-Forwarded-For lets a direct client spoof req.ip and bypass the
+// rate limiters. Default to trusting only a local proxy; set TRUST_PROXY when behind a real one.
+const trustProxyEnv = process.env.TRUST_PROXY;
+if (trustProxyEnv) {
+    const hops = Number(trustProxyEnv);
+    app.set('trust proxy', Number.isFinite(hops) ? hops : trustProxyEnv);
+} else {
+    app.set('trust proxy', 'loopback');
+}
+
+// Baseline security response headers (defense-in-depth for a session-cookie dashboard)
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'same-origin');
+    next();
+});
 
 app.use(session({
     store: sessionStore,
@@ -89,7 +116,13 @@ function requireAuth(req, res, next) {
 
 app.use('/api/auth', authLimiter);
 
-app.post(['/api/webhooks/evolution', '/api/webhooks/evolution/messages-upsert', '/api/webhooks/evolution/messages-update'], (req, res, next) => {
+app.post(['/api/webhooks/evolution', '/api/webhooks/evolution/messages-upsert', '/api/webhooks/evolution/messages-update'], webhookLimiter, (req, res, next) => {
+    if (WEBHOOK_SECRET) {
+        const provided = req.get('apikey') || req.get('x-webhook-secret') || req.query.secret || '';
+        if (provided !== WEBHOOK_SECRET) {
+            return res.status(401).json({ error: 'Ungueltiges Webhook-Secret' });
+        }
+    }
     req.body = req.body || {};
     req.body.event = req.body.event || (req.path.endsWith('messages-update') ? 'MESSAGES_UPDATE' : 'MESSAGES_UPSERT');
     return handleEvolutionWebhook(req, res, next);
@@ -142,7 +175,9 @@ app.get('*splat', pageLimiter, (req, res) => {
 
 app.use((err, req, res, next) => {
     console.error('[ERROR] %s %s:', req.method, req.url, err.stack || err.message || err);
-    res.status(err.status || 500).json({ error: err.message || 'Interner Serverfehler' });
+    const status = err.status || 500;
+    // Only surface intentional client-error messages; mask internal (5xx) details from the response.
+    res.status(status).json({ error: status < 500 ? (err.message || 'Fehler') : 'Interner Serverfehler' });
 });
 
 const server = app.listen(PORT, '0.0.0.0', () => {

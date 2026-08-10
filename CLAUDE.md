@@ -7,7 +7,7 @@ WhatsApp-based attendance management dashboard. Users create events (recurring t
 - **Backend**: Node.js 24 LTS + Express 5 (CommonJS)
 - **Frontend**: Vanilla HTML/CSS/JS served as static files from `public/` — split into seven files
 - **Database**: SQLite via libsql (better-sqlite3 compatible API), schema in `db/schema.sql`
-- **Auth**: bcrypt + express-session, default user admin/admin, force password change on first login
+- **Auth**: bcrypt + express-session, initial user `admin` with a random or ADMIN_INITIAL_PASSWORD-seeded password (printed once), force password change on first login
 - **Scheduler**: node-cron for timed messages (every minute)
 - **WhatsApp**: Evolution REST API (native polls via sendPoll + poll.vote webhook)
 - **Timezone**: All times in Europe/Berlin (via services/timeUtils.js)
@@ -21,25 +21,31 @@ TeamPulse/
 │   └── database.js    # DB connection, migrations & seed
 ├── routes/
 │   ├── auth.js        # Login, logout, password change
+│   ├── contacts.js    # Contact list, name overrides, LID mapping
+│   ├── dashboard.js   # Aggregated dashboard data
 │   ├── events.js      # CRUD for events (validation, no past dates)
 │   ├── polls.js       # Poll management, manual actions, Evolution webhook
+│   ├── settings.js    # App settings (result post mode, description slow mode)
 │   ├── stats.js       # Participation stats per contact
 │   └── descriptionBlocks.js  # CRUD for group description static text blocks
 ├── services/
-│   ├── evolution.js        # Evolution API client (sendPollMessage, sendMessage, sendReminder, sendResultImage, sendMaybeFollowUp, postResultsToGroup, getGroupParticipants, getAllContacts, getGroups, updateGroupDescription)
+│   ├── evolution.js        # Evolution API client (sendPollMessage, sendMessage, sendResultImage, sendDeadlineReminderToGroup, sendEventReminderToGroup, postResultsToGroup, sendCancellationMessage, getGroupParticipants, getAllContacts, getGroups, updateGroupDescription)
 │   ├── scheduler.js   # Cron: send/close/archive polls, reminders, group posts
-│   ├── pollManager.js # Poll lifecycle (create, send, resend, processResponse, processReasonMessage, close, extendDeadline) + extractMessageId helper
+│   ├── sessionStore.js # SQLite-backed express-session store
+│   ├── pollManager.js # Poll lifecycle (create, send, resend, processResponse, close, extendDeadline) + extractMessageId helper
 │   ├── groupDescription.js  # Build & update WhatsApp group description (debounced)
 │   ├── chartGenerator.js  # PNG bar chart via @napi-rs/canvas
 │   └── timeUtils.js   # Europe/Berlin timezone helpers
 ├── public/            # Frontend static files (load order matters)
-│   ├── index.html     # SPA with tabs: Dashboard, Events, Umfragen, Statistiken, Beschreibung + footer
+│   ├── index.html     # SPA with tabs: Dashboard, Events, Umfragen, Statistiken, Kontakte, Einstellungen, Beschreibung + footer
 │   ├── style.css
 │   ├── changelog.js   # CHANGELOG data + renderChangelog()
 │   ├── dashboard.js   # Dashboard tab: loadDashboard() — overview with countdown, active polls, trend
 │   ├── events.js      # Events tab: loadEvents, showEventForm, editEvent, saveEvent, deleteEvent, exceptions
 │   ├── polls.js       # Polls tab: loadPolls, renderPollDetail, buildActionButtons, pollAction, showExtendForm
 │   ├── stats.js       # Stats tab: loadStats() — member response rate table
+│   ├── contacts.js    # Contacts tab: loadContacts, name overrides
+│   ├── settings.js    # Settings tab: loadSettings, saveSettings
 │   ├── description.js # Description tab: CRUD for static text blocks, preview, manual update
 │   └── app.js         # Core: auth, nav, utils, groups, init — must load LAST
 ├── update.sh          # Production update/reset script
@@ -80,14 +86,12 @@ TeamPulse/
 - Members are upserted into the `contacts` table (phone UNIQUE constraint)
 - Poll responses reference contact IDs as before — no DB schema change needed
 
-## Follow-up & Comment Flow
-- After every vote (yes, no, maybe), a private WhatsApp follow-up message is sent asking for an optional comment
-- The voter has **5 minutes** to reply — after that, `processReasonMessage()` ignores the message (SQL: `responded_at >= datetime('now', '-5 minutes')`)
-- On vote change: a 🔄 message is sent showing the old comment; old comment is preserved unless a new one is written within 5 min
-- `processReasonMessage` allows overwriting existing reasons (no IS NULL constraint)
-- Reasons/comments are displayed in the poll detail view alongside the member's name for all vote types
-- Votes after deadline: processResponse sends a "too late" PN (sendTooLateNotification) when no active poll exists but a closed one does
-- All automatic PNs end with "🤖 Automatisch generierte Nachricht von TeamPulse"
+## No Private Messages
+- TeamPulse never sends private/direct WhatsApp messages — ALL outgoing messages go to the group (poll, reminders, results, cancellation, description)
+- The former DM features (comment/reason follow-ups, too-late notification, admin vote notification, reason-request DMs, per-contact reason_dm setting) were removed completely in v3.0.0
+- Incoming private messages are ignored by the webhook; only poll updates are processed
+- Votes after deadline are simply ignored (logged, no notification)
+- All automatic messages end with "🤖 Automatisch generierte Nachricht von TeamPulse"
 
 ## DEV_MODE
 - `DEV_MODE=true` in `.env` enables the "Gruppen" footer tab (shows all WhatsApp groups with IDs from Evolution)
@@ -107,20 +111,25 @@ TeamPulse/
 
 ## Manual Actions (poll detail)
 - Send poll: once only (pending → active), syncs group members first
-- Send reminder: multiple times (active only) — sends plain text reminder to all non-voters with deadline time
+- Send reminder: multiple times (active only) — one group message listing all non-voters with deadline time (skipped if everyone voted)
 - Extend deadline: adjustable via form (any minutes, resets both reminder flags so reminders fire again)
 - Close poll: manual close (active → closed)
 - Post group results: multiple times (active/closed) — sends text + PNG chart image; does NOT close the poll
-- Send event reminder: multiple times (active/closed)
-- Manual vote override: click member name → set response (✅/❌/🤷/⏳), sends PN notification. Works on all polls including archived — stats update accordingly
+- Send event reminder: multiple times (active/closed) — one group message listing all yes-voters (skipped if none)
+- Manual vote override: click member name → set response (✅/❌/🤷/⏳). Works on all polls including archived — stats update accordingly
 - Resend (reset): active only — clears all votes, unpins old poll, sends new WhatsApp poll, resets reminder flags
 - Delete: always available
 
 ## Auth
-- Default user: admin/admin, must_change_password=1
-- Session-based auth via express-session (cookie, sameSite: strict)
+- Initial user: `admin` with a randomly-generated (or ADMIN_INITIAL_PASSWORD) password, must_change_password=1 — no hardcoded default credential
+- Login regenerates the session (anti session-fixation) and returns a fresh csrfToken; password min length 10
+- change-password requires the current password; login runs a constant-cost bcrypt compare even for unknown users (anti timing-enumeration)
+- Session-based auth via express-session (cookie, sameSite: strict, SQLite-backed store)
+- CSRF: double-submit token in session, required on all non-GET requests via x-csrf-token header
+- `trust proxy` is off by default (loopback only); set TRUST_PROXY when behind a real reverse proxy so rate limiting can't be bypassed via X-Forwarded-For
+- Security headers (nosniff, X-Frame-Options DENY, Referrer-Policy) + JSON body limit 256kb
 - `/api/auth/*` routes are public, all other `/api/*` routes require session
-- `/api/webhooks/evolution` is public (machine-to-machine)
+- `/api/webhooks/evolution` is public (machine-to-machine), rate-limited; set WEBHOOK_SECRET to require an apikey/x-webhook-secret header
 - `/api/groups` returns WhatsApp groups from Evolution (auth-required)
 
 ## Groups
@@ -132,11 +141,10 @@ TeamPulse/
 - Evolution runs as separate Docker container (can be on a different VM)
 - Native WhatsApp polls via POST /api/sendPoll — sent to GROUP_CHAT_ID (not individuals)
 - Webhook at `/api/webhooks/evolution` — req.url rewritten to `/webhook` before pollsRouter handles it
-- Handles `message` (text reply), `poll.vote` (native poll), and `buttons_response` events
-- Group messages: `payload.sender` = voter JID; private messages: `payload.from` = sender JID
-- Poll options: "Ja ✅", "Nein ❌", "Vielleicht 🤷" — matched by emoji-stripped exact match first, then keyword includes
-- Vote matching: `processResponse(phone, text, pollMessageId)` matches votes to polls by Evolution poll_message_id first, falls back to earliest-deadline active poll if no match
-- `sendReminder` sends plain text reminder (sendButtons was removed — WA deprecated it for unofficial clients in 2024)
+- Handles poll updates (MESSAGES_UPSERT / MESSAGES_UPDATE); plain text messages (group or private) are ignored
+- Poll options: "Ja", "Nein", "Vielleicht" — matched by emoji-stripped exact match
+- Vote matching: `processResponse(phone, text, pollMessageId)` matches votes to polls by Evolution poll_message_id first; single-active-poll-without-message-id fallback only
+- Deadline & event reminders are single group messages (sendDeadlineReminderToGroup / sendEventReminderToGroup)
 - `sendResultImage` sends a PNG chart via POST /api/sendFile (multipart first, JSON base64 fallback)
 - `pinMessage` / `unpinMessage` via PUT/DELETE `/api/{session}/chats/{chatId}/messages/{messageId}/pin`
 - Auto-pin: poll pinned on send, unpinned on close; result pinned on post, unpinned after event ends
@@ -174,8 +182,8 @@ TeamPulse/
 - `polls.result_unpinned INTEGER DEFAULT 0` — tracks whether result message has been unpinned after event end
 - `events.auto_cancel INTEGER DEFAULT 0` — if 1, send cancellation when yes < min_participants at deadline
 - `events.min_participants INTEGER DEFAULT 0` — minimum yes count for auto-cancel
-- `poll_responses.reason TEXT` — stores optional reason/comment from all voters (yes, maybe, no)
 - `polls.archived INTEGER DEFAULT 0` — added via migration
+- `poll_responses.reason` and `contacts.reason_dm_enabled` were removed in v3.0.0 (drop migrations in db/database.js)
 - `contacts.lid TEXT` — WhatsApp Linked ID for poll.vote matching
 - `group_description_blocks` — static text blocks for group description (content, position, sort_order)
 - `event_exceptions` — dates to skip for recurring events (event_id, exception_date, reason), UNIQUE(event_id, exception_date)
@@ -205,8 +213,8 @@ TeamPulse/
 - Shown with 📝 prefix
 
 ## Configurable Reminders
-- **Event start reminder**: `event_reminder_minutes` (default 60), private message to yes-voters with dynamic time label
-- **Deadline reminders**: two per poll — `deadline_reminder_1_minutes` (default 120) and `deadline_reminder_2_minutes` (default 15)
+- **Event start reminder**: `event_reminder_minutes` (default 60), one group message listing all yes-voters with dynamic time label
+- **Deadline reminders**: two per poll — `deadline_reminder_1_minutes` (default 120) and `deadline_reminder_2_minutes` (default 15), each one group message listing all non-voters
 - `polls.reminder_2_sent` tracks second reminder; `extendDeadline` resets both flags
 - All timings configurable per event in the form
 
@@ -218,10 +226,8 @@ TeamPulse/
 - Like `poll_send_at`, the deadline can be a fixed date/time (`poll_deadline_at`) instead of "hours before event"
 - Not available for recurring events (same as fixed send date)
 
-## Vote Comments & Follow-ups
-- After every vote (yes, no, maybe), a follow-up PN is sent asking for optional comment
-- On vote change: 🔄 PN sent showing old comment; old comment preserved unless new one written within 5 min
-- `processReasonMessage` allows overwriting existing reasons (no IS NULL constraint)
-- Poll text includes AUTO_HINT footer (no more "Privat antworten für Kommentar")
-- Comments shown in poll detail, group description, and results post
+## Message Formatting
+- All outgoing WhatsApp messages share one structure: emoji header line with *bold* title, blank line, emoji info block (🗓 date, 🕒 time window, 🤝 meeting time, 📝 description), content section, AUTO_HINT footer
+- Shared builder: `buildEventInfoLines()` in services/evolution.js
+- Dates formatted as "Fr, 14.08.2026" (fmtDate), time windows as "19:00–21:00 Uhr" (formatEventWindow)
 - All automatic messages include "🤖 Automatisch generierte Nachricht von TeamPulse" hint

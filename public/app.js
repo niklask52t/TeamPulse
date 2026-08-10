@@ -149,6 +149,9 @@ async function doLogin(e) {
         return;
     }
     const data = await res.json();
+    // The server regenerates the session on login, which mints a fresh CSRF token — adopt it so the
+    // subsequent forced password change / logout (raw fetch, no 403-retry) uses the valid token.
+    if (data.csrfToken) csrfToken = data.csrfToken;
     if (data.mustChangePassword) {
         showChangePassword(data.username);
     } else {
@@ -158,6 +161,7 @@ async function doLogin(e) {
 
 async function doChangePassword(e) {
     e.preventDefault();
+    const currentPassword = document.getElementById('change-current-password').value;
     const newPassword = document.getElementById('change-password').value;
     const confirmPw   = document.getElementById('change-password-confirm').value;
     const newUsername = document.getElementById('change-username').value;
@@ -176,7 +180,7 @@ async function doChangePassword(e) {
             'Content-Type': 'application/json',
             'x-csrf-token': csrfToken,
         },
-        body: JSON.stringify({ newPassword, newUsername: newUsername || undefined }),
+        body: JSON.stringify({ currentPassword, newPassword, newUsername: newUsername || undefined }),
     });
 
     if (!res.ok) {
@@ -343,11 +347,16 @@ function toggleFooterSection(section) {
 
 // ===== UTILS =====
 
+// HTML-escape including quotes, so values are safe in both text and quoted-attribute contexts.
+// (The old textContent/innerHTML trick escaped < > & but NOT " or ', enabling attribute breakout.)
 function esc(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 function attachFormListeners(formId) {

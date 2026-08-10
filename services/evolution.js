@@ -9,7 +9,7 @@ const jsonHeaders = {
 };
 
 let warnedAboutPinning = false;
-const AUTO_HINT = '_Automatisch generierte Nachricht von TeamPulse_ \uD83E\uDD16';
+const AUTO_HINT = '_Automatisch generierte Nachricht von TeamPulse_ 🤖';
 
 function normalizeRecipient(value) {
     if (!value) return '';
@@ -38,7 +38,11 @@ async function evolutionFetch(path, options = {}) {
 
     try {
         const { timeoutMs: _timeoutMs, ...fetchOptions } = options;
-        return await fetch(url, { ...fetchOptions, signal: controller.signal });
+        const res = await fetch(url, { ...fetchOptions, signal: controller.signal });
+        // fetch() resolves once headers arrive; the body is a lazy stream. Read it here while the
+        // abort timer is still armed, otherwise a stalled body would hang past EVOLUTION_TIMEOUT_MS.
+        res._bodyText = await res.text();
+        return res;
     } catch (err) {
         if (err.name === 'AbortError') {
             throw new Error(`Evolution request timed out after ${timeoutMs}ms: ${options.method || 'GET'} ${url}`);
@@ -50,7 +54,7 @@ async function evolutionFetch(path, options = {}) {
 }
 
 async function parseResponse(res, label) {
-    const text = await res.text();
+    const text = res._bodyText !== undefined ? res._bodyText : await res.text();
     if (!res.ok) {
         throw new Error(`Evolution ${label} failed (${res.status}): ${text}`);
     }
@@ -67,48 +71,40 @@ function fmtDate(dateStr) {
     const [y, m, d] = dateStr.split('-');
     const dayNames = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
     const dow = new Date(dateStr + 'T12:00:00Z').getUTCDay();
-    return `${d}.${m}.${y} (${dayNames[dow]})`;
+    return `${dayNames[dow]}, ${d}.${m}.${y}`;
 }
 
 function formatEventWindow(eventTime, endTime) {
     if (!eventTime) return '';
-    return endTime ? `${eventTime} - ${endTime} Uhr` : `${eventTime} Uhr`;
+    return endTime ? `${eventTime}–${endTime} Uhr` : `${eventTime} Uhr`;
 }
 
 function cleanLine(value) {
     return String(value || '').replace(/\s+/g, ' ').trim();
 }
 
-function pushField(lines, label, value, options = {}) {
-    const clean = cleanLine(value);
-    if (!clean) return;
-    if (options.italic) {
-        lines.push(`${label} _${clean}_`);
-        return;
-    }
-    if (options.bold) {
-        lines.push(`${label} *${clean}*`);
-        return;
-    }
-    lines.push(`${label} ${clean}`);
-}
-
-function appendManualDescription(lines, description) {
-    const clean = cleanLine(description);
-    if (!clean) return;
-    lines.push('', '\u2500'.repeat(17), clean);
+// Shared emoji info block used by all group messages: date, time window, meeting time, description
+function buildEventInfoLines(eventDate, eventTime, endTime, meetingTime, description) {
+    const lines = [];
+    if (eventDate) lines.push(`🗓 ${fmtDate(eventDate)}`);
+    const window = formatEventWindow(eventTime, endTime);
+    if (window) lines.push(`🕒 ${window}`);
+    if (meetingTime) lines.push(`🤝 Treffen: ${meetingTime} Uhr`);
+    const desc = cleanLine(description);
+    if (desc) lines.push(`📝 ${desc}`);
+    return lines;
 }
 
 function buildPollText(eventTitle, eventDate, eventTime, endTime, meetingTime, description) {
-    const lines = [
-        `*${cleanLine(eventTitle)}*`,
-        `Datum: ${fmtDate(eventDate)}`,
-        `Zeit: ${formatEventWindow(eventTime, endTime)}`,
-    ];
-    pushField(lines, 'Treffen:', meetingTime ? `${meetingTime} Uhr` : '');
-    appendManualDescription(lines, description);
-    lines.push('', AUTO_HINT);
-    return lines.join('\n');
+    return [
+        `📋 *${cleanLine(eventTitle)}*`,
+        '',
+        ...buildEventInfoLines(eventDate, eventTime, endTime, meetingTime, description),
+        '',
+        'Bitte stimmt unten ab. 👇',
+        '',
+        AUTO_HINT,
+    ].join('\n');
 }
 
 async function sendTextMessage(chatId, text) {
@@ -158,19 +154,23 @@ async function sendResultImage(chatId, imageBuffer, caption) {
     return parseResponse(res, 'sendMedia');
 }
 
-async function sendReminder(chatId, eventTitle, eventDate, eventTime, endTime, deadlineTime, meetingTime, description) {
+// Group message reminding everyone who has not voted yet (replaces the old per-person DMs)
+async function sendDeadlineReminderToGroup(groupId, eventTitle, eventDate, eventTime, endTime, deadlineTime, meetingTime, description, pendingNames = []) {
     const lines = [
-        `*${cleanLine(eventTitle)}*`,
-        `Datum: ${fmtDate(eventDate)}`,
-        `Zeit: ${formatEventWindow(eventTime, endTime)}`,
+        '⏰ *Erinnerung: Abstimmung läuft noch*',
+        '',
+        `📋 *${cleanLine(eventTitle)}*`,
+        ...buildEventInfoLines(eventDate, eventTime, endTime, meetingTime, description),
     ];
-    pushField(lines, 'Treffen:', meetingTime ? `${meetingTime} Uhr` : '');
-    appendManualDescription(lines, description);
-    lines.push('', `Bitte stimme bis *${deadlineTime} Uhr* in der Gruppe ab.`, '', AUTO_HINT);
-    return sendMessage(chatId, lines.join('\n'));
+    if (pendingNames.length) {
+        lines.push('', `⏳ *Noch keine Stimme von (${pendingNames.length}):*`, pendingNames.join(', '));
+    }
+    lines.push('', `Bitte stimmt bis *${deadlineTime} Uhr* ab. 🙏`, '', AUTO_HINT);
+    return sendMessage(groupId, lines.join('\n'));
 }
 
-async function sendEventReminder(chatId, eventTitle, eventTime, endTime, meetingTime, description, minutesBefore) {
+// Group message shortly before the event starts, listing everyone who said yes (replaces the old per-person DMs)
+async function sendEventReminderToGroup(groupId, eventTitle, eventTime, endTime, meetingTime, description, minutesBefore, yesNames = []) {
     const mins = minutesBefore || 60;
     let timeLabel;
     if (mins >= 60 && mins % 60 === 0) {
@@ -185,155 +185,55 @@ async function sendEventReminder(chatId, eventTitle, eventTime, endTime, meeting
     }
 
     const lines = [
-        `*${cleanLine(eventTitle)}*`,
-        `Startet in ${timeLabel}.`,
+        `🔔 *${cleanLine(eventTitle)}* startet in *${timeLabel}*!`,
         '',
-        `Zeit: ${formatEventWindow(eventTime, endTime)}`,
+        ...buildEventInfoLines(null, eventTime, endTime, meetingTime, description),
     ];
-    pushField(lines, 'Treffen:', meetingTime ? `${meetingTime} Uhr` : '');
-    appendManualDescription(lines, description);
-    lines.push('', 'Bis gleich!', '', AUTO_HINT);
-    return sendMessage(chatId, lines.join('\n'));
+    if (yesNames.length) {
+        lines.push('', `✅ *Dabei sind (${yesNames.length}):*`, yesNames.join(', '));
+    }
+    lines.push('', 'Bis gleich! 💪', '', AUTO_HINT);
+    return sendMessage(groupId, lines.join('\n'));
 }
 
-async function postResultsToGroup(groupId, eventTitle, eventDate, eventTime, endTime, yesData, noData, maybeData, pendingData, meetingTime, cancelInfo, description) {
+async function postResultsToGroup(groupId, eventTitle, eventDate, eventTime, endTime, yesNames, noNames, maybeNames, pendingNames, meetingTime, cancelInfo, description) {
     const lines = [
-        `*${cleanLine(eventTitle)}*`,
-        `Datum: ${fmtDate(eventDate)}`,
-        `Zeit: ${formatEventWindow(eventTime, endTime)}`,
+        `📊 *Ergebnis: ${cleanLine(eventTitle)}*`,
+        '',
+        ...buildEventInfoLines(eventDate, eventTime, endTime, meetingTime, description),
     ];
-    pushField(lines, 'Treffen:', meetingTime ? `${meetingTime} Uhr` : '');
-    appendManualDescription(lines, description);
 
     if (cancelInfo) {
-        lines.push('');
-        lines.push('*Abgesagt*');
-        lines.push(`Zu wenige Zusagen (${cancelInfo.yesCount}/${cancelInfo.min})`);
-    }
-    lines.push('');
-
-    const fmtEntry = (r) => r.reason ? `${r.name} (${r.reason})` : r.name;
-
-    lines.push(`*Zusagen* (${yesData.length})`);
-    lines.push(yesData.length ? yesData.map(fmtEntry).join(', ') : '-');
-    lines.push('');
-
-    lines.push(`*Absagen* (${noData.length})`);
-    lines.push(noData.length ? noData.map(fmtEntry).join(', ') : '-');
-    lines.push('');
-
-    if (maybeData.length) {
-        lines.push(`*Vielleicht* (${maybeData.length})`);
-        lines.push(maybeData.map(fmtEntry).join(', '));
-        lines.push('');
+        lines.push('', `🚫 *Abgesagt* — zu wenige Zusagen (${cancelInfo.yesCount}/${cancelInfo.min})`);
     }
 
-    if (pendingData && pendingData.length) {
-        lines.push(`*Noch offen* (${pendingData.length})`);
-        lines.push(pendingData.map((r) => r.name).join(', '));
-        lines.push('');
+    lines.push('', `✅ *Zusagen (${yesNames.length})*`, yesNames.join(', ') || '—');
+    lines.push('', `❌ *Absagen (${noNames.length})*`, noNames.join(', ') || '—');
+    if (maybeNames.length) {
+        lines.push('', `🤷 *Vielleicht (${maybeNames.length})*`, maybeNames.join(', '));
+    }
+    if (pendingNames && pendingNames.length) {
+        lines.push('', `⏳ *Keine Antwort (${pendingNames.length})*`, pendingNames.join(', '));
     }
 
-    const total = yesData.length + noData.length + maybeData.length;
-    const all = total + (pendingData ? pendingData.length : 0);
-    lines.push(`Antworten: ${total}/${all}`);
-    lines.push('', AUTO_HINT);
+    const total = yesNames.length + noNames.length + maybeNames.length;
+    const all = total + (pendingNames ? pendingNames.length : 0);
+    lines.push('', `📈 ${total} von ${all} haben abgestimmt`, '', AUTO_HINT);
 
     return sendMessage(groupId, lines.join('\n'));
 }
 
 async function sendCancellationMessage(chatId, eventTitle, eventDate, eventTime, endTime, yesCount, minRequired, meetingTime, description) {
     const lines = [
-        `*${cleanLine(eventTitle)}*`,
-        `Datum: ${fmtDate(eventDate)}`,
-        `Zeit: ${formatEventWindow(eventTime, endTime)}`,
+        `🚫 *Absage: ${cleanLine(eventTitle)}*`,
+        '',
+        ...buildEventInfoLines(eventDate, eventTime, endTime, meetingTime, description),
+        '',
+        `Leider gibt es zu wenige Zusagen (${yesCount}/${minRequired}) — das Event fällt aus.`,
+        '',
+        AUTO_HINT,
     ];
-    pushField(lines, 'Treffen:', meetingTime ? `${meetingTime} Uhr` : '');
-    appendManualDescription(lines, description);
-    lines.push('', `Zu wenige Zusagen (${yesCount}/${minRequired}).`, '', AUTO_HINT);
     return sendMessage(chatId, lines.join('\n'));
-}
-
-async function sendMaybeFollowUp(chatId, eventTitle, eventDate) {
-    const text = [
-        `Du hast f\u00FCr *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} mit _Vielleicht_ abgestimmt.`,
-        '',
-        'Optional: Schreib innerhalb von _5 Minuten_ kurz warum oder ignoriere diese Nachricht.',
-        '',
-        AUTO_HINT,
-    ].join('\n');
-    return sendMessage(chatId, text);
-}
-
-async function sendNoFollowUp(chatId, eventTitle, eventDate) {
-    const text = [
-        `Du hast f\u00FCr *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} abgesagt.`,
-        '',
-        'Optional: Schreib innerhalb von _5 Minuten_ kurz den Grund oder ignoriere diese Nachricht.',
-        '',
-        AUTO_HINT,
-    ].join('\n');
-    return sendMessage(chatId, text);
-}
-
-async function sendYesFollowUp(chatId, eventTitle, eventDate) {
-    const text = [
-        `Du hast f\u00FCr *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} zugesagt.`,
-        '',
-        'Optional: Schreib innerhalb von _5 Minuten_ einen Kommentar oder ignoriere diese Nachricht.',
-        '',
-        AUTO_HINT,
-    ].join('\n');
-    return sendMessage(chatId, text);
-}
-
-async function sendVoteChangeFollowUp(chatId, eventTitle, eventDate, newResponse, oldReason) {
-    const labels = { yes: 'Zusage', no: 'Absage', maybe: 'Vielleicht' };
-    const label = labels[newResponse] || newResponse;
-    let text = `Du hast deine Stimme f\u00FCr *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} zu *${label}* ge\u00E4ndert.`;
-    if (oldReason) {
-        text += `\n\nDein vorheriger Kommentar war: _"${oldReason}"_`;
-    }
-    text += `\n\nOptional: Schreib innerhalb von _5 Minuten_ einen neuen Kommentar oder ignoriere diese Nachricht.\n\n${AUTO_HINT}`;
-    return sendMessage(chatId, text);
-}
-
-async function sendAdminVoteNotification(chatId, eventTitle, eventDate, newResponse) {
-    const labels = { yes: 'Zusage', no: 'Absage', maybe: 'Vielleicht' };
-    const label = labels[newResponse] || newResponse;
-    const text = [
-        `Deine Stimme f\u00FCr *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} wurde vom Admin zu *${label}* ge\u00E4ndert.`,
-        '',
-        'Optional: Schreib innerhalb von _5 Minuten_ einen Kommentar oder ignoriere diese Nachricht.',
-        '',
-        AUTO_HINT,
-    ].join('\n');
-    return sendMessage(chatId, text);
-}
-
-async function sendAdminReasonRequest(chatId, eventTitle, eventDate, response) {
-    const labels = { yes: 'Zusage', no: 'Absage', maybe: 'Vielleicht' };
-    const label = labels[response] || 'deine Antwort';
-    const text = [
-        `Bitte schick f\u00FCr *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} noch einmal kurz einen Kommentar zu *${label}*.`,
-        '',
-        'Du kannst einfach direkt auf diese Nachricht antworten.',
-        '',
-        AUTO_HINT,
-    ].join('\n');
-    return sendMessage(chatId, text);
-}
-
-async function sendTooLateNotification(chatId, eventTitle, eventDate) {
-    const text = [
-        `Die Abstimmung f\u00FCr *${cleanLine(eventTitle)}* am ${fmtDate(eventDate)} ist bereits beendet.`,
-        '',
-        'Deine Stimme konnte leider nicht mehr gez\u00E4hlt werden.',
-        'Falls du doch anwesend warst, wende dich an *Niklas Kronig* - er kann deine Stimme nachtr\u00E4glich anpassen.',
-        '',
-        AUTO_HINT,
-    ].join('\n');
-    return sendMessage(chatId, text);
 }
 
 function extractRecords(data, seen = new Set()) {
@@ -471,16 +371,9 @@ async function unpinMessage(chatId, messageId) {
 module.exports = {
     sendMessage,
     sendPollMessage,
-    sendReminder,
     sendResultImage,
-    sendEventReminder,
-    sendMaybeFollowUp,
-    sendNoFollowUp,
-    sendYesFollowUp,
-    sendVoteChangeFollowUp,
-    sendAdminVoteNotification,
-    sendAdminReasonRequest,
-    sendTooLateNotification,
+    sendDeadlineReminderToGroup,
+    sendEventReminderToGroup,
     postResultsToGroup,
     sendCancellationMessage,
     getGroupParticipants,

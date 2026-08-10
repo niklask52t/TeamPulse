@@ -13,13 +13,11 @@ db.exec(schema);
 
 // Migrations for existing databases
 try { db.exec('ALTER TABLE polls ADD COLUMN archived INTEGER DEFAULT 0'); } catch { /* already exists */ }
-try { db.exec('ALTER TABLE poll_responses ADD COLUMN reason TEXT'); } catch { /* already exists */ }
 try { db.exec('ALTER TABLE events ADD COLUMN meeting_time TEXT'); } catch { /* already exists */ }
 try { db.exec('ALTER TABLE events ADD COLUMN poll_send_minutes_before INTEGER DEFAULT 1440'); } catch { /* already exists */ }
 try { db.exec('ALTER TABLE polls ADD COLUMN send_after TEXT'); } catch { /* already exists */ }
 try { db.exec('ALTER TABLE contacts ADD COLUMN lid TEXT'); } catch { /* already exists */ }
 try { db.exec('ALTER TABLE contacts ADD COLUMN name_override TEXT'); } catch { /* already exists */ }
-try { db.exec('ALTER TABLE contacts ADD COLUMN reason_dm_enabled INTEGER DEFAULT 1'); } catch { /* already exists */ }
 try { db.exec('ALTER TABLE events ADD COLUMN end_time TEXT'); } catch { /* already exists */ }
 try { db.exec('ALTER TABLE events ADD COLUMN poll_send_at TEXT'); } catch { /* already exists */ }
 try { db.exec('ALTER TABLE events ADD COLUMN description TEXT'); } catch { /* already exists */ }
@@ -51,19 +49,17 @@ try { db.exec(`
 `); } catch { /* ignore */ }
 try { db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at)'); } catch { /* ignore */ }
 
+// Private-message feature was removed completely - drop its leftovers from existing databases
+try { db.exec('ALTER TABLE poll_responses DROP COLUMN reason'); } catch { /* already removed */ }
+try { db.exec('ALTER TABLE contacts DROP COLUMN reason_dm_enabled'); } catch { /* already removed */ }
+try { db.prepare("DELETE FROM app_settings WHERE key = 'reason_request_dm_enabled'").run(); } catch { /* ignore */ }
+
 // Fix any polls stuck with invalid status from failed migration
 try { db.exec("UPDATE polls SET status = 'pending' WHERE status NOT IN ('pending', 'active', 'closed') OR status IS NULL"); } catch { /* ignore */ }
 try {
     db.prepare(`
         INSERT INTO app_settings (key, value)
         VALUES ('result_post_mode', 'both')
-        ON CONFLICT(key) DO NOTHING
-    `).run();
-} catch { /* ignore */ }
-try {
-    db.prepare(`
-        INSERT INTO app_settings (key, value)
-        VALUES ('reason_request_dm_enabled', '1')
         ON CONFLICT(key) DO NOTHING
     `).run();
 } catch { /* ignore */ }
@@ -82,14 +78,27 @@ try {
     `).run();
 } catch { /* ignore */ }
 
-// Seed default admin user if no users exist
+// Seed initial admin user if no users exist.
+// No hardcoded default password: use ADMIN_INITIAL_PASSWORD if provided, otherwise generate a
+// random one and print it once, so there is never a publicly-known credential to log in with.
 const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
 if (userCount === 0) {
     const bcrypt = require('bcrypt');
-    const hash = bcrypt.hashSync('admin', 10);
+    const crypto = require('crypto');
+    const initialPassword = process.env.ADMIN_INITIAL_PASSWORD || crypto.randomBytes(12).toString('base64url');
+    const hash = bcrypt.hashSync(initialPassword, 10);
     db.prepare('INSERT INTO users (username, password_hash, must_change_password) VALUES (?, ?, 1)')
         .run('admin', hash);
-    console.log('Default admin user created (admin/admin)');
+    if (process.env.ADMIN_INITIAL_PASSWORD) {
+        console.log('Initial admin user created (username: admin) with ADMIN_INITIAL_PASSWORD. Change it on first login.');
+    } else {
+        console.log('========================================================================');
+        console.log('  Initial admin user created.');
+        console.log('  Username: admin');
+        console.log(`  Password: ${initialPassword}`);
+        console.log('  You must change this on first login. This is shown only once.');
+        console.log('========================================================================');
+    }
 }
 
 module.exports = db;

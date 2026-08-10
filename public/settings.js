@@ -19,11 +19,9 @@ async function loadSettings() {
         const input = document.querySelector(`input[name="result-post-mode"][value="${mode}"]`);
         if (input) input.checked = true;
 
-        const reasonDmCheckbox = document.getElementById('settings-reason-request-dm-enabled');
         const slowModeCheckbox = document.getElementById('settings-description-slow-mode-enabled');
         const slowModeTime = document.getElementById('settings-description-slow-mode-time');
 
-        if (reasonDmCheckbox) reasonDmCheckbox.checked = settings.reason_request_dm_enabled !== false;
         if (slowModeCheckbox) slowModeCheckbox.checked = settings.description_slow_mode_enabled === true;
         if (slowModeTime) slowModeTime.value = settings.description_slow_mode_time || '04:00';
     } catch (err) {
@@ -39,7 +37,6 @@ async function saveSettings(event) {
     const status = document.getElementById('settings-status');
     const selected = document.querySelector('input[name="result-post-mode"]:checked');
     const resultPostMode = selected?.value || 'both';
-    const reasonRequestDmEnabled = document.getElementById('settings-reason-request-dm-enabled')?.checked ?? true;
     const descriptionSlowModeEnabled = document.getElementById('settings-description-slow-mode-enabled')?.checked ?? false;
     const descriptionSlowModeTime = document.getElementById('settings-description-slow-mode-time')?.value || '04:00';
 
@@ -52,7 +49,6 @@ async function saveSettings(event) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 result_post_mode: resultPostMode,
-                reason_request_dm_enabled: reasonRequestDmEnabled,
                 description_slow_mode_enabled: descriptionSlowModeEnabled,
                 description_slow_mode_time: descriptionSlowModeTime,
             }),

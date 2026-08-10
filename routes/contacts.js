@@ -60,24 +60,6 @@ router.put('/:id/override-name', (req, res) => {
     res.json(contact);
 });
 
-router.put('/:id/reason-dm', (req, res) => {
-    const enabled = req.body?.reason_dm_enabled;
-    if (enabled === undefined) {
-        return res.status(400).json({ error: 'reason_dm_enabled erforderlich' });
-    }
-
-    const normalized = enabled ? 1 : 0;
-    const result = db.prepare('UPDATE contacts SET reason_dm_enabled = ? WHERE id = ?')
-        .run(normalized, req.params.id);
-    if (result.changes === 0) return res.status(404).json({ error: 'Kontakt nicht gefunden' });
-
-    const contact = db.prepare(`
-        SELECT *, COALESCE(NULLIF(name_override, ''), name) AS display_name
-        FROM contacts WHERE id = ?
-    `).get(req.params.id);
-    res.json(contact);
-});
-
 // PUT set LID mapping for a contact
 router.put('/:id/lid', (req, res) => {
     const { lid } = req.body;

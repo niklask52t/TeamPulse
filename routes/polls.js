@@ -162,75 +162,11 @@ router.put('/:id/response', async (req, res) => {
     if (response) {
         db.prepare("UPDATE poll_responses SET response = ?, responded_at = datetime('now') WHERE poll_id = ? AND contact_id = ?").run(response, pollId, contact_id);
     } else {
-        db.prepare('UPDATE poll_responses SET response = NULL, responded_at = NULL, reason = NULL WHERE poll_id = ? AND contact_id = ?').run(pollId, contact_id);
-    }
-
-    if (response && contact.phone) {
-        const evolution = require('../services/evolution');
-        evolution.sendAdminVoteNotification(contact.phone, poll.title, poll.event_date, response)
-            .catch((err) => console.error(`[ERROR] sendAdminVoteNotification to ${contact.name}:`, err.message));
+        db.prepare('UPDATE poll_responses SET response = NULL, responded_at = NULL WHERE poll_id = ? AND contact_id = ?').run(pollId, contact_id);
     }
 
     const { scheduleImportantDescriptionUpdate } = require('../services/groupDescription');
     scheduleImportantDescriptionUpdate();
-
-    res.json({ success: true });
-});
-
-router.put('/:id/reason', (req, res) => {
-    const pollId = Number(req.params.id);
-    const { contact_id, reason } = req.body;
-    if (!contact_id || reason === undefined) {
-        return res.status(400).json({ error: 'contact_id und reason erforderlich' });
-    }
-
-    const poll = db.prepare('SELECT id FROM polls WHERE id = ?').get(pollId);
-    if (!poll) return res.status(404).json({ error: 'Umfrage nicht gefunden' });
-
-    const responseRow = db.prepare('SELECT response FROM poll_responses WHERE poll_id = ? AND contact_id = ?').get(pollId, contact_id);
-    if (!responseRow) return res.status(404).json({ error: 'Antwort nicht gefunden' });
-    if (!responseRow.response) {
-        return res.status(400).json({ error: 'Ein Grund kann erst gesetzt werden, wenn die Person einen Status hat' });
-    }
-
-    const normalizedReason = String(reason || '').trim();
-    db.prepare('UPDATE poll_responses SET reason = ? WHERE poll_id = ? AND contact_id = ?')
-        .run(normalizedReason || null, pollId, contact_id);
-
-    const { scheduleImportantDescriptionUpdate } = require('../services/groupDescription');
-    scheduleImportantDescriptionUpdate();
-    res.json({ success: true });
-});
-
-router.post('/:id/request-reason', async (req, res) => {
-    const pollId = Number(req.params.id);
-    const { contact_id } = req.body;
-    if (!contact_id) {
-        return res.status(400).json({ error: 'contact_id erforderlich' });
-    }
-
-    const poll = db.prepare(`
-        SELECT p.id, p.event_date, e.title
-        FROM polls p JOIN events e ON p.event_id = e.id
-        WHERE p.id = ?
-    `).get(pollId);
-    if (!poll) return res.status(404).json({ error: 'Umfrage nicht gefunden' });
-
-    const row = db.prepare(`
-        SELECT pr.response, c.phone, c.reason_dm_enabled, COALESCE(NULLIF(c.name_override, ''), c.name) AS name
-        FROM poll_responses pr JOIN contacts c ON pr.contact_id = c.id
-        WHERE pr.poll_id = ? AND pr.contact_id = ?
-    `).get(pollId, contact_id);
-    if (!row) return res.status(404).json({ error: 'Antwort nicht gefunden' });
-    if (!row.response) return res.status(400).json({ error: 'Die Person hat noch keinen Status' });
-    if (!row.phone) return res.status(400).json({ error: 'Kontakt hat keine nutzbare Telefonnummer' });
-    if (!pollManager.shouldSendReasonRequestDm(row)) {
-        return res.status(400).json({ error: 'Grund-Nachfrage-PNs sind global oder fuer diesen Kontakt deaktiviert' });
-    }
-
-    const evolution = require('../services/evolution');
-    evolution.sendAdminReasonRequest(row.phone, poll.title, poll.event_date, row.response)
-        .catch((err) => console.error(`[ERROR] sendAdminReasonRequest to ${row.name}:`, err.message));
 
     res.json({ success: true });
 });
@@ -265,15 +201,6 @@ function extractMessages(body) {
     if (body?.update?.key || body?.update?.message || body?.update?.pollUpdates) return [body.update];
     if (body?.key || body?.message) return [body];
     return [];
-}
-
-function extractMessageText(message) {
-    const content = message?.message || {};
-    return content.conversation
-        || content.extendedTextMessage?.text
-        || content.imageMessage?.caption
-        || content.videoMessage?.caption
-        || '';
 }
 
 function extractPollUpdate(message, body) {
@@ -407,7 +334,8 @@ async function handleEvolutionWebhook(req, res) {
         return res.json({ ok: true });
     }
 
-    const messages = extractMessages(req.body);
+    // Cap fan-out so a single forged request cannot amplify into thousands of outbound Evolution calls
+    const messages = extractMessages(req.body).slice(0, 50);
     console.log(`[WEBHOOK] evolution event=${event} messages=${messages.length}`);
 
     for (const entry of messages) {
@@ -416,22 +344,10 @@ async function handleEvolutionWebhook(req, res) {
         const participantCandidates = collectParticipantCandidates(entry, req.body);
         const participant = participantCandidates.find((candidate) => candidate && candidate !== remoteJid) || resolveJid(key.participant);
         const fromMe = Boolean(key.fromMe);
-        const isGroup = remoteJid.endsWith('@g.us');
-        const text = extractMessageText(entry);
         const pollUpdate = extractPollUpdate(entry, req.body);
 
         if (!pollUpdate) {
-            if (fromMe) continue;
-            if (!isGroup && text) {
-                try {
-                    const reasonResult = pollManager.processReasonMessage(remoteJid, text);
-                    if (reasonResult) {
-                        console.log(`[REASON] Saved from ${reasonResult.contactName} (poll ${reasonResult.pollId})`);
-                    }
-                } catch (err) {
-                    console.error('[ERROR] processReasonMessage failed for phone=%s:', remoteJid, err.message);
-                }
-            }
+            // Plain text messages (including private chats) are ignored - votes only come in via poll updates
             continue;
         }
 

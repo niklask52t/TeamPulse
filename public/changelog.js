@@ -2,6 +2,21 @@
 
 const CHANGELOG = [
     {
+        version: '3.0.0',
+        date: '2026-08-10',
+        changes: [
+            { type: 'feature', text: 'Privatnachrichten komplett entfernt: TeamPulse schreibt niemanden mehr privat an. Abstimmungs-Erinnerungen und Start-Erinnerungen laufen jetzt als eine übersichtliche Gruppennachricht (mit Auflistung der offenen bzw. zugesagten Personen). Kommentar-/Grund-Nachfragen per PN, "Zu spät"-Hinweise, Admin-Änderungs-PNs und die zugehörigen Einstellungen (globale Grund-PN-Option, Grund-PN pro Kontakt) sind vollständig weggefallen' },
+            { type: 'improvement', text: 'Alle WhatsApp-Nachrichten (Umfrage, Erinnerungen, Ergebnis, Absage) wurden komplett neu gestaltet: einheitlicher Aufbau mit fettem Titel, klarer Emoji-Infozeile (🗓 Datum, 🕒 Zeit, 🤝 Treffen, 📝 Info) und sauberer Struktur. Datum jetzt als "Fr, 14.08.2026", Zeitfenster als "19:00–21:00 Uhr"' },
+            { type: 'security', text: 'Kein fest eingebautes Standardpasswort mehr: Der erste Admin-Account bekommt beim ersten Start ein zufälliges Passwort (einmalig im Log ausgegeben) oder eins aus ADMIN_INITIAL_PASSWORD. Passwort-Mindestlänge auf 10 erhöht' },
+            { type: 'security', text: 'Login erneuert jetzt die Session (Schutz gegen Session-Fixation), Passwortänderung verlangt das aktuelle Passwort, und der Login-Zeitpunkt verrät keine gültigen Benutzernamen mehr' },
+            { type: 'security', text: 'Mehrere gespeicherte XSS-Lücken geschlossen: WhatsApp-Anzeigenamen, Gründe und Event-Titel können nicht mehr aus HTML-Attributen ausbrechen (esc() maskiert jetzt auch Anführungszeichen, Poll- und Kontakt-Buttons nutzen nur noch sichere Werte)' },
+            { type: 'security', text: 'Der öffentliche Evolution-Webhook ist jetzt rate-limitiert, begrenzt die Verarbeitung pro Anfrage und kann optional per WEBHOOK_SECRET abgesichert werden. Trust-Proxy ist standardmäßig aus (per TRUST_PROXY konfigurierbar), damit das Rate-Limit nicht per X-Forwarded-For umgangen werden kann' },
+            { type: 'security', text: 'Sicherheits-Header (nosniff, X-Frame-Options, Referrer-Policy), 256-KB-Limit für JSON-Requests und maskierte interne Fehlermeldungen ergänzt; veraltete Abhängigkeiten mit bekannten Schwachstellen aktualisiert' },
+            { type: 'fix', text: 'Der teure Gruppen-Sync läuft nicht mehr bei jedem Seitenaufruf, sondern höchstens alle 30 Sekunden (manuelles Senden erzwingt weiterhin einen frischen Sync); zusätzlich schützt eine Sicherung davor, bei unvollständiger WhatsApp-Antwort versehentlich echte Kontakte zu löschen' },
+            { type: 'fix', text: 'Ausgehende Evolution-Anfragen respektieren das Timeout jetzt auch beim Lesen der Antwort, sodass eine hängende Verbindung den Scheduler nicht mehr blockiert' },
+        ]
+    },
+    {
         version: '2.5.37',
         date: '2026-05-19',
         changes: [
@@ -589,9 +604,11 @@ function renderChangelog() {
     if (!list) return;
 
     const typeColors = {
-        feature: { bg: '#23863633', color: '#3fb950', label: 'Feature' },
-        fix:     { bg: '#d2992233', color: '#e3b341', label: 'Fix' },
-        delete:  { bg: '#da363333', color: '#f85149', label: 'Entfernt' },
+        feature:     { bg: '#23863633', color: '#3fb950', label: 'Feature' },
+        improvement: { bg: '#1f6feb33', color: '#58a6ff', label: 'Verbesserung' },
+        security:    { bg: '#8957e533', color: '#bc8cff', label: 'Sicherheit' },
+        fix:         { bg: '#d2992233', color: '#e3b341', label: 'Fix' },
+        delete:      { bg: '#da363333', color: '#f85149', label: 'Entfernt' },
     };
 
     list.innerHTML = CHANGELOG.map(release => `
